@@ -10,7 +10,7 @@ assignees: ''
 **Feature description**
 to be filled by you
 
-**Relevant specifications and corresponding sections **
+**Relevant specifications and corresponding sections**
 to be filled by you
 
 **Additional context**
