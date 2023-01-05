@@ -1,0 +1,7 @@
+{
+  "provisioningSessionId": "d54a1fcc-d411-4e32-807b-2c60dbaeaf5f",
+  "provisioningSessionType": "DOWNLINK",
+  "streamingAccess": {
+    "mediaPlayerEntry": "https://d24rwxnt7vw9qb.cloudfront.net/v1/dash/e6d234965645b411ad572802b6c9d5a10799c9c1/All_Reference_Streams/4577dca5f8a44756875ab5cc913cd1f1/index.mpd"
+  }
+}

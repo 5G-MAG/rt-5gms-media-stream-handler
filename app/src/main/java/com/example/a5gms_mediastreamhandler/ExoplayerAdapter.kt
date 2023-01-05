@@ -5,7 +5,7 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.StyledPlayerView
 
-class ExoplayerAdapter {
+class ExoplayerAdapter () {
 
     private lateinit var playerInstance : ExoPlayer
     private lateinit var playerView : StyledPlayerView
@@ -18,7 +18,7 @@ class ExoplayerAdapter {
 
     fun attach(url: String) {
         val mediaItem: MediaItem = MediaItem.fromUri(url)
-        playerInstance.addMediaItem(mediaItem)
+        playerInstance.setMediaItem(mediaItem)
     }
 
     fun preload() {
