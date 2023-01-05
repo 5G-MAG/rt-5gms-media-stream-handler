@@ -14,7 +14,7 @@ import java.io.InputStream
 
 class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
-    private val exoPlayerAdapter = ExoplayerAdapter();
+    private val exoPlayerAdapter = ExoPlayerAdapter();
     private lateinit var exoPlayerView: StyledPlayerView
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -5,15 +5,17 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.StyledPlayerView
 
-class ExoplayerAdapter () {
+class ExoPlayerAdapter {
 
     private lateinit var playerInstance : ExoPlayer
     private lateinit var playerView : StyledPlayerView
+    private var playerListener : ExoPlayerListener = ExoPlayerListener()
 
     fun initialize(exoPlayerView: StyledPlayerView, context: Context) {
         playerInstance = ExoPlayer.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance
+        playerInstance.addListener(playerListener)
     }
 
     fun attach(url: String) {
