@@ -4,15 +4,19 @@ import android.content.Context
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.StyledPlayerView
+import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
 
 class ExoPlayerAdapter {
 
-    private lateinit var playerInstance : ExoPlayer
-    private lateinit var playerView : StyledPlayerView
-    private var playerListener : ExoPlayerListener = ExoPlayerListener()
+    private lateinit var playerInstance: ExoPlayer
+    private lateinit var playerView: StyledPlayerView
+    private lateinit var activeMediaItem: MediaItem
+    private var playerListener: ExoPlayerListener = ExoPlayerListener()
+    private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
     fun initialize(exoPlayerView: StyledPlayerView, context: Context) {
         playerInstance = ExoPlayer.Builder(context).build()
+        bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance
         playerInstance.addListener(playerListener)
@@ -21,6 +25,7 @@ class ExoPlayerAdapter {
     fun attach(url: String) {
         val mediaItem: MediaItem = MediaItem.fromUri(url)
         playerInstance.setMediaItem(mediaItem)
+        activeMediaItem = mediaItem
     }
 
     fun preload() {
@@ -51,8 +56,34 @@ class ExoPlayerAdapter {
         playerInstance.release()
     }
 
-    fun getPlayerInstance() : ExoPlayer {
+    fun getPlayerInstance(): ExoPlayer {
         return playerInstance
     }
 
+    fun getPlaybackState() : Int {
+        return playerInstance.playbackState
+    }
+
+    private fun getAverageThroughput(): Long {
+        return bandwidthMeter.bitrateEstimate
+    }
+
+    private fun getBufferLength() : Long {
+        return playerInstance.totalBufferedDuration
+    }
+
+    private fun getLiveLatency() : Long {
+        return playerInstance.currentLiveOffset
+    }
+
+    fun getStatusInformation(status: String): Any? {
+        when (status) {
+            StatusInformation.AVERAGE_THROUGHPUT -> return getAverageThroughput()
+            StatusInformation.BUFFER_LENGTH -> return getBufferLength()
+            StatusInformation.LIVE_LATENCY -> return getLiveLatency()
+            else -> {
+                return null
+            }
+        }
+    }
 }

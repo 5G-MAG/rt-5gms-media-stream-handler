@@ -12,12 +12,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.InputStream
+import kotlin.collections.ArrayList
 
 const val SERVICE_ACCESS_INFORMATION_INDEX = "serviceAccessInformation/index.json"
 
 class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
     private val exoPlayerAdapter = ExoPlayerAdapter();
+    private val mediaSessionHandlerAdapter = MediaSessionHandlerAdapter(exoPlayerAdapter)
     private lateinit var exoPlayerView: StyledPlayerView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,7 +38,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
     fun populateSpinner() {
         var json: String?
-        val spinner: Spinner = findViewById(R.id.idSaiSpinner)
+        val spinner : Spinner = findViewById(R.id.idSaiSpinner)
         val spinnerOptions: ArrayList<String> = ArrayList()
         try {
             val inputStream: InputStream = assets.open(SERVICE_ACCESS_INFORMATION_INDEX)
