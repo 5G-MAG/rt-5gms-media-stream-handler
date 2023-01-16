@@ -32,6 +32,9 @@ class ExoPlayerAdapter {
         playerInstance.prepare()
     }
 
+    /**
+     *
+     */
     fun play() {
         playerInstance.play()
     }
