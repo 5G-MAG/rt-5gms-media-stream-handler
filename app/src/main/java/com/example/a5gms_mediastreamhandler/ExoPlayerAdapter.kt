@@ -1,11 +1,14 @@
 package com.example.a5gms_mediastreamhandler
 
 import android.content.Context
+import com.example.a5gms_mediastreamhandler.helpers.PlayerStates
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
 import com.example.a5gms_mediastreamhandler.helpers.StatusInformation
+import com.example.a5gms_mediastreamhandler.helpers.mapStateToConstant
+import com.google.android.exoplayer2.Player
 
 class ExoPlayerAdapter(private val mediaSessionHandlerAdapter: MediaSessionHandlerAdapter) {
 
@@ -89,7 +92,17 @@ class ExoPlayerAdapter(private val mediaSessionHandlerAdapter: MediaSessionHandl
         }
     }
 
-    fun getPlayerState() {
+    fun getPlayerState() : String {
+        var state: String? = null
+        if (playerInstance.isPlaying) {
+            state = PlayerStates.PLAYING
+        } else if (playerInstance.playbackState == Player.STATE_READY && !playerInstance.playWhenReady) {
+            state = PlayerStates.PAUSED
+        }
+        else {
+            state = mapStateToConstant(playerInstance.playbackState)
+        }
 
+        return state
     }
 }

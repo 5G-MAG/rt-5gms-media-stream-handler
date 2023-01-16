@@ -35,7 +35,8 @@ class MediaSessionHandlerMessengerService : Service() {
             when (msg.what) {
                 STATUS_MESSAGE ->
                     if (msg.obj != null) {
-                        Toast.makeText(applicationContext, msg.obj as String, Toast.LENGTH_SHORT)
+                        val msg : String = msg.obj as String
+                        Toast.makeText(applicationContext, "Media Session Handler Service received state message: $msg", Toast.LENGTH_SHORT)
                             .show()
                     }
                 else -> super.handleMessage(msg)
