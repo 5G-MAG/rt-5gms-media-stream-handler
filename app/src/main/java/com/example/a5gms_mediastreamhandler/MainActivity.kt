@@ -8,9 +8,12 @@ import android.widget.Spinner
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.io.InputStream
 
+const val SERVICE_ACCESS_INFORMATION_INDEX = "serviceAccessInformation/index.json"
 
 class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
@@ -32,22 +35,26 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
     }
 
     fun populateSpinner() {
-        val serviceAccessInformation = arrayOf("live-1.json", "live-2.json", "vod-1.json")
         var json: String?
-        val spinner : Spinner = findViewById(R.id.idSaiSpinner)
+        val spinner: Spinner = findViewById(R.id.idSaiSpinner)
         val spinnerOptions: ArrayList<String> = ArrayList()
-        for (entry in serviceAccessInformation) {
-            try {
-                val inputStream: InputStream = assets.open("serviceAccessInformation/$entry")
-                json = inputStream.bufferedReader().use { it.readText() }
-                val parsed  = Json.parseToJsonElement(json).jsonObject.get("streamingAccess")
-                val mediaPlayerEntry = parsed?.jsonObject?.get("mediaPlayerEntry")
-                spinnerOptions.add(mediaPlayerEntry.toString())
+        try {
+            val inputStream: InputStream = assets.open(SERVICE_ACCESS_INFORMATION_INDEX)
+            json = inputStream.bufferedReader().use { it.readText() }
+            val entries = Json.parseToJsonElement(json).jsonObject.get("entries")?.jsonArray
+            if (entries != null) {
+                for (item in entries) {
+                    val parsed = Json.parseToJsonElement(item.toString()).jsonObject.get("streamingAccess")
+                    val mediaPlayerEntry = parsed?.jsonObject?.get("mediaPlayerEntry")
+                    spinnerOptions.add(mediaPlayerEntry.toString())
+                }
             }
-            catch(e: Exception) {
-                e.printStackTrace()
-            }
+
+
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
+
 
         val adapter: ArrayAdapter<String> = ArrayAdapter<String>(
             this,
@@ -59,7 +66,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
     }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        var url : String = parent?.getItemAtPosition(position) as String
+        var url: String = parent?.getItemAtPosition(position) as String
         url = url.replace("\"", "");
         exoPlayerAdapter.attach(url as String)
         exoPlayerAdapter.preload()
