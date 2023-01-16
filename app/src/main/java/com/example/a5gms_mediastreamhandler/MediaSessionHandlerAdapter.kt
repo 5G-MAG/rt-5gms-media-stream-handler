@@ -1,16 +1,14 @@
 package com.example.a5gms_mediastreamhandler
 
-import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
-import android.view.View
 
-private const val MSG_SAY_HELLO = 1
+private const val STATUS_MESSAGE = 1
 
-class MediaSessionHandlerAdapter (exoPlayerAdapter: ExoPlayerAdapter) : Activity() {
+class MediaSessionHandlerAdapter ()  {
 
     /** Messenger for communicating with the service.  */
     private var mService: Messenger? = null
@@ -41,33 +39,30 @@ class MediaSessionHandlerAdapter (exoPlayerAdapter: ExoPlayerAdapter) : Activity
         }
     }
 
-    fun sayHello(v: View) {
+    fun initialize(context: Context) {
+        Intent(context, MediaSessionHandlerMessengerService::class.java).also { intent ->
+            context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    fun reset(context: Context) {
+        if (bound) {
+            context.unbindService(mConnection)
+            bound = false
+        }
+    }
+
+    fun updatePlaybackState(state : String) {
         if (!bound) return
         // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(null, MSG_SAY_HELLO, 0, 0)
+        val msg: Message = Message.obtain(null, STATUS_MESSAGE)
+        msg.obj = state
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
-
     }
 
-    override fun onStart() {
-        super.onStart()
-        // Bind to the service
-        Intent(this, MediaSessionHandlerAdapter::class.java).also { intent ->
-            bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
-        }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        // Unbind from the service
-        if (bound) {
-            unbindService(mConnection)
-            bound = false
-        }
-    }
 
 }

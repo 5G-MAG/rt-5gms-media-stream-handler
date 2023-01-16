@@ -1,39 +1,33 @@
 package com.example.a5gms_mediastreamhandler
 
 import android.util.Log
+import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
+import com.example.a5gms_mediastreamhandler.helpers.mapStateToConstant
+import com.example.a5gms_mediastreamhandler.helpers.PlayerStates
 
 // See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
-class ExoPlayerListener : Player.Listener {
-
-    object PLAYBACK_STATES {
-        const val IDLE = "IDLE"
-        const val BUFFERING = "BUFFERING"
-        const val ENDED = "ENDED"
-        const val READY = "READY"
-        const val UNKNOWN = "UNKNOWN"
-    }
+class ExoPlayerListener(
+    private val mediaSessionHandlerAdapter: MediaSessionHandlerAdapter,
+    private val playerInstance: ExoPlayer
+) :
+    Player.Listener {
 
     override fun onPlaybackStateChanged(playbackState: Int) {
-        val state = when (playbackState) {
-            Player.STATE_IDLE -> PLAYBACK_STATES.IDLE
-            Player.STATE_BUFFERING -> PLAYBACK_STATES.BUFFERING
-            Player.STATE_ENDED -> PLAYBACK_STATES.ENDED
-            Player.STATE_READY -> PLAYBACK_STATES.READY
-            else -> PLAYBACK_STATES.UNKNOWN
-        }
-        Log.d("ExoPlayer", "Playback state$state")
+        val state : String = mapStateToConstant(playbackState)
+        mediaSessionHandlerAdapter.updatePlaybackState(state)
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        var state: String? = null
         if (isPlaying) {
-            // Active playback.
-        } else {
-            // Not playing because playback is paused, ended, suppressed, or the player
-            // is buffering, stopped or failed. Check player.getPlayWhenReady,
-            // player.getPlaybackState, player.getPlaybackSuppressionReason and
-            // player.getPlaybackError for details.
+            state = PlayerStates.PLAYING
+        } else if (playerInstance.playbackState == Player.STATE_READY && !playerInstance.playWhenReady) {
+            state = PlayerStates.PAUSED
+        }
+        if (state != null) {
+            mediaSessionHandlerAdapter.updatePlaybackState(state)
         }
     }
 

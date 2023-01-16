@@ -5,13 +5,14 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
+import com.example.a5gms_mediastreamhandler.helpers.StatusInformation
 
-class ExoPlayerAdapter {
+class ExoPlayerAdapter(private val mediaSessionHandlerAdapter: MediaSessionHandlerAdapter) {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: StyledPlayerView
     private lateinit var activeMediaItem: MediaItem
-    private var playerListener: ExoPlayerListener = ExoPlayerListener()
+    private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
     fun initialize(exoPlayerView: StyledPlayerView, context: Context) {
@@ -19,6 +20,7 @@ class ExoPlayerAdapter {
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance
+        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance)
         playerInstance.addListener(playerListener)
     }
 
@@ -32,9 +34,6 @@ class ExoPlayerAdapter {
         playerInstance.prepare()
     }
 
-    /**
-     *
-     */
     fun play() {
         playerInstance.play()
     }
@@ -88,5 +87,9 @@ class ExoPlayerAdapter {
                 return null
             }
         }
+    }
+
+    fun getPlayerState() {
+
     }
 }
