@@ -10,15 +10,21 @@ import com.example.a5gms_mediastreamhandler.helpers.StatusInformation
 import com.example.a5gms_mediastreamhandler.helpers.mapStateToConstant
 import com.google.android.exoplayer2.Player
 
-class ExoPlayerAdapter(private val mediaSessionHandlerAdapter: MediaSessionHandlerAdapter) {
+class ExoPlayerAdapter() {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: StyledPlayerView
     private lateinit var activeMediaItem: MediaItem
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
+    private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
 
-    fun initialize(exoPlayerView: StyledPlayerView, context: Context) {
+    fun initialize(
+        exoPlayerView: StyledPlayerView,
+        context: Context,
+        msh: MediaSessionHandlerAdapter
+    ) {
+        mediaSessionHandlerAdapter = msh
         playerInstance = ExoPlayer.Builder(context).build()
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
@@ -65,7 +71,7 @@ class ExoPlayerAdapter(private val mediaSessionHandlerAdapter: MediaSessionHandl
         return playerInstance
     }
 
-    fun getPlaybackState() : Int {
+    fun getPlaybackState(): Int {
         return playerInstance.playbackState
     }
 
@@ -73,11 +79,11 @@ class ExoPlayerAdapter(private val mediaSessionHandlerAdapter: MediaSessionHandl
         return bandwidthMeter.bitrateEstimate
     }
 
-    private fun getBufferLength() : Long {
+    private fun getBufferLength(): Long {
         return playerInstance.totalBufferedDuration
     }
 
-    private fun getLiveLatency() : Long {
+    private fun getLiveLatency(): Long {
         return playerInstance.currentLiveOffset
     }
 
@@ -92,14 +98,13 @@ class ExoPlayerAdapter(private val mediaSessionHandlerAdapter: MediaSessionHandl
         }
     }
 
-    fun getPlayerState() : String {
+    fun getPlayerState(): String {
         var state: String? = null
         if (playerInstance.isPlaying) {
             state = PlayerStates.PLAYING
         } else if (playerInstance.playbackState == Player.STATE_READY && !playerInstance.playWhenReady) {
             state = PlayerStates.PAUSED
-        }
-        else {
+        } else {
             state = mapStateToConstant(playerInstance.playbackState)
         }
 

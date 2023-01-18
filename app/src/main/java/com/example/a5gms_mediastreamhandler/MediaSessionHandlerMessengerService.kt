@@ -7,39 +7,79 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Message
 import android.os.Messenger
+import android.util.Log
 import android.widget.Toast
+import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
+import com.example.a5gms_mediastreamhandler.helpers.M5Interface
+import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformation
+import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformationApi
+import retrofit2.Call
+import retrofit2.Retrofit
+import retrofit2.Response
+import retrofit2.converter.gson.GsonConverterFactory
 
-/** Command to the service to display a message  */
-private const val STATUS_MESSAGE = 1
 
 /**
  * Create a bound service when you want to interact with the service from activities and other components in your application
  * or to expose some of your application's functionality to other applications through interprocess communication (IPC).
  */
-class MediaSessionHandlerMessengerService : Service() {
+class MediaSessionHandlerMessengerService() : Service() {
 
     /**
      * Target we publish for clients to send messages to IncomingHandler.
      */
     private lateinit var mMessenger: Messenger
+    private lateinit var serviceAccessInformationApi: ServiceAccessInformationApi
 
     /**
      * Handler of incoming messages from clients.
      */
-    internal class IncomingHandler(
+    inner class IncomingHandler(
         context: Context,
         private val applicationContext: Context = context.applicationContext
     ) : Handler() {
 
         override fun handleMessage(msg: Message) {
             when (msg.what) {
-                STATUS_MESSAGE ->
-                    if (msg.obj != null) {
-                        val msg : String = msg.obj as String
-                        Toast.makeText(applicationContext, "Media Session Handler Service received state message: $msg", Toast.LENGTH_SHORT)
-                            .show()
-                    }
+                SessionHandlerMessageTypes.STATUS_MESSAGE -> handleStatusMessage(msg)
+                SessionHandlerMessageTypes.START_PLAYBACK_MESSAGE -> handleStartPlaybackMessage(msg)
                 else -> super.handleMessage(msg)
+            }
+        }
+
+        private fun handleStatusMessage(msg: Message) {
+            if (msg.obj != null) {
+                val state: String = msg.obj as String
+                Toast.makeText(
+                    applicationContext,
+                    "Media Session Handler Service received state message: $state",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        private fun handleStartPlaybackMessage(msg: Message) {
+            if (msg.obj != null) {
+                val provisioningSessionId: String = msg.obj as String
+                Toast.makeText(
+                    applicationContext,
+                    "Supposed to start playback with $provisioningSessionId",
+                    Toast.LENGTH_SHORT
+                ).show()
+                val call: Call<ServiceAccessInformation>? =
+                    serviceAccessInformationApi.fetchServiceAccessInformation(provisioningSessionId)
+                call?.enqueue(object : retrofit2.Callback<ServiceAccessInformation?> {
+                    override fun onResponse(
+                        call: Call<ServiceAccessInformation?>,
+                        response: Response<ServiceAccessInformation?>
+                    ) {
+                        val resource : ServiceAccessInformation? = response.body()
+                    }
+
+                    override fun onFailure(call: Call<ServiceAccessInformation?>, t: Throwable) {
+                        call.cancel()
+                    }
+                })
             }
         }
 
@@ -52,9 +92,23 @@ class MediaSessionHandlerMessengerService : Service() {
      * IBinder and is what your service must return from the onBind() callback method.
      */
     override fun onBind(intent: Intent): IBinder? {
-        Toast.makeText(applicationContext, "binding", Toast.LENGTH_SHORT).show()
+        initializeRetrofitForServiceAccessInformation()
+        return initializeMessenger()
+    }
+
+    private fun initializeMessenger(): IBinder? {
         mMessenger = Messenger(IncomingHandler(this))
         return mMessenger.binder
+    }
+
+    private fun initializeRetrofitForServiceAccessInformation() {
+        val retrofitServiceAccessInformation: Retrofit = Retrofit.Builder()
+            .baseUrl(M5Interface.ENDPOINT)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        serviceAccessInformationApi =
+            retrofitServiceAccessInformation.create(ServiceAccessInformationApi::class.java)
     }
 
 }

@@ -1,4 +1,5 @@
 package com.example.a5gms_mediastreamhandler
+
 import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
@@ -17,7 +18,7 @@ const val SERVICE_ACCESS_INFORMATION_INDEX = "serviceAccessInformation/index.jso
 class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
     private val mediaSessionHandlerAdapter = MediaSessionHandlerAdapter()
-    private val exoPlayerAdapter = ExoPlayerAdapter(mediaSessionHandlerAdapter);
+    private val exoPlayerAdapter = ExoPlayerAdapter();
     private lateinit var exoPlayerView: StyledPlayerView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,8 +28,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
         try {
             populateSpinner()
-            mediaSessionHandlerAdapter.initialize(this)
-            exoPlayerAdapter.initialize(exoPlayerView, this)
+            mediaSessionHandlerAdapter.initialize(this, exoPlayerAdapter)
+            exoPlayerAdapter.initialize(exoPlayerView, this, mediaSessionHandlerAdapter)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -50,10 +51,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             val entries = Json.parseToJsonElement(json).jsonObject.get("entries")?.jsonArray
             if (entries != null) {
                 for (item in entries) {
-                    val parsed =
-                        Json.parseToJsonElement(item.toString()).jsonObject.get("streamingAccess")
-                    val mediaPlayerEntry = parsed?.jsonObject?.get("mediaPlayerEntry")
-                    spinnerOptions.add(mediaPlayerEntry.toString())
+                    val provisioningSessionId =
+                        Json.parseToJsonElement(item.toString()).jsonObject["provisioningSessionId"]
+                    spinnerOptions.add(provisioningSessionId.toString())
                 }
             }
 
@@ -73,11 +73,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
     }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        var url: String = parent?.getItemAtPosition(position) as String
-        url = url.replace("\"", "");
-        exoPlayerAdapter.attach(url as String)
-        exoPlayerAdapter.preload()
-        exoPlayerAdapter.play()
+        var provisioningSessionId: String = parent?.getItemAtPosition(position) as String
+        provisioningSessionId = provisioningSessionId.replace("\"", "");
+        mediaSessionHandlerAdapter.initializePlaybackByProvisioningSessionId(provisioningSessionId)
     }
 
     override fun onNothingSelected(parent: AdapterView<*>?) {

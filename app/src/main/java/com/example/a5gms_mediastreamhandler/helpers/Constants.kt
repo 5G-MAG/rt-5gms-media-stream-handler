@@ -15,3 +15,13 @@ object PlayerStates {
     const val PAUSED = "PAUSED"
     const val UNKNOWN = "UNKNOWN"
 }
+
+object M5Interface {
+    const val ENDPOINT = "http://192.168.178.31:7777/3gpp-m5/v2/"
+}
+
+object SessionHandlerMessageTypes {
+    const val STATUS_MESSAGE = 1
+    const val START_PLAYBACK_MESSAGE = 2
+    const val SERVICE_ACCESS_INFORMATION_MESSAGE = 3
+}
