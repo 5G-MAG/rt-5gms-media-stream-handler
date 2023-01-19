@@ -20,6 +20,8 @@ class MediaSessionHandlerAdapter() {
 
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
+    private lateinit var currentServiceAccessInformation: ServiceAccessInformation
+
     /**
      * Handler of incoming messages from clients.
      */
@@ -35,7 +37,8 @@ class MediaSessionHandlerAdapter() {
         }
 
         private fun handleServiceAccessInformationMessage(msg: Message) {
-            exoPlayerAdapter.attach((msg.obj as ServiceAccessInformation).streamingAccess.mediaPlayerEntry)
+            currentServiceAccessInformation = msg.obj as ServiceAccessInformation
+            exoPlayerAdapter.attach(currentServiceAccessInformation.streamingAccess.mediaPlayerEntry)
             exoPlayerAdapter.preload()
             exoPlayerAdapter.play()
         }
