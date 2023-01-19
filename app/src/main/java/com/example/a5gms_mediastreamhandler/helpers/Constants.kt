@@ -28,3 +28,10 @@ object SessionHandlerMessageTypes {
     const val REGISTER_CLIENT = 4
     const val UNREGISTER_CLIENT = 5
 }
+
+object SessionHandlerEvents {
+    object Notification {
+        const val SESSION_HANDLING_ACTIVATED = "SESSION_HANDLING_ACTIVATED"
+        const val SESSION_HANDLING_STOPPED = "SESSION_HANDLING_STOPPED"
+    }
+}

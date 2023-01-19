@@ -95,6 +95,10 @@ class MediaSessionHandlerMessengerService() : Service() {
             }
         }
 
+        private fun triggerEvent() {
+
+        }
+
     }
 
     /**
