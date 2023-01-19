@@ -32,13 +32,24 @@ class MediaSessionHandlerAdapter() {
                 SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE -> handleServiceAccessInformationMessage(
                     msg
                 )
+                SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleSessionHandlerTriggersPlaybackMessage(
+                    msg
+                )
                 else -> super.handleMessage(msg)
             }
         }
 
         private fun handleServiceAccessInformationMessage(msg: Message) {
             currentServiceAccessInformation = msg.obj as ServiceAccessInformation
-            exoPlayerAdapter.attach(currentServiceAccessInformation.streamingAccess.mediaPlayerEntry)
+            startPlayback(currentServiceAccessInformation.streamingAccess.mediaPlayerEntry)
+        }
+
+        private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
+            startPlayback(msg.obj as String)
+        }
+
+        private fun startPlayback(url: String) {
+            exoPlayerAdapter.attach(url)
             exoPlayerAdapter.preload()
             exoPlayerAdapter.play()
         }
@@ -116,8 +127,27 @@ class MediaSessionHandlerAdapter() {
     fun initializePlaybackByProvisioningSessionId(provisioningSessionId: String) {
         if (!bound) return
         // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.START_PLAYBACK_MESSAGE)
+        val msg: Message = Message.obtain(
+            null,
+            SessionHandlerMessageTypes.START_PLAYBACK_BY_PROVISIONING_ID_MESSAGE
+        )
         msg.obj = provisioningSessionId
+        msg.replyTo = mMessenger;
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
+        }
+    }
+
+    fun initializePlaybackByMediaPlayerEntry(mediaPlayerEntry: String) {
+        if (!bound) return
+        // Create and send a message to the service, using a supported 'what' value
+        val msg: Message = Message.obtain(
+            null,
+            SessionHandlerMessageTypes.START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE
+        )
+        msg.obj = mediaPlayerEntry
         msg.replyTo = mMessenger;
         try {
             mService?.send(msg)

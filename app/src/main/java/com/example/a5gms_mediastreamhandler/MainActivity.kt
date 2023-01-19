@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             if (entries != null) {
                 for (item in entries) {
                     val provisioningSessionId =
-                        Json.parseToJsonElement(item.toString()).jsonObject["provisioningSessionId"]
+                        Json.parseToJsonElement(item.toString()).jsonObject["mediaPlayerEntry"]
                     spinnerOptions.add(provisioningSessionId.toString())
                 }
             }
@@ -73,10 +73,10 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
     }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        var provisioningSessionId: String = parent?.getItemAtPosition(position) as String
-        provisioningSessionId = provisioningSessionId.replace("\"", "");
+        var mediaPlayerEntry: String = parent?.getItemAtPosition(position) as String
+        mediaPlayerEntry = mediaPlayerEntry.replace("\"", "");
         exoPlayerAdapter.stop()
-        mediaSessionHandlerAdapter.initializePlaybackByProvisioningSessionId(provisioningSessionId)
+        mediaSessionHandlerAdapter.initializePlaybackByMediaPlayerEntry(mediaPlayerEntry)
     }
 
     override fun onNothingSelected(parent: AdapterView<*>?) {

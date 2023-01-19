@@ -7,7 +7,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Message
 import android.os.Messenger
-import android.util.Log
 import android.widget.Toast
 import com.example.a5gms_mediastreamhandler.helpers.M5Interface
 import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
@@ -30,6 +29,11 @@ class MediaSessionHandlerMessengerService() : Service() {
      */
     private lateinit var mMessenger: Messenger
     private lateinit var serviceAccessInformationApi: ServiceAccessInformationApi
+    private val lookupTable = mapOf(
+        "https://livesim.dashif.org/livesim/testpic_2s/Manifest.mpd" to "e54a1fcc-d411-4e32-807b-2c60dbaeaf5f",
+        "https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd" to "d54a1fcc-d411-4e32-807b-2c60dbaeaf5f"
+    )
+    private lateinit var currentServiceAccessInformation: ServiceAccessInformation
 
     /** Keeps track of all current registered clients.  */
     var mClients = ArrayList<Messenger>()
@@ -47,7 +51,8 @@ class MediaSessionHandlerMessengerService() : Service() {
                 SessionHandlerMessageTypes.REGISTER_CLIENT -> registerClient(msg)
                 SessionHandlerMessageTypes.UNREGISTER_CLIENT -> registerClient(msg)
                 SessionHandlerMessageTypes.STATUS_MESSAGE -> handleStatusMessage(msg)
-                SessionHandlerMessageTypes.START_PLAYBACK_MESSAGE -> handleStartPlaybackMessage(msg)
+                SessionHandlerMessageTypes.START_PLAYBACK_BY_PROVISIONING_ID_MESSAGE -> handleStartPlaybackByProvisioningIdMessage(msg)
+                SessionHandlerMessageTypes.START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE -> handleStartPlaybackByMediaPlayerEntryMessage(msg)
                 else -> super.handleMessage(msg)
             }
         }
@@ -71,7 +76,7 @@ class MediaSessionHandlerMessengerService() : Service() {
             }
         }
 
-        private fun handleStartPlaybackMessage(msg: Message) {
+        private fun handleStartPlaybackByProvisioningIdMessage(msg: Message) {
             if (msg.obj != null) {
                 val provisioningSessionId: String = msg.obj as String
                 val responseMessenger : Messenger = msg.replyTo
@@ -85,6 +90,34 @@ class MediaSessionHandlerMessengerService() : Service() {
                         val resource : ServiceAccessInformation? = response.body()
                         val msgResponse: Message = Message.obtain(null, SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE)
                         msgResponse.obj = resource
+                        responseMessenger.send(msgResponse)
+                    }
+
+                    override fun onFailure(call: Call<ServiceAccessInformation?>, t: Throwable) {
+                        call.cancel()
+                    }
+                })
+            }
+        }
+
+        private fun handleStartPlaybackByMediaPlayerEntryMessage(msg: Message) {
+            if (msg.obj != null) {
+                val mediaPlayerEntry: String = msg.obj as String
+                val responseMessenger : Messenger = msg.replyTo
+                val provisioningSessionId : String? = lookupTable[mediaPlayerEntry]
+                val call: Call<ServiceAccessInformation>? =
+                    serviceAccessInformationApi.fetchServiceAccessInformation(provisioningSessionId)
+                call?.enqueue(object : retrofit2.Callback<ServiceAccessInformation?> {
+                    override fun onResponse(
+                        call: Call<ServiceAccessInformation?>,
+                        response: Response<ServiceAccessInformation?>
+                    ) {
+                        val resource : ServiceAccessInformation? = response.body()
+                        if (resource != null) {
+                            currentServiceAccessInformation = resource
+                        }
+                        val msgResponse: Message = Message.obtain(null, SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK)
+                        msgResponse.obj = mediaPlayerEntry
                         responseMessenger.send(msgResponse)
                     }
 

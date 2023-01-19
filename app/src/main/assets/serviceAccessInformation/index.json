@@ -1,10 +1,10 @@
 {
   "entries": [
     {
-      "provisioningSessionId": "d54a1fcc-d411-4e32-807b-2c60dbaeaf5f"
+      "mediaPlayerEntry": "https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd"
     },
     {
-      "provisioningSessionId": "e54a1fcc-d411-4e32-807b-2c60dbaeaf5f"
+      "mediaPlayerEntry": "https://livesim.dashif.org/livesim/testpic_2s/Manifest.mpd"
     }
   ]
 }

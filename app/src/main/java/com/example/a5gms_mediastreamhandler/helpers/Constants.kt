@@ -23,10 +23,12 @@ object M5Interface {
 
 object SessionHandlerMessageTypes {
     const val STATUS_MESSAGE = 1
-    const val START_PLAYBACK_MESSAGE = 2
+    const val START_PLAYBACK_BY_PROVISIONING_ID_MESSAGE = 2
     const val SERVICE_ACCESS_INFORMATION_MESSAGE = 3
     const val REGISTER_CLIENT = 4
     const val UNREGISTER_CLIENT = 5
+    const val START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE = 6
+    const val SESSION_HANDLER_TRIGGERS_PLAYBACK = 6
 }
 
 object SessionHandlerEvents {
