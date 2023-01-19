@@ -5,39 +5,40 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
-import android.widget.Toast
-import com.example.a5gms_mediastreamhandler.MediaSessionHandlerMessengerService.IncomingHandler
+import android.util.Log
 import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
 import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformation
-import retrofit2.Call
-import retrofit2.Response
 
 
-class MediaSessionHandlerAdapter ()  {
+class MediaSessionHandlerAdapter() {
 
     /** Messenger for communicating with the service.  */
     private var mService: Messenger? = null
 
+    /** Flag indicating whether we have called bind on the service.  */
+    private var bound: Boolean = false
+
+    private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
     /**
      * Handler of incoming messages from clients.
      */
-    inner class IncomingHandler(
-        context: Context,
-        private val applicationContext: Context = context.applicationContext
-    ) : Handler() {
+    inner class IncomingHandler() : Handler() {
 
         override fun handleMessage(msg: Message) {
             when (msg.what) {
-                SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE -> handleServiceAccessInformationMessage(msg)
+                SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE -> handleServiceAccessInformationMessage(
+                    msg
+                )
                 else -> super.handleMessage(msg)
             }
         }
 
-        fun handleServiceAccessInformationMessage() {
-
+        private fun handleServiceAccessInformationMessage(msg: Message) {
+            exoPlayerAdapter.attach((msg.obj as ServiceAccessInformation).streamingAccess.mediaPlayerEntry)
+            exoPlayerAdapter.preload()
+            exoPlayerAdapter.play()
         }
-
 
     }
 
@@ -45,11 +46,6 @@ class MediaSessionHandlerAdapter ()  {
      * Target we publish for clients to send messages to IncomingHandler.
      */
     private val mMessenger: Messenger = Messenger(IncomingHandler())
-
-    /** Flag indicating whether we have called bind on the service.  */
-    private var bound: Boolean = false
-
-    private lateinit var exoPlayerAdapter : ExoPlayerAdapter
 
     /**
      * Class for interacting with the main interface of the service.
@@ -63,9 +59,21 @@ class MediaSessionHandlerAdapter ()  {
             // service using a Messenger, so here we get a client-side
             // representation of that from the raw IBinder object.
             mService = Messenger(service)
-            msg.replyTo = mMessenger;
-            mService.send(msg);
-            bound = true
+            try {
+                val msg: Message = Message.obtain(
+                    null,
+                    SessionHandlerMessageTypes.REGISTER_CLIENT
+                )
+                msg.replyTo = mMessenger;
+                mService!!.send(msg);
+                bound = true
+            } catch (e: RemoteException) {
+                // In this case the service has crashed before we could even
+                // do anything with it; we can count on soon being
+                // disconnected (and then reconnected if it can be restarted)
+                // so there is no need to do anything here.
+            }
+
         }
 
         override fun onServiceDisconnected(className: ComponentName) {
@@ -90,7 +98,7 @@ class MediaSessionHandlerAdapter ()  {
         }
     }
 
-    fun updatePlaybackState(state : String) {
+    fun updatePlaybackState(state: String) {
         if (!bound) return
         // Create and send a message to the service, using a supported 'what' value
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
@@ -107,6 +115,7 @@ class MediaSessionHandlerAdapter ()  {
         // Create and send a message to the service, using a supported 'what' value
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.START_PLAYBACK_MESSAGE)
         msg.obj = provisioningSessionId
+        msg.replyTo = mMessenger;
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {

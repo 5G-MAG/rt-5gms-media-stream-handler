@@ -9,13 +9,13 @@ import android.os.Message
 import android.os.Messenger
 import android.util.Log
 import android.widget.Toast
-import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
 import com.example.a5gms_mediastreamhandler.helpers.M5Interface
+import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
 import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformation
 import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformationApi
 import retrofit2.Call
-import retrofit2.Retrofit
 import retrofit2.Response
+import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 
@@ -31,6 +31,9 @@ class MediaSessionHandlerMessengerService() : Service() {
     private lateinit var mMessenger: Messenger
     private lateinit var serviceAccessInformationApi: ServiceAccessInformationApi
 
+    /** Keeps track of all current registered clients.  */
+    var mClients = ArrayList<Messenger>()
+
     /**
      * Handler of incoming messages from clients.
      */
@@ -41,10 +44,20 @@ class MediaSessionHandlerMessengerService() : Service() {
 
         override fun handleMessage(msg: Message) {
             when (msg.what) {
+                SessionHandlerMessageTypes.REGISTER_CLIENT -> registerClient(msg)
+                SessionHandlerMessageTypes.UNREGISTER_CLIENT -> registerClient(msg)
                 SessionHandlerMessageTypes.STATUS_MESSAGE -> handleStatusMessage(msg)
                 SessionHandlerMessageTypes.START_PLAYBACK_MESSAGE -> handleStartPlaybackMessage(msg)
                 else -> super.handleMessage(msg)
             }
+        }
+
+        private fun registerClient(msg: Message) {
+            mClients.add(msg.replyTo)
+        }
+
+        private fun unregisterClient(msg: Message) {
+            mClients.remove(msg.replyTo)
         }
 
         private fun handleStatusMessage(msg: Message) {
@@ -61,11 +74,7 @@ class MediaSessionHandlerMessengerService() : Service() {
         private fun handleStartPlaybackMessage(msg: Message) {
             if (msg.obj != null) {
                 val provisioningSessionId: String = msg.obj as String
-                Toast.makeText(
-                    applicationContext,
-                    "Supposed to start playback with $provisioningSessionId",
-                    Toast.LENGTH_SHORT
-                ).show()
+                val responseMessenger : Messenger = msg.replyTo
                 val call: Call<ServiceAccessInformation>? =
                     serviceAccessInformationApi.fetchServiceAccessInformation(provisioningSessionId)
                 call?.enqueue(object : retrofit2.Callback<ServiceAccessInformation?> {
@@ -74,6 +83,9 @@ class MediaSessionHandlerMessengerService() : Service() {
                         response: Response<ServiceAccessInformation?>
                     ) {
                         val resource : ServiceAccessInformation? = response.body()
+                        val msgResponse: Message = Message.obtain(null, SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE)
+                        msgResponse.obj = resource
+                        responseMessenger.send(msgResponse)
                     }
 
                     override fun onFailure(call: Call<ServiceAccessInformation?>, t: Throwable) {
