@@ -124,6 +124,17 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    fun reportMetrics() {
+        if (!bound) return
+        // Create and send a message to the service, using a supported 'what' value
+        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.METRIC_REPORTING_MESSAGE)
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
+        }
+    }
+
     fun initializePlaybackByProvisioningSessionId(provisioningSessionId: String) {
         if (!bound) return
         // Create and send a message to the service, using a supported 'what' value

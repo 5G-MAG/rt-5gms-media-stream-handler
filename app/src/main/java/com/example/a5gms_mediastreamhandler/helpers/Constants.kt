@@ -18,7 +18,9 @@ object PlayerStates {
 
 object M5Interface {
     //const val ENDPOINT = "http://192.168.178.31:7777/3gpp-m5/v2/"
-    const val ENDPOINT = "http://192.168.0.91:3000/3gpp-m5/v2/"
+    //const val ENDPOINT = "http://192.168.0.91:3000/3gpp-m5/v2/"
+    const val ENDPOINT = "http://192.168.178.78:3000/3gpp-m5/v2/"
+    //const val ENDPOINT = "http://192.168.178.29:3000/3gpp-m5/v2/"
 }
 
 object SessionHandlerMessageTypes {
@@ -29,6 +31,7 @@ object SessionHandlerMessageTypes {
     const val UNREGISTER_CLIENT = 5
     const val START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE = 6
     const val SESSION_HANDLER_TRIGGERS_PLAYBACK = 6
+    const val METRIC_REPORTING_MESSAGE = 7
 }
 
 object SessionHandlerEvents {

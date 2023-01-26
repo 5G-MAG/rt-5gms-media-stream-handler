@@ -3,10 +3,10 @@ package com.example.a5gms_mediastreamhandler.network
 data class ConsumptionReporting(
     val mediaPlayerEntry: String,
     val reportingClientId: String,
-    val consumptionReportingUnits: Array<ConsumtionReportingUnit>
+    val consumptionReportingUnits: Array<ConsumptionReportingUnit>
 )
 
-data class ConsumtionReportingUnit(
+data class ConsumptionReportingUnit(
     val mediaConsumed: String,
     val mediaEndpointAddress: EndpointAddress? = null,
     val startTime: String,
