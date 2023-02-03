@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.*
 import android.util.Log
 import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
+import com.example.a5gms_mediastreamhandler.models.M8Model
 import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformation
 
 
@@ -17,6 +18,8 @@ class MediaSessionHandlerAdapter() {
 
     /** Flag indicating whether we have called bind on the service.  */
     private var bound: Boolean = false
+
+    private var lookupTableUpdatesToSend = mutableListOf<MutableList<M8Model>>()
 
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
@@ -81,6 +84,8 @@ class MediaSessionHandlerAdapter() {
                 msg.replyTo = mMessenger;
                 mService!!.send(msg);
                 bound = true
+                sendQueuedLookupTableUpdates()
+
             } catch (e: RemoteException) {
                 // In this case the service has crashed before we could even
                 // do anything with it; we can count on soon being
@@ -109,6 +114,32 @@ class MediaSessionHandlerAdapter() {
         if (bound) {
             context.unbindService(mConnection)
             bound = false
+        }
+    }
+
+    private fun sendQueuedLookupTableUpdates() {
+        val iterator = lookupTableUpdatesToSend.iterator()
+        while (iterator.hasNext()) {
+            updateLookupTable(iterator.next())
+        }
+        lookupTableUpdatesToSend.clear()
+    }
+
+    fun updateLookupTable(m8Data: MutableList<M8Model>) {
+        if (!bound) {
+            lookupTableUpdatesToSend.add(m8Data)
+            return
+        }
+        val msg: Message = Message.obtain(
+            null,
+            SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE
+        )
+        msg.obj = m8Data
+        msg.replyTo = mMessenger;
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
         }
     }
 
@@ -166,6 +197,5 @@ class MediaSessionHandlerAdapter() {
             e.printStackTrace()
         }
     }
-
 
 }
