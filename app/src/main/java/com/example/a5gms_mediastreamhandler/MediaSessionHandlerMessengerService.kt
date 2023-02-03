@@ -7,10 +7,10 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Message
 import android.os.Messenger
-import android.util.Log
 import android.widget.Toast
 import com.example.a5gms_mediastreamhandler.helpers.M5Interface
 import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
+import com.example.a5gms_mediastreamhandler.models.M8Model
 import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformation
 import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformationApi
 import retrofit2.Call
@@ -30,6 +30,8 @@ class MediaSessionHandlerMessengerService() : Service() {
      */
     private lateinit var mMessenger: Messenger
     private lateinit var serviceAccessInformationApi: ServiceAccessInformationApi
+    private val provisioningSessionIdLookupTable = mutableMapOf<String, String>()
+    private lateinit var currentServiceAccessInformation: ServiceAccessInformation
 
     /** Keeps track of all current registered clients.  */
     var mClients = ArrayList<Messenger>()
@@ -47,7 +49,9 @@ class MediaSessionHandlerMessengerService() : Service() {
                 SessionHandlerMessageTypes.REGISTER_CLIENT -> registerClient(msg)
                 SessionHandlerMessageTypes.UNREGISTER_CLIENT -> registerClient(msg)
                 SessionHandlerMessageTypes.STATUS_MESSAGE -> handleStatusMessage(msg)
-                SessionHandlerMessageTypes.START_PLAYBACK_MESSAGE -> handleStartPlaybackMessage(msg)
+                SessionHandlerMessageTypes.START_PLAYBACK_BY_PROVISIONING_ID_MESSAGE -> handleStartPlaybackByProvisioningIdMessage(msg)
+                SessionHandlerMessageTypes.START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE -> handleStartPlaybackByMediaPlayerEntryMessage(msg)
+                SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE -> updateLookupTable(msg)
                 else -> super.handleMessage(msg)
             }
         }
@@ -71,7 +75,7 @@ class MediaSessionHandlerMessengerService() : Service() {
             }
         }
 
-        private fun handleStartPlaybackMessage(msg: Message) {
+        private fun handleStartPlaybackByProvisioningIdMessage(msg: Message) {
             if (msg.obj != null) {
                 val provisioningSessionId: String = msg.obj as String
                 val responseMessenger : Messenger = msg.replyTo
@@ -92,6 +96,45 @@ class MediaSessionHandlerMessengerService() : Service() {
                         call.cancel()
                     }
                 })
+            }
+        }
+
+        private fun handleStartPlaybackByMediaPlayerEntryMessage(msg: Message) {
+            if (msg.obj != null) {
+                val mediaPlayerEntry: String = msg.obj as String
+                val responseMessenger : Messenger = msg.replyTo
+                val provisioningSessionId : String? = provisioningSessionIdLookupTable[mediaPlayerEntry]
+                val call: Call<ServiceAccessInformation>? =
+                    serviceAccessInformationApi.fetchServiceAccessInformation(provisioningSessionId)
+                call?.enqueue(object : retrofit2.Callback<ServiceAccessInformation?> {
+                    override fun onResponse(
+                        call: Call<ServiceAccessInformation?>,
+                        response: Response<ServiceAccessInformation?>
+                    ) {
+                        val resource : ServiceAccessInformation? = response.body()
+                        if (resource != null) {
+                            currentServiceAccessInformation = resource
+                        }
+                        val msgResponse: Message = Message.obtain(null, SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK)
+                        msgResponse.obj = mediaPlayerEntry
+                        responseMessenger.send(msgResponse)
+                    }
+
+                    override fun onFailure(call: Call<ServiceAccessInformation?>, t: Throwable) {
+                        call.cancel()
+                    }
+                })
+            }
+        }
+
+        private fun updateLookupTable(msg: Message) {
+            if (msg.obj != null) {
+                val values: MutableList<M8Model> = msg.obj as MutableList<M8Model>
+                val iterator = values.iterator()
+                while (iterator.hasNext()) {
+                    val current : M8Model = iterator.next()
+                    provisioningSessionIdLookupTable[current.mediaPlayerEntry] = current.provisioningSessionId
+                }
             }
         }
 

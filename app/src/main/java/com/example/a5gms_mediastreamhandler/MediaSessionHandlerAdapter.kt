@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.*
 import android.util.Log
 import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
+import com.example.a5gms_mediastreamhandler.models.M8Model
 import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformation
 
 
@@ -17,6 +18,8 @@ class MediaSessionHandlerAdapter() {
 
     /** Flag indicating whether we have called bind on the service.  */
     private var bound: Boolean = false
+
+    private var lookupTableUpdatesToSend = mutableListOf<MutableList<M8Model>>()
 
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
@@ -32,13 +35,24 @@ class MediaSessionHandlerAdapter() {
                 SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE -> handleServiceAccessInformationMessage(
                     msg
                 )
+                SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleSessionHandlerTriggersPlaybackMessage(
+                    msg
+                )
                 else -> super.handleMessage(msg)
             }
         }
 
         private fun handleServiceAccessInformationMessage(msg: Message) {
             currentServiceAccessInformation = msg.obj as ServiceAccessInformation
-            exoPlayerAdapter.attach(currentServiceAccessInformation.streamingAccess.mediaPlayerEntry)
+            startPlayback(currentServiceAccessInformation.streamingAccess.mediaPlayerEntry)
+        }
+
+        private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
+            startPlayback(msg.obj as String)
+        }
+
+        private fun startPlayback(url: String) {
+            exoPlayerAdapter.attach(url)
             exoPlayerAdapter.preload()
             exoPlayerAdapter.play()
         }
@@ -70,6 +84,8 @@ class MediaSessionHandlerAdapter() {
                 msg.replyTo = mMessenger;
                 mService!!.send(msg);
                 bound = true
+                sendQueuedLookupTableUpdates()
+
             } catch (e: RemoteException) {
                 // In this case the service has crashed before we could even
                 // do anything with it; we can count on soon being
@@ -101,6 +117,32 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    private fun sendQueuedLookupTableUpdates() {
+        val iterator = lookupTableUpdatesToSend.iterator()
+        while (iterator.hasNext()) {
+            updateLookupTable(iterator.next())
+        }
+        lookupTableUpdatesToSend.clear()
+    }
+
+    fun updateLookupTable(m8Data: MutableList<M8Model>) {
+        if (!bound) {
+            lookupTableUpdatesToSend.add(m8Data)
+            return
+        }
+        val msg: Message = Message.obtain(
+            null,
+            SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE
+        )
+        msg.obj = m8Data
+        msg.replyTo = mMessenger;
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
+        }
+    }
+
     fun updatePlaybackState(state: String) {
         if (!bound) return
         // Create and send a message to the service, using a supported 'what' value
@@ -113,10 +155,24 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    fun reportMetrics() {
+        if (!bound) return
+        // Create and send a message to the service, using a supported 'what' value
+        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.METRIC_REPORTING_MESSAGE)
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
+        }
+    }
+
     fun initializePlaybackByProvisioningSessionId(provisioningSessionId: String) {
         if (!bound) return
         // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.START_PLAYBACK_MESSAGE)
+        val msg: Message = Message.obtain(
+            null,
+            SessionHandlerMessageTypes.START_PLAYBACK_BY_PROVISIONING_ID_MESSAGE
+        )
         msg.obj = provisioningSessionId
         msg.replyTo = mMessenger;
         try {
@@ -126,5 +182,20 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    fun initializePlaybackByMediaPlayerEntry(mediaPlayerEntry: String) {
+        if (!bound) return
+        // Create and send a message to the service, using a supported 'what' value
+        val msg: Message = Message.obtain(
+            null,
+            SessionHandlerMessageTypes.START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE
+        )
+        msg.obj = mediaPlayerEntry
+        msg.replyTo = mMessenger;
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
+        }
+    }
 
 }
