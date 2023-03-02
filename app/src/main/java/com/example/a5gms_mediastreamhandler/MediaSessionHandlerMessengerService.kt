@@ -8,10 +8,8 @@ import android.os.IBinder
 import android.os.Message
 import android.os.Messenger
 import android.widget.Toast
-import com.example.a5gms_mediastreamhandler.helpers.M5Interface
 import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
-import com.example.a5gms_mediastreamhandler.models.M8Model
-import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformation
+import com.example.a5gms_mediastreamhandler.models.ServiceAccessInformation
 import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformationApi
 import retrofit2.Call
 import retrofit2.Response
@@ -49,9 +47,14 @@ class MediaSessionHandlerMessengerService() : Service() {
                 SessionHandlerMessageTypes.REGISTER_CLIENT -> registerClient(msg)
                 SessionHandlerMessageTypes.UNREGISTER_CLIENT -> registerClient(msg)
                 SessionHandlerMessageTypes.STATUS_MESSAGE -> handleStatusMessage(msg)
-                SessionHandlerMessageTypes.START_PLAYBACK_BY_PROVISIONING_ID_MESSAGE -> handleStartPlaybackByProvisioningIdMessage(msg)
-                SessionHandlerMessageTypes.START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE -> handleStartPlaybackByMediaPlayerEntryMessage(msg)
+                SessionHandlerMessageTypes.START_PLAYBACK_BY_PROVISIONING_ID_MESSAGE -> handleStartPlaybackByProvisioningIdMessage(
+                    msg
+                )
+                SessionHandlerMessageTypes.START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE -> handleStartPlaybackByMediaPlayerEntryMessage(
+                    msg
+                )
                 SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE -> updateLookupTable(msg)
+                SessionHandlerMessageTypes.SET_M5_ENDPOINT -> setM5Endpoint(msg)
                 else -> super.handleMessage(msg)
             }
         }
@@ -78,7 +81,7 @@ class MediaSessionHandlerMessengerService() : Service() {
         private fun handleStartPlaybackByProvisioningIdMessage(msg: Message) {
             if (msg.obj != null) {
                 val provisioningSessionId: String = msg.obj as String
-                val responseMessenger : Messenger = msg.replyTo
+                val responseMessenger: Messenger = msg.replyTo
                 val call: Call<ServiceAccessInformation>? =
                     serviceAccessInformationApi.fetchServiceAccessInformation(provisioningSessionId)
                 call?.enqueue(object : retrofit2.Callback<ServiceAccessInformation?> {
@@ -86,8 +89,11 @@ class MediaSessionHandlerMessengerService() : Service() {
                         call: Call<ServiceAccessInformation?>,
                         response: Response<ServiceAccessInformation?>
                     ) {
-                        val resource : ServiceAccessInformation? = response.body()
-                        val msgResponse: Message = Message.obtain(null, SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE)
+                        val resource: ServiceAccessInformation? = response.body()
+                        val msgResponse: Message = Message.obtain(
+                            null,
+                            SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE
+                        )
                         msgResponse.obj = resource
                         responseMessenger.send(msgResponse)
                     }
@@ -102,8 +108,9 @@ class MediaSessionHandlerMessengerService() : Service() {
         private fun handleStartPlaybackByMediaPlayerEntryMessage(msg: Message) {
             if (msg.obj != null) {
                 val mediaPlayerEntry: String = msg.obj as String
-                val responseMessenger : Messenger = msg.replyTo
-                val provisioningSessionId : String? = provisioningSessionIdLookupTable[mediaPlayerEntry]
+                val responseMessenger: Messenger = msg.replyTo
+                val provisioningSessionId: String? =
+                    provisioningSessionIdLookupTable[mediaPlayerEntry]
                 val call: Call<ServiceAccessInformation>? =
                     serviceAccessInformationApi.fetchServiceAccessInformation(provisioningSessionId)
                 call?.enqueue(object : retrofit2.Callback<ServiceAccessInformation?> {
@@ -111,11 +118,14 @@ class MediaSessionHandlerMessengerService() : Service() {
                         call: Call<ServiceAccessInformation?>,
                         response: Response<ServiceAccessInformation?>
                     ) {
-                        val resource : ServiceAccessInformation? = response.body()
+                        val resource: ServiceAccessInformation? = response.body()
                         if (resource != null) {
                             currentServiceAccessInformation = resource
                         }
-                        val msgResponse: Message = Message.obtain(null, SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK)
+                        val msgResponse: Message = Message.obtain(
+                            null,
+                            SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK
+                        )
                         msgResponse.obj = mediaPlayerEntry
                         responseMessenger.send(msgResponse)
                     }
@@ -129,12 +139,21 @@ class MediaSessionHandlerMessengerService() : Service() {
 
         private fun updateLookupTable(msg: Message) {
             if (msg.obj != null) {
-                val values: MutableList<M8Model> = msg.obj as MutableList<M8Model>
+                val values: MutableList<ServiceAccessInformation> =
+                    msg.obj as MutableList<ServiceAccessInformation>
                 val iterator = values.iterator()
                 while (iterator.hasNext()) {
-                    val current : M8Model = iterator.next()
-                    provisioningSessionIdLookupTable[current.mediaPlayerEntry] = current.provisioningSessionId
+                    val current: ServiceAccessInformation = iterator.next()
+                    provisioningSessionIdLookupTable[current.streamingAccess.mediaPlayerEntry] =
+                        current.provisioningSessionId
                 }
+            }
+        }
+
+        private fun setM5Endpoint(msg: Message) {
+            if (msg.obj != null) {
+                val url: String = msg.obj as String
+                initializeRetrofitForServiceAccessInformation(url)
             }
         }
 
@@ -144,6 +163,16 @@ class MediaSessionHandlerMessengerService() : Service() {
 
     }
 
+    private fun initializeRetrofitForServiceAccessInformation(url: String) {
+        val retrofitServiceAccessInformation: Retrofit = Retrofit.Builder()
+            .baseUrl(url)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        serviceAccessInformationApi =
+            retrofitServiceAccessInformation.create(ServiceAccessInformationApi::class.java)
+    }
+
     /**
      * When binding to the service, we return an interface to our messenger
      * for sending messages to the service. To create a bound service, you must define the interface that specifies
@@ -151,23 +180,12 @@ class MediaSessionHandlerMessengerService() : Service() {
      * IBinder and is what your service must return from the onBind() callback method.
      */
     override fun onBind(intent: Intent): IBinder? {
-        initializeRetrofitForServiceAccessInformation()
         return initializeMessenger()
     }
 
     private fun initializeMessenger(): IBinder? {
         mMessenger = Messenger(IncomingHandler(this))
         return mMessenger.binder
-    }
-
-    private fun initializeRetrofitForServiceAccessInformation() {
-        val retrofitServiceAccessInformation: Retrofit = Retrofit.Builder()
-            .baseUrl(M5Interface.ENDPOINT)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-
-        serviceAccessInformationApi =
-            retrofitServiceAccessInformation.create(ServiceAccessInformationApi::class.java)
     }
 
 }

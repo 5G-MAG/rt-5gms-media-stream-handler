@@ -1,4 +1,4 @@
-package com.example.a5gms_mediastreamhandler.network
+package com.example.a5gms_mediastreamhandler.models
 
 data class ConsumptionReporting(
     val mediaPlayerEntry: String,

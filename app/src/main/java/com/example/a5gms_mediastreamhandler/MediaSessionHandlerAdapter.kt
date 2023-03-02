@@ -5,10 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
-import android.util.Log
 import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
-import com.example.a5gms_mediastreamhandler.models.M8Model
-import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformation
+import com.example.a5gms_mediastreamhandler.models.ServiceAccessInformation
 
 
 class MediaSessionHandlerAdapter() {
@@ -19,11 +17,11 @@ class MediaSessionHandlerAdapter() {
     /** Flag indicating whether we have called bind on the service.  */
     private var bound: Boolean = false
 
-    private var lookupTableUpdatesToSend = mutableListOf<MutableList<M8Model>>()
-
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
     private lateinit var currentServiceAccessInformation: ServiceAccessInformation
+
+    private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
     /**
      * Handler of incoming messages from clients.
@@ -44,7 +42,7 @@ class MediaSessionHandlerAdapter() {
 
         private fun handleServiceAccessInformationMessage(msg: Message) {
             currentServiceAccessInformation = msg.obj as ServiceAccessInformation
-            startPlayback(currentServiceAccessInformation.streamingAccess.mediaPlayerEntry)
+            currentServiceAccessInformation.streamingAccess?.let { startPlayback(it.mediaPlayerEntry) }
         }
 
         private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
@@ -84,8 +82,7 @@ class MediaSessionHandlerAdapter() {
                 msg.replyTo = mMessenger;
                 mService!!.send(msg);
                 bound = true
-                sendQueuedLookupTableUpdates()
-
+                serviceConnectedCallbackFunction()
             } catch (e: RemoteException) {
                 // In this case the service has crashed before we could even
                 // do anything with it; we can count on soon being
@@ -103,11 +100,12 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun initialize(context: Context, epa: ExoPlayerAdapter) {
+    fun initialize(context: Context, epa: ExoPlayerAdapter, onConnectionToMediaSessionHandlerEstablished: () -> (Unit)) {
         exoPlayerAdapter = epa
         Intent(context, MediaSessionHandlerMessengerService::class.java).also { intent ->
             context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
         }
+        serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
     }
 
     fun reset(context: Context) {
@@ -117,24 +115,26 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    private fun sendQueuedLookupTableUpdates() {
-        val iterator = lookupTableUpdatesToSend.iterator()
-        while (iterator.hasNext()) {
-            updateLookupTable(iterator.next())
-        }
-        lookupTableUpdatesToSend.clear()
-    }
-
-    fun updateLookupTable(m8Data: MutableList<M8Model>) {
-        if (!bound) {
-            lookupTableUpdatesToSend.add(m8Data)
-            return
-        }
+    fun updateLookupTable(m8Data: MutableList<ServiceAccessInformation>) {
         val msg: Message = Message.obtain(
             null,
             SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE
         )
         msg.obj = m8Data
+        msg.replyTo = mMessenger;
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
+        }
+    }
+
+    fun setM5Endpoint(m5Url : String) {
+        val msg: Message = Message.obtain(
+            null,
+            SessionHandlerMessageTypes.SET_M5_ENDPOINT
+        )
+        msg.obj = m5Url
         msg.replyTo = mMessenger;
         try {
             mService?.send(msg)
