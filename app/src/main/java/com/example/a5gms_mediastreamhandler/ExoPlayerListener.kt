@@ -4,8 +4,9 @@ import android.util.Log
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
+
 import com.example.a5gms_mediastreamhandler.helpers.mapStateToConstant
-import com.example.a5gms_mediastreamhandler.helpers.PlayerStates
+import com.example.a5gmscommonlibrary.helpers.PlayerStates
 
 // See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
 class ExoPlayerListener(

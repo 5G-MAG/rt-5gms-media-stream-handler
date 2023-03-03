@@ -1,6 +1,6 @@
 package com.example.a5gms_mediastreamhandler.network
 
-import com.example.a5gms_mediastreamhandler.models.ServiceAccessInformation
+import com.example.a5gmscommonlibrary.models.ServiceAccessInformation
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Path

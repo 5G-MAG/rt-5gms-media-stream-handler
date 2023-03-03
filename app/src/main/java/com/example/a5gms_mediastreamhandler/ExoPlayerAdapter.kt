@@ -1,14 +1,16 @@
 package com.example.a5gms_mediastreamhandler
 
 import android.content.Context
-import com.example.a5gms_mediastreamhandler.helpers.PlayerStates
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
-import com.example.a5gms_mediastreamhandler.helpers.StatusInformation
-import com.example.a5gms_mediastreamhandler.helpers.mapStateToConstant
 import com.google.android.exoplayer2.Player
+
+import com.example.a5gmscommonlibrary.helpers.PlayerStates
+import com.example.a5gmscommonlibrary.helpers.StatusInformation
+import com.example.a5gms_mediastreamhandler.helpers.mapStateToConstant
+
 
 class ExoPlayerAdapter() {
 

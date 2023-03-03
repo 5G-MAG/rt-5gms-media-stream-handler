@@ -5,8 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
-import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
-import com.example.a5gms_mediastreamhandler.models.ServiceAccessInformation
+
+import com.example.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
+import com.example.a5gmscommonlibrary.models.ServiceAccessInformation
 
 
 class MediaSessionHandlerAdapter() {
@@ -42,7 +43,7 @@ class MediaSessionHandlerAdapter() {
 
         private fun handleServiceAccessInformationMessage(msg: Message) {
             currentServiceAccessInformation = msg.obj as ServiceAccessInformation
-            currentServiceAccessInformation.streamingAccess?.let { startPlayback(it.mediaPlayerEntry) }
+            startPlayback(currentServiceAccessInformation.streamingAccess.mediaPlayerEntry)
         }
 
         private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {

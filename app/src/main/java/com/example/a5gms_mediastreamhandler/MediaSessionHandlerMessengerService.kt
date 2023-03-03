@@ -8,13 +8,14 @@ import android.os.IBinder
 import android.os.Message
 import android.os.Messenger
 import android.widget.Toast
-import com.example.a5gms_mediastreamhandler.helpers.SessionHandlerMessageTypes
-import com.example.a5gms_mediastreamhandler.models.ServiceAccessInformation
-import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformationApi
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+
+import com.example.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
+import com.example.a5gmscommonlibrary.models.ServiceAccessInformation
+import com.example.a5gms_mediastreamhandler.network.ServiceAccessInformationApi
 
 
 /**
