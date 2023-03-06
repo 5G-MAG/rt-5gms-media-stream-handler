@@ -9,6 +9,7 @@ import android.util.Log
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.ServiceAccessInformation
+import com.fivegmag.a5gmscommonlibrary.models.M8Model
 
 
 class MediaSessionHandlerAdapter() {
@@ -34,9 +35,6 @@ class MediaSessionHandlerAdapter() {
 
         override fun handleMessage(msg: Message) {
             when (msg.what) {
-                SessionHandlerMessageTypes.SERVICE_ACCESS_INFORMATION_MESSAGE -> handleServiceAccessInformationMessage(
-                    msg
-                )
                 SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleSessionHandlerTriggersPlaybackMessage(
                     msg
                 )
@@ -44,13 +42,12 @@ class MediaSessionHandlerAdapter() {
             }
         }
 
-        private fun handleServiceAccessInformationMessage(msg: Message) {
-            currentServiceAccessInformation = msg.obj as ServiceAccessInformation
-            startPlayback(currentServiceAccessInformation.streamingAccess.mediaPlayerEntry)
-        }
-
         private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
-            startPlayback(msg.obj as String)
+            val bundle: Bundle = msg.data
+            val mediaPlayerEntry: String? = bundle.getString("mediaPlayerEntry")
+            if (mediaPlayerEntry != null) {
+                startPlayback(mediaPlayerEntry)
+            }
         }
 
         private fun startPlayback(url: String) {
@@ -111,16 +108,11 @@ class MediaSessionHandlerAdapter() {
     ) {
         exoPlayerAdapter = epa
 
-        /*
-        Intent(context, MediaSessionHandlerMessengerService::class.java).also { intent ->
-            context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
-        }
-        */
         try {
             val intent = Intent()
             intent.component = ComponentName(
-                "com.example.a5gmsmediasessionhandler",
-                "com.example.a5gmsmediasessionhandler.MediaSessionHandlerMessengerService"
+                "com.fivegmag.a5gmsmediasessionhandler",
+                "com.fivegmag.a5gmsmediasessionhandler.MediaSessionHandlerMessengerService"
             )
             if (context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
                 Log.i(TAG, "Binding to MediaSessionHandler service returned true");
@@ -143,14 +135,14 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun updateLookupTable(m8Data: MutableList<ServiceAccessInformation>) {
+    fun updateLookupTable(m8Data: M8Model) {
         val msg: Message = Message.obtain(
             null,
             SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE
         )
         val bundle = Bundle()
-       // bundle.putParcelableArrayList("m8Data", m8Data)
-        msg.obj = m8Data
+        bundle.putParcelable("m8Data", m8Data)
+        msg.data = bundle
         msg.replyTo = mMessenger;
         try {
             mService?.send(msg)
@@ -166,7 +158,7 @@ class MediaSessionHandlerAdapter() {
         )
         val bundle = Bundle()
         bundle.putString("m5Url", m5Url)
-        msg.obj = bundle
+        msg.data = bundle
         msg.replyTo = mMessenger;
         try {
             mService?.send(msg)
@@ -180,7 +172,7 @@ class MediaSessionHandlerAdapter() {
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
         val bundle = Bundle()
         bundle.putString("playbackState", state)
-        msg.obj = bundle
+        msg.data = bundle
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
@@ -192,22 +184,9 @@ class MediaSessionHandlerAdapter() {
         if (!bound) return
         // Create and send a message to the service, using a supported 'what' value
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.METRIC_REPORTING_MESSAGE)
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
-    fun initializePlaybackByProvisioningSessionId(provisioningSessionId: String) {
-        if (!bound) return
-        // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(
-            null,
-            SessionHandlerMessageTypes.START_PLAYBACK_BY_PROVISIONING_ID_MESSAGE
-        )
-        msg.obj = provisioningSessionId
-        msg.replyTo = mMessenger;
+        val bundle = Bundle()
+        bundle.putString("metricData", "")
+        msg.data = bundle
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
@@ -222,7 +201,9 @@ class MediaSessionHandlerAdapter() {
             null,
             SessionHandlerMessageTypes.START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE
         )
-        msg.obj = mediaPlayerEntry
+        val bundle = Bundle()
+        bundle.putString("mediaPlayerEntry", mediaPlayerEntry)
+        msg.data = bundle
         msg.replyTo = mMessenger;
         try {
             mService?.send(msg)

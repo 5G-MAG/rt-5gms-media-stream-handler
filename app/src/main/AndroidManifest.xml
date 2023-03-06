@@ -18,7 +18,7 @@
     </application>
 
     <queries>
-        <package android:name="com.example.a5gmsmediasessionhandler" />
+        <package android:name="com.fivegmag.a5gmsmediasessionhandler" />
     </queries>
 
 </manifest>

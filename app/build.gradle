@@ -38,7 +38,6 @@ publishing {
             groupId = 'com.fivegmag'
             artifactId = 'a5gmsmediastreamhandler'
             version = '1.0.0'
-
             afterEvaluate {
                 from components.release
             }
