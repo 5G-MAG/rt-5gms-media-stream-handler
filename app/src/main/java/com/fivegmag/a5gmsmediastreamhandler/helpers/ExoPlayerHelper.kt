@@ -1,6 +1,6 @@
-package com.example.a5gms_mediastreamhandler.helpers
+package com.fivegmag.a5gmsmediastreamhandler.helpers
 
-import com.example.a5gmscommonlibrary.helpers.PlayerStates
+import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.google.android.exoplayer2.Player
 
 fun mapStateToConstant(playbackState: Int) : String {

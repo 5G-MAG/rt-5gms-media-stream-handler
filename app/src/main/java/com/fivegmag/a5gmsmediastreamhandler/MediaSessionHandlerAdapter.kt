@@ -1,16 +1,19 @@
-package com.example.a5gms_mediastreamhandler
+package com.fivegmag.a5gmsmediastreamhandler
 
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
+import android.util.Log
 
-import com.example.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
-import com.example.a5gmscommonlibrary.models.ServiceAccessInformation
+import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
+import com.fivegmag.a5gmscommonlibrary.models.ServiceAccessInformation
 
 
 class MediaSessionHandlerAdapter() {
+
+    private val TAG: String = "MediaSessionHandlerAdapter"
 
     /** Messenger for communicating with the service.  */
     private var mService: Messenger? = null
@@ -101,12 +104,36 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun initialize(context: Context, epa: ExoPlayerAdapter, onConnectionToMediaSessionHandlerEstablished: () -> (Unit)) {
+    fun initialize(
+        context: Context,
+        epa: ExoPlayerAdapter,
+        onConnectionToMediaSessionHandlerEstablished: () -> (Unit)
+    ) {
         exoPlayerAdapter = epa
+
+        /*
         Intent(context, MediaSessionHandlerMessengerService::class.java).also { intent ->
             context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)
         }
-        serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
+        */
+        try {
+            val intent = Intent()
+            intent.component = ComponentName(
+                "com.example.a5gmsmediasessionhandler",
+                "com.example.a5gmsmediasessionhandler.MediaSessionHandlerMessengerService"
+            )
+            if (context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
+                Log.i(TAG, "Binding to MediaSessionHandler service returned true");
+            } else {
+                Log.d(TAG, "Binding to MediaSessionHandler service returned false");
+            }
+            serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
+        } catch (e: SecurityException) {
+            Log.e(
+                TAG,
+                "Can't bind to ModemWatcherService, check permission in Manifest"
+            );
+        }
     }
 
     fun reset(context: Context) {
@@ -121,6 +148,8 @@ class MediaSessionHandlerAdapter() {
             null,
             SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE
         )
+        val bundle = Bundle()
+       // bundle.putParcelableArrayList("m8Data", m8Data)
         msg.obj = m8Data
         msg.replyTo = mMessenger;
         try {
@@ -130,12 +159,14 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun setM5Endpoint(m5Url : String) {
+    fun setM5Endpoint(m5Url: String) {
         val msg: Message = Message.obtain(
             null,
             SessionHandlerMessageTypes.SET_M5_ENDPOINT
         )
-        msg.obj = m5Url
+        val bundle = Bundle()
+        bundle.putString("m5Url", m5Url)
+        msg.obj = bundle
         msg.replyTo = mMessenger;
         try {
             mService?.send(msg)
@@ -146,9 +177,10 @@ class MediaSessionHandlerAdapter() {
 
     fun updatePlaybackState(state: String) {
         if (!bound) return
-        // Create and send a message to the service, using a supported 'what' value
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
-        msg.obj = state
+        val bundle = Bundle()
+        bundle.putString("playbackState", state)
+        msg.obj = bundle
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {

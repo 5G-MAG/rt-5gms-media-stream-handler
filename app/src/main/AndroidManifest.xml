@@ -15,20 +15,10 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
-        <activity
-            android:exported="true"
-            android:name="ExoPlayerAdapter">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.app.lib_name"
-                android:value="" />
-        </activity>
-        <service android:name=".MediaSessionHandlerMessengerService" />
     </application>
+
+    <queries>
+        <package android:name="com.example.a5gmsmediasessionhandler" />
+    </queries>
 
 </manifest>

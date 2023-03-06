@@ -1,10 +1,11 @@
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
+    id 'maven-publish'
 }
 
 android {
-    namespace 'com.example.a5gms_mediastreamhandler'
+    namespace 'com.fivegmag.a5gmsmediastreamhandler'
     compileSdk 33
 
     defaultConfig {
@@ -31,18 +32,27 @@ android {
     }
 }
 
+publishing {
+    publications {
+        release(MavenPublication) {
+            groupId = 'com.fivegmag'
+            artifactId = 'a5gmsmediastreamhandler'
+            version = '1.0.0'
+
+            afterEvaluate {
+                from components.release
+            }
+        }
+    }
+}
+
 dependencies {
     implementation 'com.google.android.exoplayer:exoplayer:2.18.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1'
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.5.1'
-    compileOnly files('/Users/danielsilhavy/AndroidStudioProjects/5GMSCommonLibrary/app/build/outputs/aar/app-debug.aar')
+    implementation 'com.fivegmag:a5gmscommonlibrary:1.0.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.4'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.0'
-
-    // Retrofit
-    def retrofit_version = "2.9.0"
-    implementation "com.squareup.retrofit2:retrofit:$retrofit_version"
-    implementation "com.squareup.retrofit2:converter-gson:$retrofit_version"
 }

@@ -1,4 +1,4 @@
-package com.example.a5gms_mediastreamhandler
+package com.fivegmag.a5gmsmediastreamhandler
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

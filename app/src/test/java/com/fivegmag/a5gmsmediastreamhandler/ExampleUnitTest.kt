@@ -1,4 +1,4 @@
-package com.example.a5gms_mediastreamhandler
+package com.fivegmag.a5gmsmediastreamhandler
 
 import org.junit.Test
 
