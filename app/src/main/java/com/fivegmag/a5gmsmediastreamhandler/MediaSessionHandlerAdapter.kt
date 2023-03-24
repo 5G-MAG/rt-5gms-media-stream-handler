@@ -6,10 +6,13 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
 import android.util.Log
+import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
+import com.fivegmag.a5gmscommonlibrary.models.EntryPoint
 import com.fivegmag.a5gmscommonlibrary.models.ServiceAccessInformation
 import com.fivegmag.a5gmscommonlibrary.models.M8Model
+import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
 
 
 class MediaSessionHandlerAdapter() {
@@ -44,9 +47,16 @@ class MediaSessionHandlerAdapter() {
 
         private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
             val bundle: Bundle = msg.data
-            val mediaPlayerEntry: String? = bundle.getString("mediaPlayerEntry")
-            if (mediaPlayerEntry != null) {
-                startPlayback(mediaPlayerEntry)
+            bundle.classLoader = EntryPoint::class.java.classLoader
+            val entryPoints: ArrayList<EntryPoint>? = bundle.getParcelableArrayList("entryPoints")
+
+            if (entryPoints != null && entryPoints.size > 0) {
+                val dashEntryPoints: List<EntryPoint> =
+                    entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
+
+                if (dashEntryPoints.isNotEmpty()) {
+                    startPlayback(dashEntryPoints[0].locator)
+                }
             }
         }
 
@@ -194,15 +204,15 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun initializePlaybackByMediaPlayerEntry(mediaPlayerEntry: String) {
+    fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
         if (!bound) return
         // Create and send a message to the service, using a supported 'what' value
         val msg: Message = Message.obtain(
             null,
-            SessionHandlerMessageTypes.START_PLAYBACK_BY_MEDIA_PLAYER_ENTRY_MESSAGE
+            SessionHandlerMessageTypes.START_PLAYBACK_BY_SERVICE_LIST_ENTRY_MESSAGE
         )
         val bundle = Bundle()
-        bundle.putString("mediaPlayerEntry", mediaPlayerEntry)
+        bundle.putParcelable("serviceListEntry", serviceListEntry)
         msg.data = bundle
         msg.replyTo = mMessenger;
         try {
@@ -211,5 +221,6 @@ class MediaSessionHandlerAdapter() {
             e.printStackTrace()
         }
     }
+
 
 }
