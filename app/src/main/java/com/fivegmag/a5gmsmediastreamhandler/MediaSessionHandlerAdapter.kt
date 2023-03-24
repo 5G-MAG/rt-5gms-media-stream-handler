@@ -48,9 +48,15 @@ class MediaSessionHandlerAdapter() {
         private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
             val bundle: Bundle = msg.data
             bundle.classLoader = EntryPoint::class.java.classLoader
-            val dashEntryPoint: EntryPoint? = bundle.getParcelable("entryPoint")
-            if (dashEntryPoint != null) {
-                startPlayback(dashEntryPoint.locator)
+            val entryPoints: ArrayList<EntryPoint>? = bundle.getParcelableArrayList("entryPoints")
+
+            if (entryPoints != null && entryPoints.size > 0) {
+                val dashEntryPoints: List<EntryPoint> =
+                    entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
+
+                if (dashEntryPoints.isNotEmpty()) {
+                    startPlayback(dashEntryPoints[0].locator)
+                }
             }
         }
 
