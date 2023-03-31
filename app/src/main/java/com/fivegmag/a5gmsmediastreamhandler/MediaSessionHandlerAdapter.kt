@@ -170,13 +170,13 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun setM5Endpoint(m5Url: String) {
+    fun setM5Endpoint(m5BaseUrl: String) {
         val msg: Message = Message.obtain(
             null,
             SessionHandlerMessageTypes.SET_M5_ENDPOINT
         )
         val bundle = Bundle()
-        bundle.putString("m5Url", m5Url)
+        bundle.putString("m5BaseUrl", m5BaseUrl)
         msg.data = bundle
         msg.replyTo = mMessenger;
         try {
