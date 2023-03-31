@@ -110,7 +110,7 @@ class ExoPlayerAdapter() {
     }
 
     fun getPlayerState(): String {
-        var state: String? = null
+        val state: String?
         if (playerInstance.isPlaying) {
             state = PlayerStates.PLAYING
         } else if (playerInstance.playbackState == Player.STATE_READY && !playerInstance.playWhenReady) {
