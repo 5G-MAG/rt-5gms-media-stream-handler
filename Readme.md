@@ -1,4 +1,4 @@
-# 5G-MAG Reference Tools: 5GMS Media Stream Handler Library
+# 5G-MAG Reference Tools: 5GMS Media Stream Handler
 
 This repository holds the 5GMS Media Stream Handler implementation of the 5G-MAG Reference Tools.
 
@@ -7,8 +7,8 @@ This repository holds the 5GMS Media Stream Handler implementation of the 5G-MAG
 The 5GMS Media Stream Handler is an Android library that includes
 the [ExoPlayer](https://github.com/google/ExoPlayer) as a dependency. The 5GMS Media Stream Handler
 implements an adapter around the ExoPlayer APIs to expose TS.26.512 M7d interface functionality.
-Moreover, a `MediaSessionHandlerAdapter` establishes a Messenger connection to the Media Session
-Handler. The 5GMS Media Stream Handler is included as an Android library by 5GMS Aware Application.
+Moreover, a `MediaSessionHandlerAdapter` establishes a Messenger connection to the [Media Session
+Handler](https://github.com/5G-MAG/rt-5gms-media-session-handler). The 5GMS Media Stream Handler is included as an Android library by 5GMS Aware Application.
 
 For downlink media streaming the Media Stream Handler enables playback and rendering of a media
 presentation based on a media player entry and exposing some basic controls such as play, pause,
