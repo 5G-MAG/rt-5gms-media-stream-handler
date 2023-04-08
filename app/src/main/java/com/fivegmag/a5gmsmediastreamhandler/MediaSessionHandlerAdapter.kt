@@ -15,6 +15,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
 import android.util.Log
+import android.widget.Toast
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
@@ -135,6 +136,11 @@ class MediaSessionHandlerAdapter() {
             )
             if (context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
                 Log.i(TAG, "Binding to MediaSessionHandler service returned true");
+                Toast.makeText(
+                    context,
+                    "Successfully bound to Media Session Handler",
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
                 Log.d(TAG, "Binding to MediaSessionHandler service returned false");
             }
