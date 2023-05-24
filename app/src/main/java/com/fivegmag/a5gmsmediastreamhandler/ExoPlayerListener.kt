@@ -10,9 +10,9 @@ https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
 package com.fivegmag.a5gmsmediastreamhandler
 
 import android.util.Log
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.PlaybackException
-import com.google.android.exoplayer2.Player
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
