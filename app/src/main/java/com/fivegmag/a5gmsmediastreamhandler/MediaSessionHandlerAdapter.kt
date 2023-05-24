@@ -9,6 +9,7 @@ https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
 
 package com.fivegmag.a5gmsmediastreamhandler
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -16,6 +17,7 @@ import android.content.ServiceConnection
 import android.os.*
 import android.util.Log
 import android.widget.Toast
+import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
@@ -44,6 +46,7 @@ class MediaSessionHandlerAdapter() {
     /**
      * Handler of incoming messages from clients.
      */
+    @UnstableApi
     inner class IncomingHandler() : Handler() {
 
         override fun handleMessage(msg: Message) {
@@ -81,6 +84,7 @@ class MediaSessionHandlerAdapter() {
     /**
      * Target we publish for clients to send messages to IncomingHandler.
      */
+    @SuppressLint("UnsafeOptInUsageError")
     private val mMessenger: Messenger = Messenger(IncomingHandler())
 
     /**
