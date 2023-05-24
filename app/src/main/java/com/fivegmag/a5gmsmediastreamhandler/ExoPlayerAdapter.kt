@@ -10,33 +10,52 @@ https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
 package com.fivegmag.a5gmsmediastreamhandler
 
 import android.content.Context
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.ui.StyledPlayerView
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
-import com.google.android.exoplayer2.Player
-
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
+import androidx.media3.exoplayer.util.EventLogger
+import androidx.media3.ui.PlayerView
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 
 
-class ExoPlayerAdapter() {
+@UnstableApi class ExoPlayerAdapter() {
 
     private lateinit var playerInstance: ExoPlayer
-    private lateinit var playerView: StyledPlayerView
+    private lateinit var playerView: PlayerView
     private lateinit var activeMediaItem: MediaItem
-    private lateinit var playerListener: ExoPlayerListener
+    private lateinit var playerListener: Player.Listener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
 
+    var httpDataSourceFactory: HttpDataSource.Factory =
+        DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+
+    val dataSourceFactory =
+        DataSource.Factory {
+            val dataSource = httpDataSourceFactory.createDataSource()
+            dataSource
+        }
+
     fun initialize(
-        exoPlayerView: StyledPlayerView,
+        exoPlayerView: PlayerView,
         context: Context,
         msh: MediaSessionHandlerAdapter
     ) {
         mediaSessionHandlerAdapter = msh
-        playerInstance = ExoPlayer.Builder(context).build()
+        playerInstance = ExoPlayer.Builder(context)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
+            )
+            .build()
+        playerInstance.addAnalyticsListener(EventLogger())
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance

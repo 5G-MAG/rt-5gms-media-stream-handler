@@ -1,7 +1,7 @@
 package com.fivegmag.a5gmsmediastreamhandler.helpers
 
+import androidx.media3.common.Player
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
-import com.google.android.exoplayer2.Player
 
 fun mapStateToConstant(playbackState: Int) : String {
     val state = when (playbackState) {

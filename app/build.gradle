@@ -12,7 +12,7 @@ android {
         minSdk 29
         targetSdk 32
         versionCode 1
-        versionName "1.0.0"
+        versionName "1.0.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -37,7 +37,7 @@ publishing {
         release(MavenPublication) {
             groupId = 'com.fivegmag'
             artifactId = 'a5gmsmediastreamhandler'
-            version = '1.0.0'
+            version = '1.0.1'
             afterEvaluate {
                 from components.release
             }
@@ -57,7 +57,10 @@ publishing {
 }
 
 dependencies {
-    implementation 'com.google.android.exoplayer:exoplayer:2.18.2'
+    implementation "androidx.media3:media3-exoplayer:1.0.2"
+    implementation "androidx.media3:media3-exoplayer-dash:1.0.2"
+    implementation "androidx.media3:media3-exoplayer-hls:1.0.2"
+    implementation "androidx.media3:media3-ui:1.0.2"
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1'
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.5.1'
