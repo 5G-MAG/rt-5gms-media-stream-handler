@@ -1,18 +1,25 @@
-# 5G-MAG Reference Tools: 5GMS Media Stream Handler
+# 5GMSd Media Stream Handler
 
-This repository holds the 5GMS Media Stream Handler implementation of the 5G-MAG Reference Tools.
+This repository holds the 5GMSd Media Stream Handler implementation of the 5G-MAG Reference Tools.
 
 ## Introduction
 
-The 5GMS Media Stream Handler is an Android library that includes
-the [ExoPlayer](https://github.com/google/ExoPlayer) as a dependency. The 5GMS Media Stream Handler
+The 5GMSd Media Stream Handler is a 5GMSd client component that forms part of the 5G Media Services framework as defined in
+ETSI TS 126.501. A Media Stream Handler (Media Player) enables playback and rendering of a media
+presentation based on a media player entry and exposing some basic controls such as play, pause,
+seek, stop to the 5GMSd-Aware Application. It consumes media from the 5GMSd AS at reference point M4d.
+
+### About the implementation
+
+The 5GMSd Media Stream Handler is an Android library that includes
+the [ExoPlayer](https://github.com/google/ExoPlayer) as a dependency. The 5GMSd Media Stream Handler
 implements an adapter around the ExoPlayer APIs to expose TS.26.512 M7d interface functionality.
 Moreover, a `MediaSessionHandlerAdapter` establishes a Messenger connection to the [Media Session
-Handler](https://github.com/5G-MAG/rt-5gms-media-session-handler). The 5GMS Media Stream Handler is included as an Android library by 5GMS Aware Application.
+Handler](https://github.com/5G-MAG/rt-5gms-media-session-handler). The 5GMSd Media Stream Handler is included as an Android library by 5GMSd-Aware Application.
 
-For downlink media streaming the Media Stream Handler enables playback and rendering of a media
-presentation based on a media player entry and exposing some basic controls such as play, pause,
-seek, stop to the 5GMSd-Aware Application.
+### Specifications
+
+A list of specification related to this repository is available in the [Standards Wiki](https://github.com/5G-MAG/Standards/wiki/5G-Downlink-Media-Streaming-Architecture-(5GMSd):-Relevant-Specifications).
 
 ## Downloading
 
@@ -43,7 +50,7 @@ project by specifying the path to the bundle.
 
 ## Publish to local Maven Repository
 
-The preferred way to include the 5GMS Media Stream Handler is via a local or remote Maven repository (see
+The preferred way to include the 5GMSd Media Stream Handler is via a local or remote Maven repository (see
 below). To include the library from a local Maven repository we need to publish it locally first:
 
 ````
@@ -52,10 +59,10 @@ below). To include the library from a local Maven repository we need to publish 
 
 ## Include from local Maven Repository
 
-To include the 5GMS Common Library from a local Maven repository apply the following changes.
+To include the 5GMSd Common Library from a local Maven repository apply the following changes.
 
 Note: When using the other 5G-MAG client-side projects the changes below are already included. In
-this case the 5GMS Media Stream Handler only needs to be published to the local Maven repository (see
+this case the 5GMSd Media Stream Handler only needs to be published to the local Maven repository (see
 above).
 
 #### 1. Add `mavenLocal()` to your project gradle file
@@ -68,7 +75,7 @@ dependencyResolutionManagement {
 }
 ````
 
-#### 2. Include the 5GMS Common Library in your module gradle file
+#### 2. Include the 5GMSd Common Library in your module gradle file
 
 ````
 dependencies {
