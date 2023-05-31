@@ -21,10 +21,7 @@ import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
-import com.fivegmag.a5gmscommonlibrary.models.EntryPoint
-import com.fivegmag.a5gmscommonlibrary.models.ServiceAccessInformation
-import com.fivegmag.a5gmscommonlibrary.models.M8Model
-import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
+import com.fivegmag.a5gmscommonlibrary.models.*
 
 
 class MediaSessionHandlerAdapter() {
@@ -39,8 +36,6 @@ class MediaSessionHandlerAdapter() {
 
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
-    private lateinit var currentServiceAccessInformation: ServiceAccessInformation
-
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
     /**
@@ -52,6 +47,9 @@ class MediaSessionHandlerAdapter() {
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleSessionHandlerTriggersPlaybackMessage(
+                    msg
+                )
+                SessionHandlerMessageTypes.GET_PLAYBACK_METRIC_CAPABILITIES -> handlePlaybackMetricsCapabilitiesMessage(
                     msg
                 )
                 else -> super.handleMessage(msg)
@@ -71,6 +69,30 @@ class MediaSessionHandlerAdapter() {
                     startPlayback(dashEntryPoints[0].locator)
                 }
             }
+        }
+
+        private fun handlePlaybackMetricsCapabilitiesMessage(msg: Message) {
+            val bundle: Bundle = msg.data
+            val schemes: ArrayList<String>? = bundle.getStringArrayList("metricSchemes")
+            val results: ArrayList<SchemeSupport> = ArrayList()
+
+            if (schemes != null) {
+                for (scheme in schemes) {
+                    Log.d(TAG, "Scheme $scheme")
+                    val supported = exoPlayerAdapter.isMetricSchemeSupported(scheme)
+                    Log.d(TAG, "$scheme is supported:")
+                    results.add(SchemeSupport(scheme, supported))
+                }
+            }
+
+            val responseMessenger: Messenger = msg.replyTo
+            val msgResponse: Message = Message.obtain(
+                null,
+                SessionHandlerMessageTypes.REPORT_PLAYBACK_METRICS_CAPABILITIES
+            )
+            bundle.putParcelableArrayList("schemeSupport", results)
+            msgResponse.data = bundle
+            responseMessenger.send(msgResponse)
         }
 
         private fun startPlayback(url: String) {

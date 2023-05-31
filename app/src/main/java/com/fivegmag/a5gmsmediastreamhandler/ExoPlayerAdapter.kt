@@ -10,6 +10,7 @@ https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
 package com.fivegmag.a5gmsmediastreamhandler
 
 import android.content.Context
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -17,23 +18,32 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.analytics.PlaybackStats
+import androidx.media3.exoplayer.analytics.PlaybackStatsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
+import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 
 
-@UnstableApi class ExoPlayerAdapter() {
+@UnstableApi
+class ExoPlayerAdapter() {
 
+    private val TAG: String = "ExoPlayerAdapter"
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var activeMediaItem: MediaItem
-    private lateinit var playerListener: Player.Listener
+    private lateinit var playerListener: AnalyticsListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
+    private lateinit var playbackStatsListener: PlaybackStatsListener
+    private var supportedMetricSchemes =
+        listOf(MetricReportingSchemes.FIVE_G_MAG_EXOPLAYER_COMBINED_PLAYBACK_STATS)
 
     var httpDataSourceFactory: HttpDataSource.Factory =
         DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
@@ -60,7 +70,13 @@ import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
         playerView = exoPlayerView
         playerView.player = playerInstance
         playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance)
-        playerInstance.addListener(playerListener)
+        playbackStatsListener = PlaybackStatsListener(true) {
+                _: AnalyticsListener.EventTime?,
+                _: PlaybackStats?,
+            -> // Analytics data for the session started at `eventTime` is ready.
+        }
+        playerInstance.addAnalyticsListener(playerListener)
+        playerInstance.addAnalyticsListener(playbackStatsListener)
     }
 
     fun attach(url: String) {
@@ -115,6 +131,15 @@ import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 
     private fun getLiveLatency(): Long {
         return playerInstance.currentLiveOffset
+    }
+
+    fun getCombinedPlaybackStats(): PlaybackStats {
+        return playbackStatsListener.combinedPlaybackStats
+    }
+
+    fun isMetricSchemeSupported(metricScheme: String): Boolean {
+        Log.d(TAG, "Checking if metric scheme $metricScheme is supported")
+        return supportedMetricSchemes.contains(metricScheme)
     }
 
     fun getStatusInformation(status: String): Any? {
