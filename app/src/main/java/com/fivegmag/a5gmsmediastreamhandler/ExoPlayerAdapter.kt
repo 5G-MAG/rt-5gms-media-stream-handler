@@ -42,7 +42,7 @@ class ExoPlayerAdapter() {
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
     private lateinit var playbackStatsListener: PlaybackStatsListener
-    private var supportedMetricSchemes =
+    private var supportedMetricsSchemes =
         listOf(MetricReportingSchemes.FIVE_G_MAG_EXOPLAYER_COMBINED_PLAYBACK_STATS)
 
     var httpDataSourceFactory: HttpDataSource.Factory =
@@ -137,9 +137,9 @@ class ExoPlayerAdapter() {
         return playbackStatsListener.combinedPlaybackStats
     }
 
-    fun isMetricSchemeSupported(metricScheme: String): Boolean {
-        Log.d(TAG, "Checking if metric scheme $metricScheme is supported")
-        return supportedMetricSchemes.contains(metricScheme)
+    fun isMetricsSchemeSupported(metricsScheme: String): Boolean {
+        Log.d(TAG, "Checking if metrics scheme $metricsScheme is supported")
+        return supportedMetricsSchemes.contains(metricsScheme)
     }
 
     fun getStatusInformation(status: String): Any? {

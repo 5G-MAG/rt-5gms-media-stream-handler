@@ -73,13 +73,13 @@ class MediaSessionHandlerAdapter() {
 
         private fun handlePlaybackMetricsCapabilitiesMessage(msg: Message) {
             val bundle: Bundle = msg.data
-            val schemes: ArrayList<String>? = bundle.getStringArrayList("metricSchemes")
+            val schemes: ArrayList<String>? = bundle.getStringArrayList("metricsSchemes")
             val results: ArrayList<SchemeSupport> = ArrayList()
 
             if (schemes != null) {
                 for (scheme in schemes) {
                     Log.d(TAG, "Scheme $scheme")
-                    val supported = exoPlayerAdapter.isMetricSchemeSupported(scheme)
+                    val supported = exoPlayerAdapter.isMetricsSchemeSupported(scheme)
                     Log.d(TAG, "$scheme is supported:")
                     results.add(SchemeSupport(scheme, supported))
                 }
