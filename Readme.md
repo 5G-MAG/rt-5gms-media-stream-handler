@@ -65,7 +65,7 @@ below). To include the library from a local Maven repository we need to publish 
 To include the 5GMS Common Library from a local Maven repository apply the following changes.
 
 Note: When using the other 5G-MAG client-side projects the changes below are already included. In
-this case the Media Stream Handler only needs to be published to the local Maven repository (see
+this case the 5GMS Media Stream Handler only needs to be published to the local Maven repository (see
 above).
 
 #### 1. Add `mavenLocal()` to your project gradle file
