@@ -11,7 +11,7 @@ ETSI TS 126.501.
 ### Media Stream Handler (Media Player) for 5GMSd
 A Media Stream Handler (Media Player) enables playback and rendering of a media
 presentation based on a media player entry and exposing some basic controls such as play, pause,
-seek, stop to the 5GMS-Aware Application. It consumes media from the 5GMSd AS at reference point M4d.
+seek, stop to the 5GMSd-Aware Application. It consumes media from the 5GMSd AS at reference point M4d.
 
 
 #### Specifications
