@@ -137,6 +137,10 @@ class ExoPlayerAdapter() {
         return playbackStatsListener.combinedPlaybackStats
     }
 
+    fun getPlaybackStats(): PlaybackStats? {
+        return playbackStatsListener.playbackStats
+    }
+
     fun isMetricsSchemeSupported(metricsScheme: String): Boolean {
         Log.d(TAG, "Checking if metrics scheme $metricsScheme is supported")
         return supportedMetricsSchemes.contains(metricsScheme)

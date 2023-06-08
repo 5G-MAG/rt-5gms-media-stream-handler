@@ -18,7 +18,9 @@ import android.os.*
 import android.util.Log
 import android.widget.Toast
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.analytics.PlaybackStats
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
+import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.*
@@ -44,19 +46,35 @@ class MediaSessionHandlerAdapter() {
     @UnstableApi
     inner class IncomingHandler() : Handler() {
 
+        /**
+         * Main entry point for all incoming messages. One handler in a separate function for each message
+         *
+         * @param msg
+         */
         override fun handleMessage(msg: Message) {
             when (msg.what) {
-                SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleSessionHandlerTriggersPlaybackMessage(
+                SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleTriggerPlaybackMessage(
                     msg
                 )
+
                 SessionHandlerMessageTypes.GET_PLAYBACK_METRIC_CAPABILITIES -> handlePlaybackMetricsCapabilitiesMessage(
                     msg
                 )
+
+                SessionHandlerMessageTypes.GET_PLAYBACK_METRICS -> handleGetPlaybackMetricsMessage(
+                    msg
+                )
+
                 else -> super.handleMessage(msg)
             }
         }
 
-        private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
+        /**
+         * Playback is supposed to be started based on the available media entry points
+         *
+         * @param msg
+         */
+        private fun handleTriggerPlaybackMessage(msg: Message) {
             val bundle: Bundle = msg.data
             bundle.classLoader = EntryPoint::class.java.classLoader
             val entryPoints: ArrayList<EntryPoint>? = bundle.getParcelableArrayList("entryPoints")
@@ -66,11 +84,19 @@ class MediaSessionHandlerAdapter() {
                     entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
 
                 if (dashEntryPoints.isNotEmpty()) {
-                    startPlayback(dashEntryPoints[0].locator)
+                    val url: String = dashEntryPoints[0].locator
+                    exoPlayerAdapter.attach(url)
+                    exoPlayerAdapter.preload()
+                    exoPlayerAdapter.play()
                 }
             }
         }
 
+        /**
+         * The requesting entity is asking for the supported metrics reporting schemes
+         *
+         * @param msg
+         */
         private fun handlePlaybackMetricsCapabilitiesMessage(msg: Message) {
             val bundle: Bundle = msg.data
             val schemes: ArrayList<String>? = bundle.getStringArrayList("metricsSchemes")
@@ -95,10 +121,19 @@ class MediaSessionHandlerAdapter() {
             responseMessenger.send(msgResponse)
         }
 
-        private fun startPlayback(url: String) {
-            exoPlayerAdapter.attach(url)
-            exoPlayerAdapter.preload()
-            exoPlayerAdapter.play()
+        /**
+         * The requesting entity is asking for the current metrics values for a specific metrics scheme
+         *
+         * @param msg
+         */
+        private fun handleGetPlaybackMetricsMessage(msg: Message) {
+            val bundle: Bundle = msg.data
+            val scheme: String? = bundle.getString("scheme")
+
+            if (scheme == MetricReportingSchemes.FIVE_G_MAG_EXOPLAYER_COMBINED_PLAYBACK_STATS) {
+                val playbackStats: PlaybackStats? = exoPlayerAdapter.getPlaybackStats()
+                Log.d(TAG, "Media Session Handler requested playback stats for scheme $scheme")
+            }
         }
 
     }
@@ -114,6 +149,12 @@ class MediaSessionHandlerAdapter() {
      */
     private val mConnection = object : ServiceConnection {
 
+        /**
+         * Once the Media Stream Handler is connected to the Media Session Handler we register this client with the Media Session Handler
+         *
+         * @param className
+         * @param service
+         */
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             // This is called when the connection with the service has been
             // established, giving us the object we can use to
@@ -139,6 +180,11 @@ class MediaSessionHandlerAdapter() {
 
         }
 
+        /**
+         * Cleanup once disconnected from the Media Session Handler
+         *
+         * @param className
+         */
         override fun onServiceDisconnected(className: ComponentName) {
             // This is called when the connection with the service has been
             // unexpectedly disconnected -- that is, its process crashed.
@@ -147,6 +193,13 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    /**
+     * Start binding to the Media Session Handler
+     *
+     * @param context
+     * @param epa
+     * @param onConnectionToMediaSessionHandlerEstablished
+     */
     fun initialize(
         context: Context,
         epa: ExoPlayerAdapter,
@@ -179,6 +232,11 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    /**
+     *
+     *
+     * @param context
+     */
     fun reset(context: Context) {
         if (bound) {
             context.unbindService(mConnection)
@@ -186,22 +244,11 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun updateLookupTable(m8Data: M8Model) {
-        val msg: Message = Message.obtain(
-            null,
-            SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE
-        )
-        val bundle = Bundle()
-        bundle.putParcelable("m8Data", m8Data)
-        msg.data = bundle
-        msg.replyTo = mMessenger;
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
+    /**
+     * Set the m5 endpoint on the Media Session Handler
+     *
+     * @param m5BaseUrl
+     */
     fun setM5Endpoint(m5BaseUrl: String) {
         val msg: Message = Message.obtain(
             null,
