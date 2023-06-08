@@ -26,7 +26,8 @@ import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 
 
-@UnstableApi class ExoPlayerAdapter() {
+@UnstableApi
+class ExoPlayerAdapter() {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
@@ -59,7 +60,7 @@ import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance
-        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance)
+        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance, playerView)
         playerInstance.addListener(playerListener)
     }
 
