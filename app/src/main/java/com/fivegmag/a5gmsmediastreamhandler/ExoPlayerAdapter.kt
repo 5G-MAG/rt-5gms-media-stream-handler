@@ -69,7 +69,7 @@ class ExoPlayerAdapter() {
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance
-        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance)
+        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance, playerView)
         playbackStatsListener = PlaybackStatsListener(true) {
                 _: AnalyticsListener.EventTime?,
                 _: PlaybackStats?,

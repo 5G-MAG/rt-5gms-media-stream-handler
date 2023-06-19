@@ -14,6 +14,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
@@ -22,7 +23,8 @@ import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 // See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
 @UnstableApi class ExoPlayerListener(
     private val mediaSessionHandlerAdapter: MediaSessionHandlerAdapter,
-    private val playerInstance: ExoPlayer
+    private val playerInstance: ExoPlayer,
+    private val playerView: PlayerView
 ) :
     AnalyticsListener {
 
@@ -31,6 +33,8 @@ import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
         playbackState: Int
     ) {
         val state : String = mapStateToConstant(playbackState)
+
+        playerView.keepScreenOn = !(state == PlayerStates.IDLE ||state == PlayerStates.ENDED)
         mediaSessionHandlerAdapter.updatePlaybackState(state)
     }
 
