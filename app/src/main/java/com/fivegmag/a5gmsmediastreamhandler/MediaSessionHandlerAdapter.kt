@@ -24,8 +24,9 @@ import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.*
+import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
 
-
+@UnstableApi
 class MediaSessionHandlerAdapter() {
 
     private val TAG: String = "MediaSessionHandlerAdapter"
@@ -39,6 +40,8 @@ class MediaSessionHandlerAdapter() {
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
+
+    private lateinit var qoEMetricsExoPlayer: QoEMetricsExoPlayer
 
     /**
      * Handler of incoming messages from clients.
@@ -130,10 +133,20 @@ class MediaSessionHandlerAdapter() {
             val bundle: Bundle = msg.data
             val scheme: String? = bundle.getString("scheme")
 
-            if (scheme == MetricReportingSchemes.FIVE_G_MAG_EXOPLAYER_COMBINED_PLAYBACK_STATS) {
-                val playbackStats: PlaybackStats? = exoPlayerAdapter.getPlaybackStats()
-                Log.d(TAG, "Media Session Handler requested playback stats for scheme $scheme")
+            var qoeMetricsReport = ""
+            Log.d(TAG, "Media Session Handler requested playback stats for scheme $scheme")
+            if (scheme == MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING) {
+                qoeMetricsReport = qoEMetricsExoPlayer.getQoeMetricsReport()
             }
+
+            val responseMessenger: Messenger = msg.replyTo
+            val msgResponse: Message = Message.obtain(
+                null,
+                SessionHandlerMessageTypes.REPORT_PLAYBACK_METRICS
+            )
+            bundle.putString("qoeMetricsReport", qoeMetricsReport)
+            msgResponse.data = bundle
+            responseMessenger.send(msgResponse)
         }
 
     }
@@ -206,6 +219,7 @@ class MediaSessionHandlerAdapter() {
         onConnectionToMediaSessionHandlerEstablished: () -> (Unit)
     ) {
         exoPlayerAdapter = epa
+        qoEMetricsExoPlayer = QoEMetricsExoPlayer(exoPlayerAdapter)
 
         try {
             val intent = Intent()
