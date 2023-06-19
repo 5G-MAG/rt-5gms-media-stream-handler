@@ -29,6 +29,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeMetricsReport
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
 
@@ -40,7 +41,7 @@ class ExoPlayerAdapter() {
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var activeMediaItem: MediaItem
-    private lateinit var playerListener: AnalyticsListener
+    private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
     private lateinit var playbackStatsListener: PlaybackStatsListener
@@ -82,6 +83,7 @@ class ExoPlayerAdapter() {
     }
 
     fun attach(url: String) {
+        playerListener.reset()
         val mediaItem: MediaItem = MediaItem.fromUri(url)
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem
@@ -121,6 +123,10 @@ class ExoPlayerAdapter() {
 
     fun getPlaybackState(): Int {
         return playerInstance.playbackState
+    }
+
+    fun getRepresentationSwitchList() : RepresentationSwitchList {
+        return playerListener.getRepresentationSwitchList()
     }
 
     private fun getAverageThroughput(): Long {

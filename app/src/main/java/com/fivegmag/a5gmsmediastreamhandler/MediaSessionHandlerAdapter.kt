@@ -39,6 +39,8 @@ class MediaSessionHandlerAdapter() {
 
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
+    private lateinit var exoPlayerListener: ExoPlayerListener
+
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
     private lateinit var qoEMetricsExoPlayer: QoEMetricsExoPlayer
