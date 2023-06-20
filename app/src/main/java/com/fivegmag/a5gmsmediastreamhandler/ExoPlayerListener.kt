@@ -16,26 +16,35 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpListEntry
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpListEntryType
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitch
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.Trace
 
 // See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
+
+const val TAG = "ExoPlayerListener"
+
 @UnstableApi
 class ExoPlayerListener(
     private val mediaSessionHandlerAdapter: MediaSessionHandlerAdapter,
     private val playerInstance: ExoPlayer,
-    private val playerView: PlayerView,
-    private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(
-        ArrayList<RepresentationSwitch>()
-    )
+    private val playerView: PlayerView
 ) :
     AnalyticsListener {
 
+    private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(
+        ArrayList<RepresentationSwitch>()
+    )
+    private val httpList: HttpList = HttpList(ArrayList<HttpListEntry>())
     private val utils: Utils = Utils()
 
     override fun onPlaybackStateChanged(
@@ -61,7 +70,7 @@ class ExoPlayerListener(
     }
 
     override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: PlaybackException) {
-        Log.d("ExoPlayer", "Error")
+        Log.d(TAG, "Error")
     }
 
     override fun onDownstreamFormatChanged(
@@ -81,8 +90,63 @@ class ExoPlayerListener(
         return representationSwitchList
     }
 
+    fun getHttpList(): HttpList {
+        return httpList
+    }
+
+    override fun onLoadCompleted(
+        eventTime: AnalyticsListener.EventTime,
+        loadEventInfo: LoadEventInfo,
+        mediaLoadData: MediaLoadData
+    ) {
+        val tcpId = -1
+        val type = getRequestType(mediaLoadData)
+        val url = loadEventInfo.uri.toString()
+        val actualUrl = loadEventInfo.uri.toString()
+        val range = ""
+        val tRequest = utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs
+        val tResponse = utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs
+        val responseCode = 200
+        val interval = loadEventInfo.loadDurationMs.toInt()
+        val bytes = loadEventInfo.bytesLoaded.toInt()
+        val trace = Trace(
+            tResponse,
+            loadEventInfo.loadDurationMs,
+            bytes
+        )
+        val traceList = ArrayList<Trace>()
+        traceList.add(trace)
+        val httpListEntry = HttpListEntry(
+            tcpId,
+            type,
+            url,
+            actualUrl,
+            range,
+            tRequest,
+            tResponse,
+            responseCode,
+            interval,
+            traceList
+        )
+
+        httpList.entries.add(httpListEntry)
+    }
+
+    private fun getRequestType(mediaLoadData: MediaLoadData): String {
+        return when (mediaLoadData.dataType) {
+            androidx.media3.common.C.DATA_TYPE_UNKNOWN -> HttpListEntryType.OTHER.value
+            androidx.media3.common.C.DATA_TYPE_MEDIA -> HttpListEntryType.MEDIA_SEGMENT.value
+            androidx.media3.common.C.DATA_TYPE_MEDIA_INITIALIZATION -> HttpListEntryType.INITIALIZATION_SEGMENT.value
+            androidx.media3.common.C.DATA_TYPE_MANIFEST -> HttpListEntryType.MPD.value
+            else -> HttpListEntryType.OTHER.value
+
+        }
+    }
+
     fun reset() {
+        Log.d(TAG, "Resetting ExoPlayerListener")
         representationSwitchList.entries.clear()
+        httpList.entries.clear()
     }
 
 }

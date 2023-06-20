@@ -28,10 +28,12 @@ import androidx.media3.ui.PlayerView
 import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeMetricsReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
+import java.lang.Exception
 
 
 @UnstableApi
@@ -46,7 +48,10 @@ class ExoPlayerAdapter() {
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
     private lateinit var playbackStatsListener: PlaybackStatsListener
     private var supportedMetricsSchemes =
-        listOf(MetricReportingSchemes.FIVE_G_MAG_EXOPLAYER_COMBINED_PLAYBACK_STATS, MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING)
+        listOf(
+            MetricReportingSchemes.FIVE_G_MAG_EXOPLAYER_COMBINED_PLAYBACK_STATS,
+            MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
+        )
 
     var httpDataSourceFactory: HttpDataSource.Factory =
         DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
@@ -125,8 +130,16 @@ class ExoPlayerAdapter() {
         return playerInstance.playbackState
     }
 
-    fun getRepresentationSwitchList() : RepresentationSwitchList {
+    fun getRepresentationSwitchList(): RepresentationSwitchList {
         return playerListener.getRepresentationSwitchList()
+    }
+
+    fun getHttpList(): HttpList {
+        return playerListener.getHttpList()
+    }
+
+    fun resetListenerValues() {
+        playerListener.reset()
     }
 
     private fun getAverageThroughput(): Long {

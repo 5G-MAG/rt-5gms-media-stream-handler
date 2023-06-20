@@ -23,6 +23,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
+import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.*
 import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
 
@@ -38,8 +39,6 @@ class MediaSessionHandlerAdapter() {
     private var bound: Boolean = false
 
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
-
-    private lateinit var exoPlayerListener: ExoPlayerListener
 
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
@@ -139,6 +138,7 @@ class MediaSessionHandlerAdapter() {
             Log.d(TAG, "Media Session Handler requested playback stats for scheme $scheme")
             if (scheme == MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING) {
                 qoeMetricsReport = qoEMetricsExoPlayer.getQoeMetricsReport()
+                exoPlayerAdapter.resetListenerValues()
             }
 
             val responseMessenger: Messenger = msg.replyTo
@@ -286,20 +286,6 @@ class MediaSessionHandlerAdapter() {
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
         val bundle = Bundle()
         bundle.putString("playbackState", state)
-        msg.data = bundle
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
-    fun reportMetrics() {
-        if (!bound) return
-        // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.METRIC_REPORTING_MESSAGE)
-        val bundle = Bundle()
-        bundle.putString("metricData", "")
         msg.data = bundle
         try {
             mService?.send(msg)
