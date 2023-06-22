@@ -1,13 +1,11 @@
 package com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP
 
-import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.AvgThroughput
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevelEntry
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeMetricsReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.ExoPlayerAdapter
 import org.simpleframework.xml.core.Persister
@@ -49,16 +47,14 @@ class QoEMetricsExoPlayer(
     }
 
 
-    private fun serializeToXml(qoeMetricsReport: QoeMetricsReport): String {
+    fun serializeQoEMetricToXml(input: HttpList): String {
         val serializer = Persister()
         val stringWriter = StringWriter()
 
-        serializer.write(qoeMetricsReport, stringWriter)
+        serializer.write(input, stringWriter)
 
-        val serializedData = stringWriter.toString()
-
-        //return serializedData
-        return cleanupXml(serializedData)
+        val metricString = stringWriter.toString()
+        return "<QoeMetric>$metricString</QoeMetric>"
     }
 
     fun cleanupXml(xmlString: String): String {
@@ -79,6 +75,7 @@ class QoEMetricsExoPlayer(
                     if (xpp.name != "object") {
                         serializer.startTag(xpp.namespace, xpp.name)
 
+                        /*
                         // Copy attributes except "class" and those with value -1
                         for (i in 0 until xpp.attributeCount) {
                             val attributeName = xpp.getAttributeName(i)
@@ -87,6 +84,7 @@ class QoEMetricsExoPlayer(
                                 serializer.attribute("", attributeName, attributeValue)
                             }
                         }
+                        */
 
                     }
                 }
@@ -118,24 +116,22 @@ class QoEMetricsExoPlayer(
     }
 
     fun getQoeMetricsReport(): String {
-        val metricsList = ArrayList<Any>()
+        val metricsList = ArrayList<String>()
         val bufferLevel = getBufferLevel()
         val representationSwitchList = getRepresentationSwitchList()
         val httpList = getHttpList()
 
         if (bufferLevel.entries.size > 0) {
-            metricsList.add(bufferLevel)
+           // metricsList.add(serializeQoEMetricToXml(bufferLevel))
         }
         if (representationSwitchList.entries.size > 0) {
-            metricsList.add(representationSwitchList)
+            //metricsList.add(serializeQoEMetricToXml(representationSwitchList))
         }
         if (httpList.entries.size > 0) {
-            metricsList.add(httpList)
+            metricsList.add(serializeQoEMetricToXml(httpList))
         }
 
-        val qoeMetricsReport = QoeMetricsReport(metricsList)
-
-        return serializeToXml(qoeMetricsReport)
+        return java.lang.String.join(" ", metricsList)
     }
 
 
