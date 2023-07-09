@@ -1,14 +1,15 @@
 package com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP
 
 import androidx.media3.common.util.UnstableApi
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.AvgThroughput
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevelEntry
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeMetricsReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.ExoPlayerAdapter
-import org.simpleframework.xml.core.Persister
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 import org.xmlpull.v1.XmlSerializer
@@ -47,14 +48,10 @@ class QoEMetricsExoPlayer(
     }
 
 
-    fun serializeQoEMetricToXml(input: HttpList): String {
-        val serializer = Persister()
-        val stringWriter = StringWriter()
+    fun serializeQoEMetricsReportToXml(input: QoeMetricsReport): String {
+        val xmlMapper = XmlMapper()
 
-        serializer.write(input, stringWriter)
-
-        val metricString = stringWriter.toString()
-        return "<QoeMetric>$metricString</QoeMetric>"
+        return xmlMapper.writeValueAsString(input)
     }
 
     fun cleanupXml(xmlString: String): String {
@@ -116,22 +113,22 @@ class QoEMetricsExoPlayer(
     }
 
     fun getQoeMetricsReport(): String {
-        val metricsList = ArrayList<String>()
+        val qoeMetricsReport = QoeMetricsReport()
         val bufferLevel = getBufferLevel()
         val representationSwitchList = getRepresentationSwitchList()
         val httpList = getHttpList()
 
         if (bufferLevel.entries.size > 0) {
-           // metricsList.add(serializeQoEMetricToXml(bufferLevel))
+            //qoeMetricsReport.entries.add(bufferLevel)
         }
         if (representationSwitchList.entries.size > 0) {
-            //metricsList.add(serializeQoEMetricToXml(representationSwitchList))
+            //qoeMetricsReport.entries.add(representationSwitchList)
         }
         if (httpList.entries.size > 0) {
-            metricsList.add(serializeQoEMetricToXml(httpList))
+            //qoeMetricsReport.entries.add(httpList)
         }
 
-        return java.lang.String.join(" ", metricsList)
+        return serializeQoEMetricsReportToXml(qoeMetricsReport)
     }
 
 

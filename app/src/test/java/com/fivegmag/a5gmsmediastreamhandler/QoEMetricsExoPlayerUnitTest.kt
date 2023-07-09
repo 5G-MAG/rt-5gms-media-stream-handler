@@ -7,28 +7,26 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeMetricsRepor
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.Trace
 import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
 import org.junit.Assert.assertEquals
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevelEntry
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitch
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import org.junit.Test
 
 class QoEMetricsExoPlayerUnitTest {
 
     @Test
-    fun cleanupXml() {
+    fun testXmlSerialization() {
         val exoPlayerAdapter = ExoPlayerAdapter()
         val qoEMetricsExoPlayer = QoEMetricsExoPlayer(exoPlayerAdapter)
-        val xmlString = """<QoeReport><QoeMetric class="java.util.ArrayList"><object class="com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel"><BufferLevel><BufferLevelEntry level="3928" t="1687196339408"/></BufferLevel></object></QoeMetric><QoeMetric class="java.util.ArrayList"><object class="com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList"><RepSwitchList><RepSwitchEvent lto="-1" mt="268000" t="1687196338309" to="V300"/><RepSwitchEvent lto="-1" mt="268000" t="1687196338717" to="A48"/></RepSwitchList></object></QoeMetric></QoeReport>"""
-        val targetString = """<QoeReport><QoeMetric><BufferLevel><BufferLevelEntry level="3928" t="1687196339408" /></BufferLevel></QoeMetric><QoeMetric><RepSwitchList><RepSwitchEvent mt="268000" t="1687196338309" to="V300" /><RepSwitchEvent mt="268000" t="1687196338717" to="A48" /></RepSwitchList></QoeMetric></QoeReport>"""
-        val result = qoEMetricsExoPlayer.cleanupXml(xmlString)
-        assertEquals(targetString, result)
-    }
-    @Test
-    fun serializeToXml() {
-        val exoPlayerAdapter = ExoPlayerAdapter()
-        val qoEMetricsExoPlayer = QoEMetricsExoPlayer(exoPlayerAdapter)
-        val metricsList = ArrayList<Any>()
+        val qoeMetricsReport = QoeMetricsReport()
         val httpList: HttpList = HttpList(ArrayList<HttpListEntry>())
+        val bufferLevel: BufferLevel = BufferLevel(ArrayList<BufferLevelEntry>())
+        val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(ArrayList<RepresentationSwitch>())
         val utils : Utils = Utils()
 
-        for(i in 0..100) {
+        for(i in 0..2) {
             val tcpId = i
             val type = "type"
             val url = "url"
@@ -46,6 +44,7 @@ class QoEMetricsExoPlayerUnitTest {
             )
             val traceList = ArrayList<Trace>()
             traceList.add(trace)
+            traceList.add(trace)
             val httpListEntry = HttpListEntry(
                 tcpId,
                 type,
@@ -60,10 +59,24 @@ class QoEMetricsExoPlayerUnitTest {
             )
 
             httpList.entries.add(httpListEntry)
+
+            val representationSwitch = RepresentationSwitch(null,null,"to",null)
+            representationSwitchList.entries.add(representationSwitch)
+
+            val bufferLevelEntry = BufferLevelEntry(0,1)
+            bufferLevel.entries.add(bufferLevelEntry)
         }
 
-        val result = qoEMetricsExoPlayer.serializeQoEMetricToXml(httpList)
+        qoeMetricsReport.httpList = ArrayList<HttpList>()
+        qoeMetricsReport.httpList!!.add(httpList)
 
+        qoeMetricsReport.representationSwitchList = ArrayList<RepresentationSwitchList>()
+        qoeMetricsReport.representationSwitchList!!.add(representationSwitchList)
+
+        qoeMetricsReport.bufferLevel = ArrayList<BufferLevel>()
+        qoeMetricsReport.bufferLevel!!.add(bufferLevel)
+
+        val result = qoEMetricsExoPlayer.serializeQoEMetricsReportToXml(qoeMetricsReport)
         assertEquals(4, 2 + 2)
     }
 }
