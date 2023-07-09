@@ -44,15 +44,14 @@ class ExoPlayerAdapter() {
         context: Context,
         msh: MediaSessionHandlerAdapter
     ) {
-        val defaultUserAgent = Util.getUserAgent(context, "v")
+        val defaultUserAgent = Util.getUserAgent(context, "A5GMSMediaStreamHandler/")
         val deviceName = android.os.Build.MODEL
         val osVersion = android.os.Build.VERSION.RELEASE
         val modifiedUserAgent =
-            "${UserAgentTokens.FIVE_G_MS_REL_17_MEDIA_STREAM_HANDLER} $defaultUserAgent - Android ($osVersion; $deviceName)"
+            "${UserAgentTokens.FIVE_G_MS_REL_17_MEDIA_STREAM_HANDLER} $defaultUserAgent (Android $osVersion; $deviceName)"
         val httpDataSourceFactory: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent(modifiedUserAgent)
-
         val dataSourceFactory =
             DataSource.Factory {
                 val dataSource = httpDataSourceFactory.createDataSource()
@@ -89,6 +88,7 @@ class ExoPlayerAdapter() {
     fun pause() {
         playerInstance.pause()
     }
+
 
     fun seek(time: Long) {
         TODO("Not yet implemented")
