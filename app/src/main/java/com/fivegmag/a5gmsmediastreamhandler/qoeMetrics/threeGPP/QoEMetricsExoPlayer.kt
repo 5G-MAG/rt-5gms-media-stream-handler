@@ -3,18 +3,15 @@ package com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP
 import androidx.media3.common.util.UnstableApi
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
+import com.fivegmag.a5gmscommonlibrary.helpers.XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.AvgThroughput
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevelEntry
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeMetricsReport
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeReport
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.ReceptionReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.ExoPlayerAdapter
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
-import org.xmlpull.v1.XmlSerializer
-import java.io.StringReader
-import java.io.StringWriter
 
 
 @UnstableApi
@@ -47,88 +44,39 @@ class QoEMetricsExoPlayer(
         return exoPlayerAdapter.getHttpList()
     }
 
-
-    fun serializeQoEMetricsReportToXml(input: QoeMetricsReport): String {
+    fun serializeQoEMetricsReportToXml(input: ReceptionReport): String {
         val xmlMapper = XmlMapper()
+        val serializedResult = xmlMapper.writeValueAsString(input)
 
-        return xmlMapper.writeValueAsString(input)
-    }
-
-    fun cleanupXml(xmlString: String): String {
-        val factory = XmlPullParserFactory.newInstance()
-        factory.isNamespaceAware = true
-        val xpp = factory.newPullParser()
-        xpp.setInput(StringReader(xmlString))
-
-        val writer = StringWriter()
-        val serializer: XmlSerializer = factory.newSerializer()
-        serializer.setOutput(writer)
-
-        var eventType = xpp.eventType
-
-        while (eventType != XmlPullParser.END_DOCUMENT) {
-            when (eventType) {
-                XmlPullParser.START_TAG -> {
-                    if (xpp.name != "object") {
-                        serializer.startTag(xpp.namespace, xpp.name)
-
-                        /*
-                        // Copy attributes except "class" and those with value -1
-                        for (i in 0 until xpp.attributeCount) {
-                            val attributeName = xpp.getAttributeName(i)
-                            val attributeValue = xpp.getAttributeValue(i)
-                            if (attributeName != "class" && attributeValue != "-1") {
-                                serializer.attribute("", attributeName, attributeValue)
-                            }
-                        }
-                        */
-
-                    }
-                }
-
-                XmlPullParser.END_TAG -> {
-                    if (xpp.name != "object") {
-                        serializer.endTag(xpp.namespace, xpp.name)
-                    }
-                }
-
-                XmlPullParser.TEXT -> {
-                    if (xpp.name != "object") {
-                        serializer.text(xpp.text)
-                    }
-                }
-            }
-            eventType = xpp.next()
-        }
-
-        val result = writer.toString()
-
-        // Remove empty lines
-        val lines = result.split("\n")
-            .filter { it.trim().isNotEmpty() }
-            .toMutableList()
-
-        // Join the lines back with newlines
-        return lines.joinToString("\n")
+        return "<?xml version=\"1.0\"?>$serializedResult"
     }
 
     fun getQoeMetricsReport(): String {
-        val qoeMetricsReport = QoeMetricsReport()
+        val qoeMetricsReport = QoeReport()
+
         val bufferLevel = getBufferLevel()
-        val representationSwitchList = getRepresentationSwitchList()
-        val httpList = getHttpList()
-
         if (bufferLevel.entries.size > 0) {
-            //qoeMetricsReport.entries.add(bufferLevel)
-        }
-        if (representationSwitchList.entries.size > 0) {
-            //qoeMetricsReport.entries.add(representationSwitchList)
-        }
-        if (httpList.entries.size > 0) {
-            //qoeMetricsReport.entries.add(httpList)
+            qoeMetricsReport.bufferLevel = arrayListOf(bufferLevel)
         }
 
-        return serializeQoEMetricsReportToXml(qoeMetricsReport)
+        val representationSwitchList = getRepresentationSwitchList()
+        if (representationSwitchList.entries.size > 0) {
+            qoeMetricsReport.representationSwitchList = arrayListOf(representationSwitchList)
+        }
+
+        val httpList = getHttpList()
+        if (httpList.entries.size > 0) {
+            qoeMetricsReport.httpList = arrayListOf(httpList)
+        }
+
+        val receptionReport =
+            ReceptionReport(qoeMetricsReport, exoPlayerAdapter.getCurrentManifestUrl())
+        receptionReport.xmlns = THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA
+        receptionReport.schemaLocation =
+            THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA + " " + THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.LOCATION
+        receptionReport.xsi = THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.XSI
+
+        return serializeQoEMetricsReportToXml(receptionReport)
     }
 
 

@@ -3,13 +3,13 @@ package com.fivegmag.a5gmsmediastreamhandler
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpListEntry
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeMetricsReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.Trace
 import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
 import org.junit.Assert.assertEquals
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevelEntry
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeReport
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.ReceptionReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitch
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import org.junit.Test
@@ -20,7 +20,7 @@ class QoEMetricsExoPlayerUnitTest {
     fun testXmlSerialization() {
         val exoPlayerAdapter = ExoPlayerAdapter()
         val qoEMetricsExoPlayer = QoEMetricsExoPlayer(exoPlayerAdapter)
-        val qoeMetricsReport = QoeMetricsReport()
+        val qoeMetricsReport = QoeReport()
         val httpList: HttpList = HttpList(ArrayList<HttpListEntry>())
         val bufferLevel: BufferLevel = BufferLevel(ArrayList<BufferLevelEntry>())
         val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(ArrayList<RepresentationSwitch>())
@@ -76,7 +76,8 @@ class QoEMetricsExoPlayerUnitTest {
         qoeMetricsReport.bufferLevel = ArrayList<BufferLevel>()
         qoeMetricsReport.bufferLevel!!.add(bufferLevel)
 
-        val result = qoEMetricsExoPlayer.serializeQoEMetricsReportToXml(qoeMetricsReport)
+        val receptionReport = ReceptionReport(qoeMetricsReport, "test.mpd", "id")
+        val result = qoEMetricsExoPlayer.serializeQoEMetricsReportToXml(receptionReport)
         assertEquals(4, 2 + 2)
     }
 }

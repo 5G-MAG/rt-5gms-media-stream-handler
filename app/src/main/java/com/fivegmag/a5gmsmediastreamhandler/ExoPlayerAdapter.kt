@@ -29,11 +29,8 @@ import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeMetricsReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
-import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
-import java.lang.Exception
 
 
 @UnstableApi
@@ -124,6 +121,10 @@ class ExoPlayerAdapter() {
 
     fun getPlayerInstance(): ExoPlayer {
         return playerInstance
+    }
+
+    fun getCurrentManifestUrl() : String {
+        return playerInstance.currentMediaItem?.localConfiguration?.uri.toString()
     }
 
     fun getPlaybackState(): Int {
