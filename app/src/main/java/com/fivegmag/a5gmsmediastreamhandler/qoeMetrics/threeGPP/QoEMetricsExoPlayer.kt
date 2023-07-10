@@ -79,8 +79,11 @@ class QoEMetricsExoPlayer(
      *
      * @return {String}
      */
-    fun getQoeMetricsReport(): String {
+    fun getQoeMetricsReport(reportPeriod: Int): String {
         val qoeMetricsReport = QoeReport()
+        qoeMetricsReport.reportTime = utils.getCurrentXsDateTime()
+        qoeMetricsReport.periodId = exoPlayerAdapter.getCurrentPeriodId()
+        qoeMetricsReport.reportPeriod = reportPeriod
 
         val bufferLevel = getBufferLevel()
         if (bufferLevel.entries.size > 0) {
@@ -103,6 +106,7 @@ class QoEMetricsExoPlayer(
         receptionReport.schemaLocation =
             THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA + " " + THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.LOCATION
         receptionReport.xsi = THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.XSI
+        receptionReport.sv = THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SV
 
         return serializeReceptionReportToXml(receptionReport)
     }

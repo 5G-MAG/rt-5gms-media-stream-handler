@@ -18,13 +18,12 @@ import android.os.*
 import android.util.Log
 import android.widget.Toast
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.analytics.PlaybackStats
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
-import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.*
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.PlaybackMetricsRequest
 import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
 
 @UnstableApi
@@ -120,8 +119,9 @@ class MediaSessionHandlerAdapter() {
                 null,
                 SessionHandlerMessageTypes.REPORT_PLAYBACK_METRICS_CAPABILITIES
             )
-            bundle.putParcelableArrayList("schemeSupport", results)
-            msgResponse.data = bundle
+            val responseBundle = Bundle()
+            responseBundle.putParcelableArrayList("schemeSupport", results)
+            msgResponse.data = responseBundle
             responseMessenger.send(msgResponse)
         }
 
@@ -132,12 +132,18 @@ class MediaSessionHandlerAdapter() {
          */
         private fun handleGetPlaybackMetricsMessage(msg: Message) {
             val bundle: Bundle = msg.data
-            val scheme: String? = bundle.getString("scheme")
+            bundle.classLoader = PlaybackMetricsRequest::class.java.classLoader
+            val data: PlaybackMetricsRequest? = bundle.getParcelable("data")
+            val schema = data?.schema
+            var reportPeriod = 0
+            if (data != null) {
+                reportPeriod = data.reportPeriod.toInt() * 1000
+            }
 
             var qoeMetricsReport = ""
-            Log.d(TAG, "Media Session Handler requested playback stats for scheme $scheme")
-            if (scheme == MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING) {
-                qoeMetricsReport = qoEMetricsExoPlayer.getQoeMetricsReport()
+            Log.d(TAG, "Media Session Handler requested playback stats for scheme $schema")
+            if (schema == MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING) {
+                qoeMetricsReport = qoEMetricsExoPlayer.getQoeMetricsReport(reportPeriod)
                 exoPlayerAdapter.resetListenerValues()
             }
 
@@ -146,8 +152,10 @@ class MediaSessionHandlerAdapter() {
                 null,
                 SessionHandlerMessageTypes.REPORT_PLAYBACK_METRICS
             )
-            bundle.putString("qoeMetricsReport", qoeMetricsReport)
-            msgResponse.data = bundle
+
+            val responseBundle = Bundle()
+            responseBundle.putString("qoeMetricsReport", qoeMetricsReport)
+            msgResponse.data = responseBundle
             responseMessenger.send(msgResponse)
         }
 
