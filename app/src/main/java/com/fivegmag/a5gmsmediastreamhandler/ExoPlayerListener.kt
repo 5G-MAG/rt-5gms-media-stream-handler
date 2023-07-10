@@ -84,7 +84,7 @@ class ExoPlayerListener(
         eventTime: AnalyticsListener.EventTime,
         mediaLoadData: MediaLoadData
     ) {
-        val t: Long = utils.getCurrentTimestamp()
+        val t: String = utils.getCurrentXsDateTime()
         val mt: Long = playerInstance.contentPosition
         val to: String? = mediaLoadData.trackFormat?.id
         val representationSwitch = to?.let { RepresentationSwitch(t, mt, it) }
@@ -95,7 +95,7 @@ class ExoPlayerListener(
 
     private fun addBufferLevelEntry() {
         val level: Int = playerInstance.totalBufferedDuration.toInt()
-        val time: Long = utils.getCurrentTimestamp()
+        val time: String = utils.getCurrentXsDateTime()
         val entry = BufferLevelEntry(time, level)
         bufferLevel.entries.add(entry)
     }
@@ -127,8 +127,8 @@ class ExoPlayerListener(
         val url = loadEventInfo.uri.toString()
         val actualUrl = loadEventInfo.uri.toString()
         val range = ""
-        val tRequest = utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs
-        val tResponse = utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs
+        val tRequest = utils.convertTimestampToXsDateTime(utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs)
+        val tResponse = utils.convertTimestampToXsDateTime(utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs)
         val responseCode = 200
         val interval = loadEventInfo.loadDurationMs.toInt()
         val bytes = loadEventInfo.bytesLoaded.toInt()
