@@ -31,8 +31,7 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationS
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.Trace
 
-// See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
-
+// See https://developer.android.com/reference/androidx/media3/exoplayer/analytics/AnalyticsListener
 const val TAG = "ExoPlayerListener"
 
 @UnstableApi
@@ -85,7 +84,7 @@ class ExoPlayerListener(
         mediaLoadData: MediaLoadData
     ) {
         val t: String = utils.getCurrentXsDateTime()
-        val mt: Long = playerInstance.contentPosition
+        val mt: String? = utils.millisecondsToISO8601(playerInstance.currentPosition)
         val to: String? = mediaLoadData.trackFormat?.id
         val representationSwitch = to?.let { RepresentationSwitch(t, mt, it) }
         if (representationSwitch != null) {
