@@ -121,7 +121,7 @@ class ExoPlayerListener(
     }
 
     private fun addHttpListEntry(mediaLoadData: MediaLoadData, loadEventInfo: LoadEventInfo) {
-        val tcpId = -1
+        val tcpId = null
         val type = getRequestType(mediaLoadData)
         val url = loadEventInfo.uri.toString()
         val actualUrl = loadEventInfo.uri.toString()
