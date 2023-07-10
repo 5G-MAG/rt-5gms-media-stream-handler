@@ -28,6 +28,7 @@ import androidx.media3.ui.PlayerView
 import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
@@ -139,6 +140,10 @@ class ExoPlayerAdapter() {
         return playerListener.getHttpList()
     }
 
+    fun getBufferLevel() : BufferLevel {
+        return playerListener.getBufferLevel()
+    }
+
     fun resetListenerValues() {
         playerListener.reset()
     }
@@ -147,7 +152,7 @@ class ExoPlayerAdapter() {
         return bandwidthMeter.bitrateEstimate
     }
 
-    fun getBufferLength(): Long {
+    private fun getBufferLength(): Long {
         return playerInstance.totalBufferedDuration
     }
 

@@ -60,7 +60,7 @@ class QoEMetricsExoPlayerUnitTest {
 
             httpList.entries.add(httpListEntry)
 
-            val representationSwitch = RepresentationSwitch(null,null,"to",null)
+            val representationSwitch = RepresentationSwitch(1,2,"to",3)
             representationSwitchList.entries.add(representationSwitch)
 
             val bufferLevelEntry = BufferLevelEntry(0,1)
@@ -77,7 +77,6 @@ class QoEMetricsExoPlayerUnitTest {
         qoeMetricsReport.bufferLevel!!.add(bufferLevel)
 
         val receptionReport = ReceptionReport(qoeMetricsReport, "test.mpd", "id")
-        val result = qoEMetricsExoPlayer.serializeQoEMetricsReportToXml(receptionReport)
-        assertEquals(4, 2 + 2)
+        val result = qoEMetricsExoPlayer.serializeReceptionReportToXml(receptionReport)
     }
 }

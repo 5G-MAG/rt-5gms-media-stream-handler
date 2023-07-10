@@ -22,6 +22,8 @@ import androidx.media3.exoplayer.source.MediaLoadData
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevelEntry
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpListEntry
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpListEntryType
@@ -45,6 +47,7 @@ class ExoPlayerListener(
         ArrayList<RepresentationSwitch>()
     )
     private val httpList: HttpList = HttpList(ArrayList<HttpListEntry>())
+    private val bufferLevel: BufferLevel = BufferLevel(ArrayList<BufferLevelEntry>())
     private val utils: Utils = Utils()
 
     override fun onPlaybackStateChanged(
@@ -52,6 +55,10 @@ class ExoPlayerListener(
         playbackState: Int
     ) {
         val state: String = mapStateToConstant(playbackState)
+
+        if (state == PlayerStates.BUFFERING) {
+            addBufferLevelEntry()
+        }
 
         playerView.keepScreenOn = !(state == PlayerStates.IDLE || state == PlayerStates.ENDED)
         mediaSessionHandlerAdapter.updatePlaybackState(state)
@@ -86,6 +93,13 @@ class ExoPlayerListener(
         }
     }
 
+    private fun addBufferLevelEntry() {
+        val level: Int = playerInstance.totalBufferedDuration.toInt()
+        val time: Long = utils.getCurrentTimestamp()
+        val entry = BufferLevelEntry(time, level)
+        bufferLevel.entries.add(entry)
+    }
+
     fun getRepresentationSwitchList(): RepresentationSwitchList {
         return representationSwitchList
     }
@@ -94,11 +108,20 @@ class ExoPlayerListener(
         return httpList
     }
 
+    fun getBufferLevel(): BufferLevel {
+        return bufferLevel
+    }
+
     override fun onLoadCompleted(
         eventTime: AnalyticsListener.EventTime,
         loadEventInfo: LoadEventInfo,
         mediaLoadData: MediaLoadData
     ) {
+        addHttpListEntry(mediaLoadData, loadEventInfo)
+        addBufferLevelEntry()
+    }
+
+    private fun addHttpListEntry(mediaLoadData: MediaLoadData, loadEventInfo: LoadEventInfo) {
         val tcpId = -1
         val type = getRequestType(mediaLoadData)
         val url = loadEventInfo.uri.toString()
@@ -147,6 +170,7 @@ class ExoPlayerListener(
         Log.d(TAG, "Resetting ExoPlayerListener")
         representationSwitchList.entries.clear()
         httpList.entries.clear()
+        bufferLevel.entries.clear()
     }
 
 }
