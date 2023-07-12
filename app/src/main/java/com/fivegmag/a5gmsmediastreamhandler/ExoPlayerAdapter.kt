@@ -87,7 +87,9 @@ class ExoPlayerAdapter() {
     }
 
     fun attach(url: String) {
-        playerListener.reset()
+        mediaSessionHandlerAdapter.sendFinalPlaybackMetricsMessage()
+        mediaSessionHandlerAdapter.resetForNewStreamingSession()
+        resetListenerValues()
         val mediaItem: MediaItem = MediaItem.fromUri(url)
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem

@@ -59,6 +59,10 @@ class ExoPlayerListener(
             addBufferLevelEntry()
         }
 
+        if (state == PlayerStates.ENDED) {
+            mediaSessionHandlerAdapter.sendFinalPlaybackMetricsMessage()
+        }
+
         playerView.keepScreenOn = !(state == PlayerStates.IDLE || state == PlayerStates.ENDED)
         mediaSessionHandlerAdapter.updatePlaybackState(state)
     }
@@ -126,8 +130,10 @@ class ExoPlayerListener(
         val url = loadEventInfo.uri.toString()
         val actualUrl = loadEventInfo.uri.toString()
         val range = ""
-        val tRequest = utils.convertTimestampToXsDateTime(utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs)
-        val tResponse = utils.convertTimestampToXsDateTime(utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs)
+        val tRequest =
+            utils.convertTimestampToXsDateTime(utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs)
+        val tResponse =
+            utils.convertTimestampToXsDateTime(utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs)
         val responseCode = 200
         val interval = loadEventInfo.loadDurationMs.toInt()
         val bytes = loadEventInfo.bytesLoaded.toInt()

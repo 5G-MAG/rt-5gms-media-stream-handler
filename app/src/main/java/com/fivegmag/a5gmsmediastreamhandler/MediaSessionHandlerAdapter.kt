@@ -25,6 +25,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.*
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.PlaybackMetricsRequest
 import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
+import java.util.LinkedList
 
 @UnstableApi
 class MediaSessionHandlerAdapter() {
@@ -42,6 +43,8 @@ class MediaSessionHandlerAdapter() {
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
     private lateinit var qoEMetricsExoPlayer: QoEMetricsExoPlayer
+
+    private var supportedPlaybackMetricsRequests: LinkedList<PlaybackMetricsRequest> = LinkedList()
 
     /**
      * Handler of incoming messages from clients.
@@ -102,15 +105,20 @@ class MediaSessionHandlerAdapter() {
          */
         private fun handlePlaybackMetricsCapabilitiesMessage(msg: Message) {
             val bundle: Bundle = msg.data
-            val schemes: ArrayList<String>? = bundle.getStringArrayList("metricsSchemes")
+            bundle.classLoader = PlaybackMetricsRequest::class.java.classLoader
+            val playbackMetricsRequests: ArrayList<PlaybackMetricsRequest>? =
+                bundle.getParcelableArrayList("playbackMetricsRequests")
             val results: ArrayList<SchemeSupport> = ArrayList()
 
-            if (schemes != null) {
-                for (scheme in schemes) {
-                    Log.d(TAG, "Scheme $scheme")
-                    val supported = exoPlayerAdapter.isMetricsSchemeSupported(scheme)
-                    Log.d(TAG, "$scheme is supported:")
-                    results.add(SchemeSupport(scheme, supported))
+            if (playbackMetricsRequests != null) {
+                for (playbackMetricsRequest in playbackMetricsRequests) {
+                    val supported =
+                        exoPlayerAdapter.isMetricsSchemeSupported(playbackMetricsRequest.scheme)
+                    Log.d(TAG, "${playbackMetricsRequest.scheme} is supported:")
+                    results.add(SchemeSupport(playbackMetricsRequest.scheme, supported))
+                    if (supported) {
+                        supportedPlaybackMetricsRequests.add(playbackMetricsRequest)
+                    }
                 }
             }
 
@@ -133,17 +141,12 @@ class MediaSessionHandlerAdapter() {
         private fun handleGetPlaybackMetricsMessage(msg: Message) {
             val bundle: Bundle = msg.data
             bundle.classLoader = PlaybackMetricsRequest::class.java.classLoader
-            val data: PlaybackMetricsRequest? = bundle.getParcelable("data")
-            val schema = data?.schema
-            var reportPeriod = 0
-            if (data != null) {
-                reportPeriod = data.reportPeriod.toInt() * 1000
-            }
+            val playbackMetricsRequest: PlaybackMetricsRequest? = bundle.getParcelable("data")
+            val scheme = playbackMetricsRequest?.scheme
 
-            var qoeMetricsReport = ""
-            Log.d(TAG, "Media Session Handler requested playback stats for scheme $schema")
-            if (schema == MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING) {
-                qoeMetricsReport = qoEMetricsExoPlayer.getQoeMetricsReport(reportPeriod)
+            val qoeMetricsReport = getPlaybackMetrics(playbackMetricsRequest)
+            Log.d(TAG, "Media Session Handler requested playback stats for scheme $scheme")
+            if (scheme == MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING) {
                 exoPlayerAdapter.resetListenerValues()
             }
 
@@ -256,15 +259,62 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    private fun getPlaybackMetrics(
+        playbackMetricsRequest: PlaybackMetricsRequest?
+    ): String {
+
+        if (playbackMetricsRequest == null) {
+            return ""
+        }
+
+        if (playbackMetricsRequest.scheme == MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING) {
+            return qoEMetricsExoPlayer.getQoeMetricsReport(playbackMetricsRequest)
+        }
+
+        return ""
+    }
+
+    fun resetForNewStreamingSession() {
+        supportedPlaybackMetricsRequests.clear()
+    }
+
     /**
      *
      *
      * @param context
      */
-    fun reset(context: Context) {
+    fun unbind(context: Context) {
         if (bound) {
             context.unbindService(mConnection)
             bound = false
+        }
+    }
+
+    /**
+     * After playback has ended or prior to starting a new streaming session send a final report
+     *
+     */
+    fun sendFinalPlaybackMetricsMessage() {
+        for (playbackMetricsRequest in supportedPlaybackMetricsRequests) {
+            val qoeMetricsReport = getPlaybackMetrics(playbackMetricsRequest)
+            if (playbackMetricsRequest.scheme == MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING) {
+                exoPlayerAdapter.resetListenerValues()
+            }
+
+            val msg: Message = Message.obtain(
+                null,
+                SessionHandlerMessageTypes.REPORT_PLAYBACK_METRICS
+            )
+
+            val bundle = Bundle()
+            bundle.putString("qoeMetricsReport", qoeMetricsReport)
+            msg.data = bundle
+            msg.replyTo = mMessenger;
+            try {
+                mService?.send(msg)
+            } catch (e: RemoteException) {
+                e.printStackTrace()
+            }
         }
     }
 

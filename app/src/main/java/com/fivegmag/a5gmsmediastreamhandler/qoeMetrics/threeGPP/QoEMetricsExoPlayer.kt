@@ -11,11 +11,13 @@ package com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP
 
 import androidx.media3.common.util.UnstableApi
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.fivegmag.a5gmscommonlibrary.helpers.Metrics
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.helpers.XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.AvgThroughput
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.PlaybackMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.ReceptionReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
@@ -75,29 +77,59 @@ class QoEMetricsExoPlayer(
     }
 
     /**
+     * Adds a delimiter after the last QoeMetric element
+     *
+     * @param xmlString
+     * @return
+     */
+    private fun addDelimiter(xmlString: String): String {
+        val delimiter = "<sv:delimiter>0</sv:delimiter>"
+        val qoeMetricEndTag = "</QoeMetric>"
+
+        // Find the last occurrence of the </QoeMetric> tag
+        val lastIndex = xmlString.lastIndexOf(qoeMetricEndTag)
+        if (lastIndex != -1) {
+            // Insert the delimiter after the last </QoeMetric> tag
+            val stringBuilder = StringBuilder(xmlString)
+            stringBuilder.insert(lastIndex + qoeMetricEndTag.length, delimiter)
+            return stringBuilder.toString()
+        }
+
+        // If the </QoeMetric> tag is not found, return the original XML string
+        return xmlString
+    }
+
+    /**
      * Generate a Qoe metrics report and serializes it to XML
      *
+     * @param {PlaybackMetricsRequest} playbackMetricsRequest
      * @return {String}
      */
-    fun getQoeMetricsReport(reportPeriod: Int): String {
+    fun getQoeMetricsReport(playbackMetricsRequest: PlaybackMetricsRequest): String {
         val qoeMetricsReport = QoeReport()
         qoeMetricsReport.reportTime = utils.getCurrentXsDateTime()
         qoeMetricsReport.periodId = exoPlayerAdapter.getCurrentPeriodId()
-        qoeMetricsReport.reportPeriod = reportPeriod
+        qoeMetricsReport.reportPeriod = playbackMetricsRequest.reportPeriod?.toInt()
 
-        val bufferLevel = getBufferLevel()
-        if (bufferLevel.entries.size > 0) {
-            qoeMetricsReport.bufferLevel = arrayListOf(bufferLevel)
+        if (shouldReportMetric(Metrics.BUFFER_LEVEL, playbackMetricsRequest.metrics)) {
+            val bufferLevel = getBufferLevel()
+            if (bufferLevel.entries.size > 0) {
+                qoeMetricsReport.bufferLevel = arrayListOf(bufferLevel)
+            }
         }
 
-        val representationSwitchList = getRepresentationSwitchList()
-        if (representationSwitchList.entries.size > 0) {
-            qoeMetricsReport.representationSwitchList = arrayListOf(representationSwitchList)
+        if (shouldReportMetric(Metrics.REP_SWITCH_LIST, playbackMetricsRequest.metrics)) {
+            val representationSwitchList = getRepresentationSwitchList()
+            if (representationSwitchList.entries.size > 0) {
+                qoeMetricsReport.representationSwitchList = arrayListOf(representationSwitchList)
+            }
         }
 
-        val httpList = getHttpList()
-        if (httpList.entries.size > 0) {
-            qoeMetricsReport.httpList = arrayListOf(httpList)
+        if (shouldReportMetric(Metrics.HTTP_LIST, playbackMetricsRequest.metrics)) {
+            val httpList = getHttpList()
+            if (httpList.entries.size > 0) {
+                qoeMetricsReport.httpList = arrayListOf(httpList)
+            }
         }
 
         val receptionReport =
@@ -108,7 +140,21 @@ class QoEMetricsExoPlayer(
         receptionReport.xsi = THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.XSI
         receptionReport.sv = THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SV
 
-        return serializeReceptionReportToXml(receptionReport)
+        var xml = serializeReceptionReportToXml(receptionReport)
+        xml = addDelimiter(xml)
+
+        return xml
+    }
+
+    /**
+     * Checks if a metric is supposed to be reported based on the metrics array provided via M5
+     *
+     * @param {String} metric
+     * @param {ArrayList<String>} metricsList
+     * @return
+     */
+    private fun shouldReportMetric(metric: String, metricsList: ArrayList<String>?): Boolean {
+        return metricsList.isNullOrEmpty() || metricsList.contains(metric)
     }
 
 }
