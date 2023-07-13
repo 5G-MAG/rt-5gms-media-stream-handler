@@ -44,7 +44,7 @@ class ExoPlayerAdapter() {
         context: Context,
         msh: MediaSessionHandlerAdapter
     ) {
-        val defaultUserAgent = Util.getUserAgent(context, "A5GMSMediaStreamHandler/")
+        val defaultUserAgent = Util.getUserAgent(context, "A5GMSMediaStreamHandler")
         val deviceName = android.os.Build.MODEL
         val osVersion = android.os.Build.VERSION.RELEASE
         val modifiedUserAgent =
