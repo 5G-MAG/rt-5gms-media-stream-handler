@@ -13,6 +13,7 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
@@ -23,6 +24,7 @@ import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
+import com.fivegmag.a5gmscommonlibrary.helpers.UserAgentTokens
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 
 
@@ -36,20 +38,25 @@ class ExoPlayerAdapter() {
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
 
-    var httpDataSourceFactory: HttpDataSource.Factory =
-        DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
-
-    val dataSourceFactory =
-        DataSource.Factory {
-            val dataSource = httpDataSourceFactory.createDataSource()
-            dataSource
-        }
 
     fun initialize(
         exoPlayerView: PlayerView,
         context: Context,
         msh: MediaSessionHandlerAdapter
     ) {
+        val defaultUserAgent = Util.getUserAgent(context, "A5GMSMediaStreamHandler")
+        val deviceName = android.os.Build.MODEL
+        val osVersion = android.os.Build.VERSION.RELEASE
+        val modifiedUserAgent =
+            "${UserAgentTokens.FIVE_G_MS_REL_17_MEDIA_STREAM_HANDLER} $defaultUserAgent (Android $osVersion; $deviceName)"
+        val httpDataSourceFactory: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setUserAgent(modifiedUserAgent)
+        val dataSourceFactory =
+            DataSource.Factory {
+                val dataSource = httpDataSourceFactory.createDataSource()
+                dataSource
+            }
         mediaSessionHandlerAdapter = msh
         playerInstance = ExoPlayer.Builder(context)
             .setMediaSourceFactory(
@@ -81,6 +88,7 @@ class ExoPlayerAdapter() {
     fun pause() {
         playerInstance.pause()
     }
+
 
     fun seek(time: Long) {
         TODO("Not yet implemented")
