@@ -24,6 +24,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.*
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.PlaybackMetricsRequest
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.PlaybackMetricsResponse
 import com.fivegmag.a5gmsmediastreamhandler.qoeMetrics.threeGPP.QoEMetricsExoPlayer
 import java.util.LinkedList
 
@@ -157,7 +158,10 @@ class MediaSessionHandlerAdapter() {
             )
 
             val responseBundle = Bundle()
-            responseBundle.putString("qoeMetricsReport", qoeMetricsReport)
+            val playbackMetricsResponse = PlaybackMetricsResponse(qoeMetricsReport,
+                playbackMetricsRequest?.metricReportingConfigurationId
+            )
+            responseBundle.putParcelable("playbackMetricsResponse", playbackMetricsResponse)
             msgResponse.data = responseBundle
             responseMessenger.send(msgResponse)
         }
@@ -307,7 +311,8 @@ class MediaSessionHandlerAdapter() {
             )
 
             val bundle = Bundle()
-            bundle.putString("qoeMetricsReport", qoeMetricsReport)
+            val playbackMetricsResponse = PlaybackMetricsResponse(qoeMetricsReport, playbackMetricsRequest.metricReportingConfigurationId)
+            bundle.putParcelable("playbackMetricsResponse", playbackMetricsResponse)
             msg.data = bundle
             msg.replyTo = mMessenger;
             try {
