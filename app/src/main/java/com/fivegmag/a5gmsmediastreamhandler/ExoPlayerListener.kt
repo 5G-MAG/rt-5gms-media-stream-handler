@@ -27,6 +27,8 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevelEntr
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpListEntry
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpListEntryType
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.MpdInfo
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.MpdInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitch
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.Trace
@@ -47,6 +49,7 @@ class ExoPlayerListener(
     )
     private val httpList: HttpList = HttpList(ArrayList<HttpListEntry>())
     private val bufferLevel: BufferLevel = BufferLevel(ArrayList<BufferLevelEntry>())
+    private val mpdInformation: ArrayList<MpdInformation> = ArrayList()
     private val utils: Utils = Utils()
 
     override fun onPlaybackStateChanged(
@@ -93,6 +96,33 @@ class ExoPlayerListener(
         val representationSwitch = to?.let { RepresentationSwitch(t, mt, it) }
         if (representationSwitch != null) {
             representationSwitchList.entries.add(representationSwitch)
+            addMpdInformation(mediaLoadData)
+        }
+    }
+
+    private fun addMpdInformation(mediaLoadData: MediaLoadData) {
+        val format = mediaLoadData.trackFormat
+        if (format != null) {
+            val representationId = mediaLoadData.trackFormat!!.id
+            val codecs = mediaLoadData.trackFormat!!.codecs
+            val bandwidth = mediaLoadData.trackFormat!!.peakBitrate
+            val mimeType = mediaLoadData.trackFormat!!.containerMimeType
+            val frameRate = mediaLoadData.trackFormat!!.frameRate
+            val width = mediaLoadData.trackFormat!!.width
+            val height = mediaLoadData.trackFormat!!.height
+            val mpdInfo = MpdInfo(codecs, bandwidth, mimeType)
+
+            if (frameRate > 0) {
+                mpdInfo.frameRate = frameRate.toDouble()
+            }
+            if (width > 0) {
+                mpdInfo.width = width
+            }
+
+            if (height > 0) {
+                mpdInfo.height = height
+            }
+            mpdInformation.add(MpdInformation(representationId, null, mpdInfo))
         }
     }
 
@@ -113,6 +143,10 @@ class ExoPlayerListener(
 
     fun getBufferLevel(): BufferLevel {
         return bufferLevel
+    }
+
+    fun getMpdInformation(): ArrayList<MpdInformation> {
+        return mpdInformation
     }
 
     override fun onLoadCompleted(
@@ -176,6 +210,7 @@ class ExoPlayerListener(
         representationSwitchList.entries.clear()
         httpList.entries.clear()
         bufferLevel.entries.clear()
+        mpdInformation.clear()
     }
 
 }

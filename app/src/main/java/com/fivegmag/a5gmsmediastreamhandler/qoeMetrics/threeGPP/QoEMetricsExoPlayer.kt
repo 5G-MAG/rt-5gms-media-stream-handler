@@ -17,6 +17,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.XmlSchemaStrings.THREE_GPP_METADA
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.AvgThroughput
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.MpdInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.PlaybackMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.QoeReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.ReceptionReport
@@ -61,6 +62,10 @@ class QoEMetricsExoPlayer(
      */
     private fun getHttpList(): HttpList {
         return exoPlayerAdapter.getHttpList()
+    }
+
+    private fun getMpdInformation() : ArrayList<MpdInformation> {
+        return exoPlayerAdapter.getMpdInformation()
     }
 
     /**
@@ -129,6 +134,13 @@ class QoEMetricsExoPlayer(
             val httpList = getHttpList()
             if (httpList.entries.size > 0) {
                 qoeMetricsReport.httpList = arrayListOf(httpList)
+            }
+        }
+
+        if (shouldReportMetric(Metrics.MPD_INFORMATION, playbackMetricsRequest.metrics)) {
+            val mpdInformation = getMpdInformation()
+            if (mpdInformation.size > 0) {
+                qoeMetricsReport.mpdInformation = mpdInformation
             }
         }
 

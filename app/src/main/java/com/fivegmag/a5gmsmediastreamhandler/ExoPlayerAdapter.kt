@@ -31,6 +31,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.HttpList
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.MpdInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsModels.threeGPP.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 
@@ -156,6 +157,10 @@ class ExoPlayerAdapter() {
 
     fun getBufferLevel(): BufferLevel {
         return playerListener.getBufferLevel()
+    }
+
+    fun getMpdInformation(): ArrayList<MpdInformation> {
+        return playerListener.getMpdInformation()
     }
 
     fun resetListenerValues() {
