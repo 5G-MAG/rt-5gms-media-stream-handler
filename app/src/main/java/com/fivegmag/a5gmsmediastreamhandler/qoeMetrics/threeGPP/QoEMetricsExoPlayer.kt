@@ -73,7 +73,7 @@ class QoEMetricsExoPlayer(
         val xmlMapper = XmlMapper()
         val serializedResult = xmlMapper.writeValueAsString(input)
 
-        return "<?xml version=\"1.0\"?>$serializedResult"
+        return "<?xml version=\"1.0\" encoding=\"utf-8\"?>$serializedResult"
     }
 
     /**
@@ -154,6 +154,12 @@ class QoEMetricsExoPlayer(
      * @return
      */
     private fun shouldReportMetric(metric: String, metricsList: ArrayList<String>?): Boolean {
+        // Special handling for HTTP List. Needs to be enabled explicitly as not part of TS 26.247
+        if(metric == Metrics.HTTP_LIST) {
+            if (metricsList != null) {
+                return metricsList.contains(metric)
+            }
+        }
         return metricsList.isNullOrEmpty() || metricsList.contains(metric)
     }
 
