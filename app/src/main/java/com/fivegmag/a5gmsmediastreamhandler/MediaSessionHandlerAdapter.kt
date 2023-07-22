@@ -68,13 +68,13 @@ class MediaSessionHandlerAdapter() {
                     entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
 
                 if (dashEntryPoints.isNotEmpty()) {
-                    startPlayback(dashEntryPoints[0].locator)
+                    startPlayback(dashEntryPoints[0].locator, ContentTypes.DASH)
                 }
             }
         }
 
-        private fun startPlayback(url: String) {
-            exoPlayerAdapter.attach(url)
+        private fun startPlayback(url: String, contentType: String) {
+            exoPlayerAdapter.attach(url, contentType)
             exoPlayerAdapter.preload()
             exoPlayerAdapter.play()
         }
