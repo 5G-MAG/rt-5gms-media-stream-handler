@@ -11,6 +11,7 @@ package com.fivegmag.a5gmsmediastreamhandler
 
 import android.content.Context
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
@@ -22,6 +23,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
+import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.helpers.UserAgentTokens
@@ -71,8 +73,26 @@ class ExoPlayerAdapter() {
         playerInstance.addListener(playerListener)
     }
 
-    fun attach(url: String) {
-        val mediaItem: MediaItem = MediaItem.fromUri(url)
+    fun attach(url: String, contentType: String = "") {
+        val mediaItem : MediaItem
+        when (contentType) {
+            ContentTypes.DASH -> {
+                mediaItem = MediaItem.Builder()
+                    .setUri(url)
+                    .setMimeType(MimeTypes.APPLICATION_MPD)
+                    .build()
+            }
+            ContentTypes.HLS -> {
+                mediaItem = MediaItem.Builder()
+                    .setUri(url)
+                    .setMimeType(MimeTypes.APPLICATION_M3U8)
+                    .build()
+            }
+            else -> {
+                mediaItem = MediaItem.fromUri(url)
+            }
+        }
+
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem
     }
