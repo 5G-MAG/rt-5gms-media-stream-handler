@@ -10,42 +10,89 @@ https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
 package com.fivegmag.a5gmsmediastreamhandler
 
 import android.content.Context
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.ui.StyledPlayerView
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter
-import com.google.android.exoplayer2.Player
-
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.util.Util
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
+import androidx.media3.exoplayer.util.EventLogger
+import androidx.media3.ui.PlayerView
+import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
+import com.fivegmag.a5gmscommonlibrary.helpers.UserAgentTokens
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 
 
+@UnstableApi
 class ExoPlayerAdapter() {
 
     private lateinit var playerInstance: ExoPlayer
-    private lateinit var playerView: StyledPlayerView
+    private lateinit var playerView: PlayerView
     private lateinit var activeMediaItem: MediaItem
-    private lateinit var playerListener: ExoPlayerListener
+    private lateinit var playerListener: Player.Listener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
 
+
     fun initialize(
-        exoPlayerView: StyledPlayerView,
+        exoPlayerView: PlayerView,
         context: Context,
         msh: MediaSessionHandlerAdapter
     ) {
+        val defaultUserAgent = Util.getUserAgent(context, "A5GMSMediaStreamHandler")
+        val deviceName = android.os.Build.MODEL
+        val osVersion = android.os.Build.VERSION.RELEASE
+        val modifiedUserAgent =
+            "${UserAgentTokens.FIVE_G_MS_REL_17_MEDIA_STREAM_HANDLER} $defaultUserAgent (Android $osVersion; $deviceName)"
+        val httpDataSourceFactory: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setUserAgent(modifiedUserAgent)
+        val dataSourceFactory =
+            DataSource.Factory {
+                val dataSource = httpDataSourceFactory.createDataSource()
+                dataSource
+            }
         mediaSessionHandlerAdapter = msh
-        playerInstance = ExoPlayer.Builder(context).build()
+        playerInstance = ExoPlayer.Builder(context)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
+            )
+            .build()
+        playerInstance.addAnalyticsListener(EventLogger())
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance
-        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance)
+        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance, playerView)
         playerInstance.addListener(playerListener)
     }
 
-    fun attach(url: String) {
-        val mediaItem: MediaItem = MediaItem.fromUri(url)
+    fun attach(url: String, contentType: String = "") {
+        val mediaItem : MediaItem
+        when (contentType) {
+            ContentTypes.DASH -> {
+                mediaItem = MediaItem.Builder()
+                    .setUri(url)
+                    .setMimeType(MimeTypes.APPLICATION_MPD)
+                    .build()
+            }
+            ContentTypes.HLS -> {
+                mediaItem = MediaItem.Builder()
+                    .setUri(url)
+                    .setMimeType(MimeTypes.APPLICATION_M3U8)
+                    .build()
+            }
+            else -> {
+                mediaItem = MediaItem.fromUri(url)
+            }
+        }
+
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem
     }
@@ -61,6 +108,7 @@ class ExoPlayerAdapter() {
     fun pause() {
         playerInstance.pause()
     }
+
 
     fun seek(time: Long) {
         TODO("Not yet implemented")

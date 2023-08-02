@@ -10,9 +10,10 @@ https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
 package com.fivegmag.a5gmsmediastreamhandler
 
 import android.util.Log
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.PlaybackException
-import com.google.android.exoplayer2.Player
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
@@ -20,12 +21,15 @@ import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 // See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
 class ExoPlayerListener(
     private val mediaSessionHandlerAdapter: MediaSessionHandlerAdapter,
-    private val playerInstance: ExoPlayer
+    private val playerInstance: ExoPlayer,
+    private val playerView: PlayerView
 ) :
     Player.Listener {
 
     override fun onPlaybackStateChanged(playbackState: Int) {
         val state : String = mapStateToConstant(playbackState)
+
+        playerView.keepScreenOn = !(state == PlayerStates.IDLE ||state == PlayerStates.ENDED)
         mediaSessionHandlerAdapter.updatePlaybackState(state)
     }
 
