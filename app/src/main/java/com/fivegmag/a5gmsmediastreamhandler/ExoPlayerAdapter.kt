@@ -36,7 +36,7 @@ class ExoPlayerAdapter() {
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var activeMediaItem: MediaItem
-    private lateinit var playerListener: Player.Listener
+    private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
 
@@ -70,7 +70,7 @@ class ExoPlayerAdapter() {
         playerView = exoPlayerView
         playerView.player = playerInstance
         playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance, playerView)
-        playerInstance.addListener(playerListener)
+        playerInstance.addAnalyticsListener(playerListener)
     }
 
     fun attach(url: String, contentType: String = "") {

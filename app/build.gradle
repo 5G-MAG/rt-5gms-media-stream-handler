@@ -57,10 +57,11 @@ publishing {
 }
 
 dependencies {
-    implementation "androidx.media3:media3-exoplayer:1.0.2"
-    implementation "androidx.media3:media3-exoplayer-dash:1.0.2"
-    implementation "androidx.media3:media3-exoplayer-hls:1.0.2"
-    implementation "androidx.media3:media3-ui:1.0.2"
+    implementation 'androidx.media3:media3-exoplayer:1.0.2'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.0.2'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.0.2'
+    implementation 'androidx.media3:media3-ui:1.0.2'
+    implementation 'org.greenrobot:eventbus:3.3.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1'
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.5.1'
