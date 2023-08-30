@@ -28,7 +28,7 @@ import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
 
 
 class MediaSessionHandlerAdapter() {
-
+	// for test
     private val TAG: String = "MediaSessionHandlerAdapter"
 
     /** Messenger for communicating with the service.  */
