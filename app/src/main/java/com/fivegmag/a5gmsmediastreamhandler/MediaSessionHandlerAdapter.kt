@@ -19,16 +19,16 @@ import android.util.Log
 import android.widget.Toast
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
+import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
-import com.fivegmag.a5gmscommonlibrary.models.EntryPoint
-import com.fivegmag.a5gmscommonlibrary.models.ServiceAccessInformation
-import com.fivegmag.a5gmscommonlibrary.models.M8Model
-import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
 
+import com.fivegmag.a5gmscommonlibrary.models.*
+
+import java.util.*
 
 class MediaSessionHandlerAdapter() {
-	// for test
+
     private val TAG: String = "MediaSessionHandlerAdapter"
 
     /** Messenger for communicating with the service.  */
@@ -149,6 +149,8 @@ class MediaSessionHandlerAdapter() {
                 Log.d(TAG, "Binding to MediaSessionHandler service returned false");
             }
             serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
+
+            reportConsumptionTimer()
         } catch (e: SecurityException) {
             Log.e(
                 TAG,
@@ -198,6 +200,14 @@ class MediaSessionHandlerAdapter() {
 
     fun updatePlaybackState(state: String) {
         if (!bound) return
+
+        // trigger reportConsumption when Start/stop of consumption of a downlink streaming session
+        if (PlayerStates.PLAYING == state || PlayerStates.ENDED == state )
+        {
+            println("shilin====reportConsumption triggered by play status[${state}]")
+            reportConsumption()
+        }
+
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
         val bundle = Bundle()
         bundle.putString("playbackState", state)
@@ -221,6 +231,40 @@ class MediaSessionHandlerAdapter() {
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
+    }
+
+    fun reportConsumption() {
+        if (!bound) return
+
+        var location = TypedLocation("111","222")
+        val consumptionReportingUnits = ConsumptionReportingUnit(
+            "mediaConsumed",
+            EndpointAddress("ipv4Addr", "ipv6Addr", 80u),
+            "startTime",50, arrayOf(location)
+            )
+        var  consumptionData = ConsumptionReporting("mediaPlayerEntry","Consumption testing Data by Shilin", arrayOf(consumptionReportingUnits));
+
+        // Create and send a message to the service, using a supported 'what' value
+        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.CONSUMPTION_REPORTING_MESSAGE)
+        val bundle = Bundle()
+        //bundle.putString("consumptionData", "Consumption testing Data by Shilin.")
+        bundle.putParcelable("consumptionData", consumptionData)
+        msg.data = bundle
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
+        }
+    }
+
+    fun reportConsumptionTimer() {
+        Timer().schedule(object:TimerTask(){
+            override fun run() {
+                println("shilin====reportConsumption triggered by timer v1")
+                reportConsumption()
+            }
+        }, Date(), 10000)
+        // todo: set timer to clientConsumptionReportingConfiguration.reportingInterval in ServiceAccessInformation
     }
 
     fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
