@@ -202,11 +202,11 @@ class MediaSessionHandlerAdapter() {
         if (!bound) return
 
         // trigger reportConsumption when Start/stop of consumption of a downlink streaming session
-        if (PlayerStates.PLAYING == state || PlayerStates.ENDED == state )
+        /*if (PlayerStates.PLAYING == state || PlayerStates.ENDED == state )
         {
-            println("shilin====reportConsumption triggered by play status[${state}]")
+            println("[ConsumptionReporting] reportConsumption triggered by play status【${state}】")
             reportConsumption()
-        }
+        }*/
 
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
         val bundle = Bundle()
@@ -236,13 +236,13 @@ class MediaSessionHandlerAdapter() {
     fun reportConsumption() {
         if (!bound) return
 
-        var location = TypedLocation("111","222")
+        var location = TypedLocation("type","location")
         val consumptionReportingUnits = ConsumptionReportingUnit(
             "mediaConsumed",
             EndpointAddress("ipv4Addr", "ipv6Addr", 80u),
             "startTime",50, arrayOf(location)
             )
-        var  consumptionData = ConsumptionReporting("mediaPlayerEntry","Consumption testing Data by Shilin", arrayOf(consumptionReportingUnits));
+        var  consumptionData = ConsumptionReporting("mediaPlayerEntry","Consumption testing Data by Media Stream Handler", arrayOf(consumptionReportingUnits));
 
         // Create and send a message to the service, using a supported 'what' value
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.CONSUMPTION_REPORTING_MESSAGE)
@@ -257,14 +257,14 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    // every 2s report fake Consumption data once
     fun reportConsumptionTimer() {
         Timer().schedule(object:TimerTask(){
             override fun run() {
-                println("shilin====reportConsumption triggered by timer v1")
+                //println("[ConsumptionReporting] reportConsumption triggered by timer")
                 reportConsumption()
             }
-        }, Date(), 10000)
-        // todo: set timer to clientConsumptionReportingConfiguration.reportingInterval in ServiceAccessInformation
+        }, Date(), 2000)
     }
 
     fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
@@ -284,6 +284,5 @@ class MediaSessionHandlerAdapter() {
             e.printStackTrace()
         }
     }
-
 
 }
