@@ -25,6 +25,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 
 import com.fivegmag.a5gmscommonlibrary.models.*
+import java.net.NetworkInterface
 import java.time.Duration
 import java.time.LocalDateTime
 
@@ -248,6 +249,10 @@ class MediaSessionHandlerAdapter() {
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.CONSUMPTION_REPORTING_MESSAGE)
 
         // Generate fake reporting data
+        val ipv4Addr: String? = getIPAddress(4)
+        val ipv6Addr: String? = getIPAddress(6)
+        //Log.d(TAG, "[ConsumptionReporting] ipv4Addr/ipv6Addr: $ipv4Addr/$ipv6Addr");
+
         var curTime: LocalDateTime = LocalDateTime.now()
         val duration = Duration.between(lastSwitchTime, curTime)
 
@@ -255,8 +260,8 @@ class MediaSessionHandlerAdapter() {
             "location")
         val consumptionReportingUnits = ConsumptionReportingUnit(
             "mediaConsumed",   // todo: to parse mediaConsumed Representation ID in MPD
-            EndpointAddress("ipv4Addr",
-                "ipv6Addr",
+            EndpointAddress(ipv4Addr,
+                ipv6Addr,
                 80u),
             curTime.toString(),
             duration.toSeconds().toInt(), // first step implement as duration between reportings
@@ -277,11 +282,10 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    // every 2s report fake Consumption data once
+    // every 2s report fake Consumption data once, only as the first step for test
     fun reportConsumptionTimer() {
         Timer().schedule(object:TimerTask(){
             override fun run() {
-                //println("[ConsumptionReporting] reportConsumption triggered by timer")
                 reportConsumption()
             }
         }, Date(), 2000)
@@ -305,4 +309,23 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+    fun getIPAddress(ipVer: Int): String? {
+        val interfaces = NetworkInterface.getNetworkInterfaces()
+        while (interfaces.hasMoreElements()) {
+            val networkInterface = interfaces.nextElement()
+            val addresses = networkInterface.inetAddresses
+            while (addresses.hasMoreElements()) {
+                val address = addresses.nextElement()
+                if (!address.isLoopbackAddress && address.isSiteLocalAddress) {
+                    if ((ipVer == 4 && address.hostAddress.contains("."))||
+                        (ipVer == 6 && address.hostAddress.contains(":"))
+                    ){
+                        return address.hostAddress.toString()
+                    }
+                }
+            }
+        }
+
+        return null
+    }
 }
