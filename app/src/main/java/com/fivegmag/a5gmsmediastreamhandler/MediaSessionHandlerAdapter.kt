@@ -158,7 +158,7 @@ class MediaSessionHandlerAdapter() {
             }
             serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
 
-            reportConsumptionTimer()
+            //reportConsumptionTimer()
         } catch (e: SecurityException) {
             Log.e(
                 TAG,
@@ -241,7 +241,6 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.S)
     fun reportConsumption() {
         if (!bound) return
 

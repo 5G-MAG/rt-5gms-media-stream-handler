@@ -40,6 +40,7 @@ class ExoPlayerListener(
         playerView.keepScreenOn = !(state == PlayerStates.IDLE || state == PlayerStates.ENDED)
         mediaSessionHandlerAdapter.updatePlaybackState(state)
     }
+
     override fun onIsPlayingChanged(eventTime: AnalyticsListener.EventTime, isPlaying: Boolean) {
         var state: String? = null
         if (isPlaying) {
@@ -51,12 +52,17 @@ class ExoPlayerListener(
             mediaSessionHandlerAdapter.updatePlaybackState(state)
         }
     }
+
     override fun onDownstreamFormatChanged(
         eventTime: AnalyticsListener.EventTime,
         mediaLoadData: MediaLoadData
     ) {
+        Log.d("ExoPlayer", "[ConsumptionReporting] onDownstreamFormatChanged========================>")
+        mediaSessionHandlerAdapter.reportConsumption()
+
         EventBus.getDefault().post(DownstreamFormatChangedEvent(mediaLoadData))
     }
+
     override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: PlaybackException) {
         Log.d("ExoPlayer", "Error")
     }
