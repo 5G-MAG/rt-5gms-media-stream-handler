@@ -17,10 +17,13 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.ui.PlayerView
+import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
+import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import org.greenrobot.eventbus.EventBus
+import java.util.Date
 
 // See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
 @UnstableApi
@@ -30,6 +33,9 @@ class ExoPlayerListener(
     private val playerView: PlayerView
 ) :
     AnalyticsListener {
+
+    private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
+    private val utils: Utils = Utils()
 
     override fun onPlaybackStateChanged(
         eventTime: AnalyticsListener.EventTime,
@@ -57,14 +63,40 @@ class ExoPlayerListener(
         eventTime: AnalyticsListener.EventTime,
         mediaLoadData: MediaLoadData
     ) {
-        Log.d("ExoPlayer", "[ConsumptionReporting] onDownstreamFormatChanged========================>")
-        mediaSessionHandlerAdapter.reportConsumption()
-
+        addConsumptionReportingUnit(mediaLoadData)
         EventBus.getDefault().post(DownstreamFormatChangedEvent(mediaLoadData))
     }
 
     override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: PlaybackException) {
         Log.d("ExoPlayer", "Error")
+    }
+
+    private fun addConsumptionReportingUnit(mediaLoadData: MediaLoadData) {
+        val startTime = utils.formatDateToOpenAPIFormat(Date())
+        val mediaConsumed = mediaLoadData.trackFormat?.id
+        val duration = 0
+
+        // If we have a previous entry in the list of consumption reporting units then we can calculate the duration now
+        val lastEntry = consumptionReportingUnitList.lastOrNull();
+        if (lastEntry != null) {
+            lastEntry.duration =
+                utils.calculateTimestampDifferenceInSeconds(lastEntry.startTime, startTime).toInt()
+        }
+
+        // Add the new entry
+        val consumptionReportingUnit =
+            mediaConsumed?.let { ConsumptionReportingUnit(it, null, startTime, duration, null) }
+        if (consumptionReportingUnit != null) {
+            consumptionReportingUnitList.add(consumptionReportingUnit)
+        }
+    }
+
+    fun getConsumptionReportingUnitList(): ArrayList<ConsumptionReportingUnit> {
+        return consumptionReportingUnitList
+    }
+
+    fun resetConsumptionReport() {
+        consumptionReportingUnitList.clear()
     }
 
 }

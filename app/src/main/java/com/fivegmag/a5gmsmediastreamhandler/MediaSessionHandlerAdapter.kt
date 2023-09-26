@@ -17,17 +17,15 @@ import android.content.ServiceConnection
 import android.os.*
 import android.util.Log
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.media3.common.util.UnstableApi
+import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportRequest
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
-import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 
 import com.fivegmag.a5gmscommonlibrary.models.*
-import java.net.NetworkInterface
-import java.time.Duration
-import java.time.LocalDateTime
+import com.fivegmag.a5gmsmediastreamhandler.consumptionReporting.ConsumptionReportingExoPlayer
+
 
 import java.util.*
 
@@ -41,12 +39,9 @@ class MediaSessionHandlerAdapter() {
     /** Flag indicating whether we have called bind on the service.  */
     private var bound: Boolean = false
 
-    private var mpdUrl: String = ""
-    private var lastSwitchTime: LocalDateTime = LocalDateTime.now()
-
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
 
-    private lateinit var currentServiceAccessInformation: ServiceAccessInformation
+    private lateinit var consumptionReportingExoPlayer: ConsumptionReportingExoPlayer
 
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
@@ -61,6 +56,11 @@ class MediaSessionHandlerAdapter() {
                 SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleSessionHandlerTriggersPlaybackMessage(
                     msg
                 )
+
+                SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReportMessage(
+                    msg
+                )
+
                 else -> super.handleMessage(msg)
             }
         }
@@ -75,10 +75,33 @@ class MediaSessionHandlerAdapter() {
                     entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
 
                 if (dashEntryPoints.isNotEmpty()) {
-                    mpdUrl = dashEntryPoints[0].locator
+                    val mpdUrl = dashEntryPoints[0].locator
                     startPlayback(mpdUrl, ContentTypes.DASH)
                 }
             }
+        }
+
+        private fun handleGetConsumptionReportMessage(msg: Message) {
+            val bundle: Bundle = msg.data
+            bundle.classLoader = ConsumptionReportRequest::class.java.classLoader
+            val consumptionReportRequest: ConsumptionReportRequest? = bundle.getParcelable("data")
+            val consumptionReport = consumptionReportRequest?.let {
+                consumptionReportingExoPlayer.getConsumptionReport(
+                    it
+                )
+            }
+
+            exoPlayerAdapter.resetConsumptionReportingListenerValues()
+            val responseMessenger: Messenger = msg.replyTo
+            val msgResponse: Message = Message.obtain(
+                null,
+                SessionHandlerMessageTypes.CONSUMPTION_REPORT
+            )
+
+            val responseBundle = Bundle()
+            responseBundle.putString("consumptionReport", consumptionReport)
+            msgResponse.data = responseBundle
+            responseMessenger.send(msgResponse)
         }
 
         private fun startPlayback(url: String, contentType: String) {
@@ -133,12 +156,15 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
+
+    @UnstableApi
     fun initialize(
         context: Context,
         epa: ExoPlayerAdapter,
         onConnectionToMediaSessionHandlerEstablished: () -> (Unit)
     ) {
         exoPlayerAdapter = epa
+        consumptionReportingExoPlayer = ConsumptionReportingExoPlayer(exoPlayerAdapter)
 
         try {
             val intent = Intent()
@@ -157,8 +183,6 @@ class MediaSessionHandlerAdapter() {
                 Log.d(TAG, "Binding to MediaSessionHandler service returned false");
             }
             serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
-
-            //reportConsumptionTimer()
         } catch (e: SecurityException) {
             Log.e(
                 TAG,
@@ -171,22 +195,6 @@ class MediaSessionHandlerAdapter() {
         if (bound) {
             context.unbindService(mConnection)
             bound = false
-        }
-    }
-
-    fun updateLookupTable(m8Data: M8Model) {
-        val msg: Message = Message.obtain(
-            null,
-            SessionHandlerMessageTypes.UPDATE_LOOKUP_TABLE
-        )
-        val bundle = Bundle()
-        bundle.putParcelable("m8Data", m8Data)
-        msg.data = bundle
-        msg.replyTo = mMessenger;
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
         }
     }
 
@@ -241,54 +249,6 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun reportConsumption() {
-        if (!bound) return
-
-        // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.CONSUMPTION_REPORTING_MESSAGE)
-
-        // Generate fake reporting data
-        val ipv4Addr: String? = getIPAddress(4)
-        val ipv6Addr: String? = getIPAddress(6)
-        //Log.d(TAG, "[ConsumptionReporting] ipv4Addr/ipv6Addr: $ipv4Addr/$ipv6Addr");
-
-        var curTime: LocalDateTime = LocalDateTime.now()
-        val duration = Duration.between(lastSwitchTime, curTime)
-
-        var location = TypedLocation("type",
-            "location")
-        val consumptionReportingUnits = ConsumptionReportingUnit(
-            "mediaConsumed",   // todo: to parse mediaConsumed Representation ID in MPD
-            EndpointAddress(ipv4Addr,
-                ipv6Addr,
-                80u),
-            curTime.toString(),
-            duration.toSeconds().toInt(), // first step implement as duration between reportings
-            arrayOf(location)
-            )
-        var  consumptionData = ConsumptionReporting(mpdUrl,
-            (msg.sendingUid).toString(), //why printed value is always -1??
-            arrayOf(consumptionReportingUnits));
-
-        val bundle = Bundle()
-        bundle.putParcelable("consumptionData", consumptionData)
-        msg.data = bundle
-        try {
-            mService?.send(msg)
-            lastSwitchTime = curTime
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
-    // every 2s report fake Consumption data once, only as the first step for test
-    fun reportConsumptionTimer() {
-        Timer().schedule(object:TimerTask(){
-            override fun run() {
-                reportConsumption()
-            }
-        }, Date(), 2000)
-    }
 
     fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
         if (!bound) return
@@ -308,23 +268,4 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun getIPAddress(ipVer: Int): String? {
-        val interfaces = NetworkInterface.getNetworkInterfaces()
-        while (interfaces.hasMoreElements()) {
-            val networkInterface = interfaces.nextElement()
-            val addresses = networkInterface.inetAddresses
-            while (addresses.hasMoreElements()) {
-                val address = addresses.nextElement()
-                if (!address.isLoopbackAddress && address.isSiteLocalAddress) {
-                    if ((ipVer == 4 && address.hostAddress.contains("."))||
-                        (ipVer == 6 && address.hostAddress.contains(":"))
-                    ){
-                        return address.hostAddress.toString()
-                    }
-                }
-            }
-        }
-
-        return null
-    }
 }

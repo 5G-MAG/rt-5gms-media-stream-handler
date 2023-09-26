@@ -23,6 +23,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
+import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
@@ -36,6 +37,7 @@ class ExoPlayerAdapter() {
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var activeMediaItem: MediaItem
+    private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
@@ -95,6 +97,15 @@ class ExoPlayerAdapter() {
 
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem
+        activeManifestUrl = url
+    }
+
+    fun getActiveMediaItem(): MediaItem {
+        return activeMediaItem
+    }
+
+    fun getCurrentManifestUri() : String {
+        return activeManifestUrl
     }
 
     fun preload() {
@@ -144,6 +155,14 @@ class ExoPlayerAdapter() {
 
     private fun getLiveLatency(): Long {
         return playerInstance.currentLiveOffset
+    }
+
+    fun getConsumptionReportingUnitList(): ArrayList<ConsumptionReportingUnit> {
+        return playerListener.getConsumptionReportingUnitList()
+    }
+
+    fun resetConsumptionReportingListenerValues() {
+        playerListener.resetConsumptionReport()
     }
 
     fun getStatusInformation(status: String): Any? {
