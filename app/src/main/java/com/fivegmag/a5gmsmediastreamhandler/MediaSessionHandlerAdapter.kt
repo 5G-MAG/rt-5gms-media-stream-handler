@@ -18,31 +18,18 @@ import android.os.*
 import android.util.Log
 import android.widget.Toast
 import androidx.media3.common.util.UnstableApi
-import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportRequest
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
-
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
-
 import com.fivegmag.a5gmscommonlibrary.models.*
 import com.fivegmag.a5gmsmediastreamhandler.consumptionReporting.ConsumptionReportingExoPlayer
-
-
 import java.util.*
 
 class MediaSessionHandlerAdapter() {
-
     private val TAG: String = "MediaSessionHandlerAdapter"
-
-    /** Messenger for communicating with the service.  */
     private var mService: Messenger? = null
-
-    /** Flag indicating whether we have called bind on the service.  */
     private var bound: Boolean = false
-
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
-
     private lateinit var consumptionReportingExoPlayer: ConsumptionReportingExoPlayer
-
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
     /**
@@ -57,9 +44,7 @@ class MediaSessionHandlerAdapter() {
                     msg
                 )
 
-                SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReportMessage(
-                    msg
-                )
+                SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReportMessage()
 
                 else -> super.handleMessage(msg)
             }
@@ -76,39 +61,18 @@ class MediaSessionHandlerAdapter() {
 
                 if (dashEntryPoints.isNotEmpty()) {
                     val mpdUrl = dashEntryPoints[0].locator
-                    startPlayback(mpdUrl, ContentTypes.DASH)
+                    exoPlayerAdapter.attach(mpdUrl, ContentTypes.DASH)
+                    exoPlayerAdapter.preload()
+                    exoPlayerAdapter.play()
                 }
             }
         }
 
-        private fun handleGetConsumptionReportMessage(msg: Message) {
-            val bundle: Bundle = msg.data
-            bundle.classLoader = ConsumptionReportRequest::class.java.classLoader
-            val consumptionReportRequest: ConsumptionReportRequest? = bundle.getParcelable("data")
-            val consumptionReport = consumptionReportRequest?.let {
-                consumptionReportingExoPlayer.getConsumptionReport(
-                    it
-                )
-            }
-
-            exoPlayerAdapter.resetConsumptionReportingListenerValues()
-            val responseMessenger: Messenger = msg.replyTo
-            val msgResponse: Message = Message.obtain(
-                null,
-                SessionHandlerMessageTypes.CONSUMPTION_REPORT
-            )
-
-            val responseBundle = Bundle()
-            responseBundle.putString("consumptionReport", consumptionReport)
-            msgResponse.data = responseBundle
-            responseMessenger.send(msgResponse)
+        private fun handleGetConsumptionReportMessage() {
+            sendConsumptionReport()
+            exoPlayerAdapter.cleanConsumptionReportingList()
         }
 
-        private fun startPlayback(url: String, contentType: String) {
-            exoPlayerAdapter.attach(url, contentType)
-            exoPlayerAdapter.preload()
-            exoPlayerAdapter.play()
-        }
 
     }
 
@@ -259,6 +223,25 @@ class MediaSessionHandlerAdapter() {
         )
         val bundle = Bundle()
         bundle.putParcelable("serviceListEntry", serviceListEntry)
+        msg.data = bundle
+        msg.replyTo = mMessenger;
+        try {
+            mService?.send(msg)
+        } catch (e: RemoteException) {
+            e.printStackTrace()
+        }
+    }
+
+    @UnstableApi
+    fun sendConsumptionReport() {
+        val consumptionReport = consumptionReportingExoPlayer.getConsumptionReport()
+        val msg: Message = Message.obtain(
+            null,
+            SessionHandlerMessageTypes.CONSUMPTION_REPORT
+        )
+
+        val bundle = Bundle()
+        bundle.putString("consumptionReport", consumptionReport)
         msg.data = bundle
         msg.replyTo = mMessenger;
         try {

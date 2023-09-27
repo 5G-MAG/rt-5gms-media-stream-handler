@@ -25,6 +25,8 @@ import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import org.greenrobot.eventbus.EventBus
 import java.util.Date
 
+const val TAG = "ExoPlayerListener"
+
 // See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
 @UnstableApi
 class ExoPlayerListener(
@@ -74,19 +76,22 @@ class ExoPlayerListener(
     private fun addConsumptionReportingUnit(mediaLoadData: MediaLoadData) {
         val startTime = utils.formatDateToOpenAPIFormat(Date())
         val mediaConsumed = mediaLoadData.trackFormat?.id
+        val mimeType = mediaLoadData.trackFormat!!.containerMimeType
         val duration = 0
 
-        // If we have a previous entry in the list of consumption reporting units then we can calculate the duration now
-        val lastEntry = consumptionReportingUnitList.lastOrNull();
-        if (lastEntry != null) {
-            lastEntry.duration =
-                utils.calculateTimestampDifferenceInSeconds(lastEntry.startTime, startTime).toInt()
+        // If we have a previous entry in the list of consumption reporting units with the same media type then we can calculate the duration now
+        val existingEntry = consumptionReportingUnitList.find { it.mimeType == mimeType }
+        if (existingEntry != null) {
+            existingEntry.duration =
+                utils.calculateTimestampDifferenceInSeconds(existingEntry.startTime, startTime).toInt()
+            existingEntry.finished = true
         }
 
         // Add the new entry
         val consumptionReportingUnit =
             mediaConsumed?.let { ConsumptionReportingUnit(it, null, startTime, duration, null) }
         if (consumptionReportingUnit != null) {
+            consumptionReportingUnit.mimeType = mimeType
             consumptionReportingUnitList.add(consumptionReportingUnit)
         }
     }
@@ -95,8 +100,25 @@ class ExoPlayerListener(
         return consumptionReportingUnitList
     }
 
-    fun resetConsumptionReport() {
+    /**
+     * Removes all entries from the consumption reporting list
+     *
+     */
+    private fun resetConsumptionReportingList() {
         consumptionReportingUnitList.clear()
+    }
+
+    /**
+     * Removes all entries in the consumption report that are finished
+     *
+     */
+    fun cleanConsumptionReportingList() {
+        consumptionReportingUnitList.removeIf { obj -> obj.finished }
+    }
+
+    fun reset() {
+        Log.d(TAG, "Resetting ExoPlayerListener")
+        resetConsumptionReportingList()
     }
 
 }

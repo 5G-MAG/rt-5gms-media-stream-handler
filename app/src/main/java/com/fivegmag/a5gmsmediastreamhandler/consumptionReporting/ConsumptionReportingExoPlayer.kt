@@ -4,9 +4,9 @@ import androidx.media3.common.util.UnstableApi
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReport
-import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportRequest
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmsmediastreamhandler.ExoPlayerAdapter
+import java.util.Date
 
 @UnstableApi
 class ConsumptionReportingExoPlayer(
@@ -16,9 +16,22 @@ class ConsumptionReportingExoPlayer(
     private val utils: Utils = Utils()
     private val reportingClientId = utils.generateUUID()
 
-    fun getConsumptionReport(consumptionReportRequest: ConsumptionReportRequest): String {
+    fun getConsumptionReport(): String {
         val mediaPlayerEntry = exoPlayerAdapter.getCurrentManifestUri()
         val consumptionReportingUnits = exoPlayerAdapter.getConsumptionReportingUnitList()
+
+        // We need to add the duration of the consumption reporting units that are not yet finished
+        for (consumptionReportingUnit in consumptionReportingUnits) {
+            if (!consumptionReportingUnit.finished) {
+                val currentTime = utils.formatDateToOpenAPIFormat(Date())
+                consumptionReportingUnit.duration =
+                    utils.calculateTimestampDifferenceInSeconds(
+                        consumptionReportingUnit.startTime,
+                        currentTime
+                    ).toInt()
+            }
+        }
+
         val consumptionReport = ConsumptionReport(
             mediaPlayerEntry,
             reportingClientId,

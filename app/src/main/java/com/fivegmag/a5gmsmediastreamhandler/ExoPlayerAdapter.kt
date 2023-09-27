@@ -36,7 +36,7 @@ class ExoPlayerAdapter() {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
-    private lateinit var activeMediaItem: MediaItem
+    private var activeMediaItem: MediaItem? = null
     private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
@@ -76,7 +76,12 @@ class ExoPlayerAdapter() {
     }
 
     fun attach(url: String, contentType: String = "") {
-        val mediaItem : MediaItem
+        // Send the final consumption report
+        if (activeMediaItem != null) {
+            mediaSessionHandlerAdapter.sendConsumptionReport()
+        }
+        resetListenerValues()
+        val mediaItem: MediaItem
         when (contentType) {
             ContentTypes.DASH -> {
                 mediaItem = MediaItem.Builder()
@@ -84,12 +89,14 @@ class ExoPlayerAdapter() {
                     .setMimeType(MimeTypes.APPLICATION_MPD)
                     .build()
             }
+
             ContentTypes.HLS -> {
                 mediaItem = MediaItem.Builder()
                     .setUri(url)
                     .setMimeType(MimeTypes.APPLICATION_M3U8)
                     .build()
             }
+
             else -> {
                 mediaItem = MediaItem.fromUri(url)
             }
@@ -100,11 +107,11 @@ class ExoPlayerAdapter() {
         activeManifestUrl = url
     }
 
-    fun getActiveMediaItem(): MediaItem {
-        return activeMediaItem
+    private fun resetListenerValues() {
+        playerListener.reset()
     }
 
-    fun getCurrentManifestUri() : String {
+    fun getCurrentManifestUri(): String {
         return activeManifestUrl
     }
 
@@ -161,8 +168,8 @@ class ExoPlayerAdapter() {
         return playerListener.getConsumptionReportingUnitList()
     }
 
-    fun resetConsumptionReportingListenerValues() {
-        playerListener.resetConsumptionReport()
+    fun cleanConsumptionReportingList() {
+        playerListener.cleanConsumptionReportingList()
     }
 
     fun getStatusInformation(status: String): Any? {
