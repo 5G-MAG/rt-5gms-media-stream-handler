@@ -9,7 +9,13 @@ https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
 
 package com.fivegmag.a5gmsmediastreamhandler
 
+import android.content.Context
+import android.os.Build
+import android.telephony.CellInfo
+import android.telephony.CellInfoLte
+import android.telephony.TelephonyManager
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -21,9 +27,13 @@ import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReporting
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
+import com.fivegmag.a5gmscommonlibrary.models.CellIdentifierType
+import com.fivegmag.a5gmscommonlibrary.models.EndpointAddress
+import com.fivegmag.a5gmscommonlibrary.models.TypedLocation
 import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import org.greenrobot.eventbus.EventBus
 import java.util.Date
+
 
 const val TAG = "ExoPlayerListener"
 
@@ -32,7 +42,8 @@ const val TAG = "ExoPlayerListener"
 class ExoPlayerListener(
     private val mediaSessionHandlerAdapter: MediaSessionHandlerAdapter,
     private val playerInstance: ExoPlayer,
-    private val playerView: PlayerView
+    private val playerView: PlayerView,
+    private val context: Context
 ) :
     AnalyticsListener {
 
@@ -46,6 +57,11 @@ class ExoPlayerListener(
         val state: String = mapStateToConstant(playbackState)
 
         playerView.keepScreenOn = !(state == PlayerStates.IDLE || state == PlayerStates.ENDED)
+
+        if (state == PlayerStates.ENDED) {
+            mediaSessionHandlerAdapter.sendConsumptionReport()
+        }
+
         mediaSessionHandlerAdapter.updatePlaybackState(state)
     }
 
@@ -61,6 +77,7 @@ class ExoPlayerListener(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onDownstreamFormatChanged(
         eventTime: AnalyticsListener.EventTime,
         mediaLoadData: MediaLoadData
@@ -73,6 +90,7 @@ class ExoPlayerListener(
         Log.d("ExoPlayer", "Error")
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun addConsumptionReportingUnit(mediaLoadData: MediaLoadData) {
         val startTime = utils.formatDateToOpenAPIFormat(Date())
         val mediaConsumed = mediaLoadData.trackFormat?.id
@@ -83,7 +101,8 @@ class ExoPlayerListener(
         val existingEntry = consumptionReportingUnitList.find { it.mimeType == mimeType }
         if (existingEntry != null) {
             existingEntry.duration =
-                utils.calculateTimestampDifferenceInSeconds(existingEntry.startTime, startTime).toInt()
+                utils.calculateTimestampDifferenceInSeconds(existingEntry.startTime, startTime)
+                    .toInt()
             existingEntry.finished = true
         }
 
@@ -92,8 +111,43 @@ class ExoPlayerListener(
             mediaConsumed?.let { ConsumptionReportingUnit(it, null, startTime, duration, null) }
         if (consumptionReportingUnit != null) {
             consumptionReportingUnit.mimeType = mimeType
+            consumptionReportingUnit.locations = getLocations()
+            consumptionReportingUnit.mediaEndpointAddress = getMediaEndpointAddress()
             consumptionReportingUnitList.add(consumptionReportingUnit)
         }
+    }
+
+    /**
+     * getCellIdentity requires API level 30
+     *
+     * @return
+     */
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun getLocations(): ArrayList<TypedLocation> {
+        val locations = ArrayList<TypedLocation>()
+        val telephonyManager =
+            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        try {
+            val cellInfoList: List<CellInfo> = telephonyManager.allCellInfo
+
+            for (cellInfo in cellInfoList) {
+                if (cellInfo.isRegistered) {
+                    val cellIdentity = cellInfo.cellIdentity
+                    val location = cellIdentity.operatorAlphaLong.toString()
+                    locations.add(TypedLocation(CellIdentifierType.CGI, location))
+                }
+            }
+        } catch (e: SecurityException) {
+            return ArrayList()
+        }
+
+        return locations
+    }
+
+    private fun getMediaEndpointAddress(): EndpointAddress {
+        val ipv4Address = utils.getIpAddress(4)
+        val ipv6Address = utils.getIpAddress(6)
+        return EndpointAddress(null, ipv4Address, ipv6Address, 80u)
     }
 
     fun getConsumptionReportingUnitList(): ArrayList<ConsumptionReportingUnit> {
