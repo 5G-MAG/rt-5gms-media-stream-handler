@@ -23,6 +23,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
+import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
@@ -35,7 +36,8 @@ class ExoPlayerAdapter() {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
-    private lateinit var activeMediaItem: MediaItem
+    private var activeMediaItem: MediaItem? = null
+    private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
@@ -69,12 +71,18 @@ class ExoPlayerAdapter() {
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance
-        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance, playerView)
+        playerListener =
+            ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance, playerView, context)
         playerInstance.addAnalyticsListener(playerListener)
     }
 
     fun attach(url: String, contentType: String = "") {
-        val mediaItem : MediaItem
+        // Send the final consumption report
+        if (activeMediaItem != null) {
+            mediaSessionHandlerAdapter.sendConsumptionReport()
+        }
+        resetListenerValues()
+        val mediaItem: MediaItem
         when (contentType) {
             ContentTypes.DASH -> {
                 mediaItem = MediaItem.Builder()
@@ -82,12 +90,14 @@ class ExoPlayerAdapter() {
                     .setMimeType(MimeTypes.APPLICATION_MPD)
                     .build()
             }
+
             ContentTypes.HLS -> {
                 mediaItem = MediaItem.Builder()
                     .setUri(url)
                     .setMimeType(MimeTypes.APPLICATION_M3U8)
                     .build()
             }
+
             else -> {
                 mediaItem = MediaItem.fromUri(url)
             }
@@ -95,6 +105,15 @@ class ExoPlayerAdapter() {
 
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem
+        activeManifestUrl = url
+    }
+
+    private fun resetListenerValues() {
+        playerListener.reset()
+    }
+
+    fun getCurrentManifestUri(): String {
+        return activeManifestUrl
     }
 
     fun preload() {
@@ -144,6 +163,14 @@ class ExoPlayerAdapter() {
 
     private fun getLiveLatency(): Long {
         return playerInstance.currentLiveOffset
+    }
+
+    fun getConsumptionReportingUnitList(): ArrayList<ConsumptionReportingUnit> {
+        return playerListener.getConsumptionReportingUnitList()
+    }
+
+    fun cleanConsumptionReportingList() {
+        playerListener.cleanConsumptionReportingList()
     }
 
     fun getStatusInformation(status: String): Any? {
