@@ -23,7 +23,6 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
-import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
@@ -72,16 +71,11 @@ class ExoPlayerAdapter() {
         playerView = exoPlayerView
         playerView.player = playerInstance
         playerListener =
-            ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance, playerView, context)
+            ExoPlayerListener(playerInstance, playerView)
         playerInstance.addAnalyticsListener(playerListener)
     }
 
     fun attach(url: String, contentType: String = "") {
-        // Send the final consumption report
-        if (activeMediaItem != null) {
-            mediaSessionHandlerAdapter.sendConsumptionReport()
-        }
-        resetListenerValues()
         val mediaItem: MediaItem
         when (contentType) {
             ContentTypes.DASH -> {
@@ -108,8 +102,13 @@ class ExoPlayerAdapter() {
         activeManifestUrl = url
     }
 
-    private fun resetListenerValues() {
-        playerListener.reset()
+     fun handleSourceChange() {
+        // Send the final consumption report
+        if (activeMediaItem != null) {
+            mediaSessionHandlerAdapter.sendConsumptionReport()
+        }
+        playerListener.resetState()
+        mediaSessionHandlerAdapter.resetState()
     }
 
     fun getCurrentManifestUri(): String {
@@ -127,7 +126,6 @@ class ExoPlayerAdapter() {
     fun pause() {
         playerInstance.pause()
     }
-
 
     fun seek(time: Long) {
         TODO("Not yet implemented")
@@ -163,14 +161,6 @@ class ExoPlayerAdapter() {
 
     private fun getLiveLatency(): Long {
         return playerInstance.currentLiveOffset
-    }
-
-    fun getConsumptionReportingUnitList(): ArrayList<ConsumptionReportingUnit> {
-        return playerListener.getConsumptionReportingUnitList()
-    }
-
-    fun cleanConsumptionReportingList() {
-        playerListener.cleanConsumptionReportingList()
     }
 
     fun getStatusInformation(status: String): Any? {

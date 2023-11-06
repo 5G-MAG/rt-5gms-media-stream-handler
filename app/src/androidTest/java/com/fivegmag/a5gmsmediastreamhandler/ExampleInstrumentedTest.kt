@@ -26,27 +26,4 @@ class ExampleInstrumentedTest {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         assertEquals("com.fivegmag.a5gmsmediastreamhandler", appContext.packageName)
     }
-
-    @Test
-    fun getLocations() {
-        val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
-        val locations = ArrayList<TypedLocation>()
-        val telephonyManager =
-            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        try {
-            val cellInfoList: List<CellInfo> = telephonyManager.allCellInfo
-
-            for (cellInfo in cellInfoList) {
-                if (cellInfo.isRegistered) {
-                    val cellIdentity = cellInfo.cellIdentity
-                    val location = cellIdentity.toString()
-                    locations.add(TypedLocation(CellIdentifierType.CGI, location))
-                }
-            }
-        } catch (e: SecurityException) {
-            assertEquals("com.fivegmag.a5gmsmediastreamhandler", "com.fivegmag.a5gmsmediastreamhandler")
-        }
-
-        assertEquals("com.fivegmag.a5gmsmediastreamhandler", "com.fivegmag.a5gmsmediastreamhandler")
-    }
 }
