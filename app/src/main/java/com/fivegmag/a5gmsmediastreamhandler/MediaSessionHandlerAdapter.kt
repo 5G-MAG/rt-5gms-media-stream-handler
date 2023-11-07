@@ -18,10 +18,16 @@ import android.os.*
 import android.util.Log
 import android.widget.Toast
 import androidx.media3.common.util.UnstableApi
+import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
+import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.*
-import com.fivegmag.a5gmsmediastreamhandler.consumptionReporting.ConsumptionReportingExoPlayer
+import com.fivegmag.a5gmsmediastreamhandler.consumptionReporting.ConsumptionReportingController
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
 import java.util.*
 
 class MediaSessionHandlerAdapter() {
@@ -29,7 +35,7 @@ class MediaSessionHandlerAdapter() {
     private var mService: Messenger? = null
     private var bound: Boolean = false
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
-    private lateinit var consumptionReportingExoPlayer: ConsumptionReportingExoPlayer
+    private lateinit var consumptionReportingController: ConsumptionReportingController
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
     /**
@@ -37,14 +43,15 @@ class MediaSessionHandlerAdapter() {
      */
     @UnstableApi
     inner class IncomingHandler() : Handler() {
-
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleSessionHandlerTriggersPlaybackMessage(
                     msg
                 )
 
-                SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReportMessage()
+                SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReportMessage(
+                    msg
+                )
 
                 else -> super.handleMessage(msg)
             }
@@ -52,15 +59,19 @@ class MediaSessionHandlerAdapter() {
 
         private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
             val bundle: Bundle = msg.data
-            bundle.classLoader = EntryPoint::class.java.classLoader
-            val entryPoints: ArrayList<EntryPoint>? = bundle.getParcelableArrayList("entryPoints")
+            bundle.classLoader = PlaybackRequest::class.java.classLoader
+            val playbackRequest: PlaybackRequest? = bundle.getParcelable("playbackRequest")
 
-            if (entryPoints != null && entryPoints.size > 0) {
+            if (playbackRequest != null && playbackRequest.entryPoints.size > 0) {
                 val dashEntryPoints: List<EntryPoint> =
-                    entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
+                    playbackRequest.entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
 
                 if (dashEntryPoints.isNotEmpty()) {
                     val mpdUrl = dashEntryPoints[0].locator
+                    exoPlayerAdapter.handleSourceChange()
+                    consumptionReportingController.setCurrentConsumptionReportingConfiguration(
+                        playbackRequest.playbackConsumptionReportingConfiguration
+                    )
                     exoPlayerAdapter.attach(mpdUrl, ContentTypes.DASH)
                     exoPlayerAdapter.preload()
                     exoPlayerAdapter.play()
@@ -68,12 +79,20 @@ class MediaSessionHandlerAdapter() {
             }
         }
 
-        private fun handleGetConsumptionReportMessage() {
+        private fun handleGetConsumptionReportMessage(msg: Message) {
+            val bundle: Bundle = msg.data
+            bundle.classLoader = PlaybackConsumptionReportingConfiguration::class.java.classLoader
+            val playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
+                bundle.getParcelable("playbackConsumptionReportingConfiguration")
+
+            if (playbackConsumptionReportingConfiguration != null) {
+                consumptionReportingController.setCurrentConsumptionReportingConfiguration(
+                    playbackConsumptionReportingConfiguration
+                )
+            }
             sendConsumptionReport()
-            exoPlayerAdapter.cleanConsumptionReportingList()
+            consumptionReportingController.cleanConsumptionReportingList()
         }
-
-
     }
 
     /**
@@ -99,8 +118,8 @@ class MediaSessionHandlerAdapter() {
                     null,
                     SessionHandlerMessageTypes.REGISTER_CLIENT
                 )
-                msg.replyTo = mMessenger;
-                mService!!.send(msg);
+                msg.replyTo = mMessenger
+                mService!!.send(msg)
                 bound = true
                 serviceConnectedCallbackFunction()
             } catch (e: RemoteException) {
@@ -120,7 +139,6 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-
     @UnstableApi
     fun initialize(
         context: Context,
@@ -128,7 +146,9 @@ class MediaSessionHandlerAdapter() {
         onConnectionToMediaSessionHandlerEstablished: () -> (Unit)
     ) {
         exoPlayerAdapter = epa
-        consumptionReportingExoPlayer = ConsumptionReportingExoPlayer(exoPlayerAdapter)
+        consumptionReportingController = ConsumptionReportingController(context)
+        consumptionReportingController.initialize()
+        EventBus.getDefault().register(this)
 
         try {
             val intent = Intent()
@@ -137,21 +157,41 @@ class MediaSessionHandlerAdapter() {
                 "com.fivegmag.a5gmsmediasessionhandler.MediaSessionHandlerMessengerService"
             )
             if (context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
-                Log.i(TAG, "Binding to MediaSessionHandler service returned true");
+                Log.i(TAG, "Binding to MediaSessionHandler service returned true")
                 Toast.makeText(
                     context,
                     "Successfully bound to Media Session Handler",
                     Toast.LENGTH_SHORT
                 ).show()
             } else {
-                Log.d(TAG, "Binding to MediaSessionHandler service returned false");
+                Log.d(TAG, "Binding to MediaSessionHandler service returned false")
             }
             serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
         } catch (e: SecurityException) {
             Log.e(
                 TAG,
-                "Can't bind to ModemWatcherService, check permission in Manifest"
-            );
+                "Can't bind to MediaSessionHandler, check permission in Manifest"
+            )
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    @UnstableApi
+    fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
+        if (event.playbackState == PlayerStates.ENDED) {
+            sendConsumptionReport()
+        }
+
+        updatePlaybackState(event.playbackState)
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    @UnstableApi
+    fun onCellInfoUpdatedEvent(event: CellInfoUpdatedEvent) {
+        val playbackConsumptionReportingConfiguration =
+            consumptionReportingController.getPlaybackConsumptionReportingConfiguration()
+        if (playbackConsumptionReportingConfiguration != null && playbackConsumptionReportingConfiguration.locationReporting == true) {
+            sendConsumptionReport()
         }
     }
 
@@ -170,7 +210,7 @@ class MediaSessionHandlerAdapter() {
         val bundle = Bundle()
         bundle.putString("m5BaseUrl", m5BaseUrl)
         msg.data = bundle
-        msg.replyTo = mMessenger;
+        msg.replyTo = mMessenger
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
@@ -180,14 +220,6 @@ class MediaSessionHandlerAdapter() {
 
     fun updatePlaybackState(state: String) {
         if (!bound) return
-
-        // trigger reportConsumption when Start/stop of consumption of a downlink streaming session
-        /*if (PlayerStates.PLAYING == state || PlayerStates.ENDED == state )
-        {
-            println("[ConsumptionReporting] reportConsumption triggered by play status【${state}】")
-            reportConsumption()
-        }*/
-
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
         val bundle = Bundle()
         bundle.putString("playbackState", state)
@@ -224,7 +256,7 @@ class MediaSessionHandlerAdapter() {
         val bundle = Bundle()
         bundle.putParcelable("serviceListEntry", serviceListEntry)
         msg.data = bundle
-        msg.replyTo = mMessenger;
+        msg.replyTo = mMessenger
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
@@ -234,7 +266,9 @@ class MediaSessionHandlerAdapter() {
 
     @UnstableApi
     fun sendConsumptionReport() {
-        val consumptionReport = consumptionReportingExoPlayer.getConsumptionReport()
+        val mediaPlayerEntry = exoPlayerAdapter.getCurrentManifestUri()
+        val consumptionReport =
+            consumptionReportingController.getConsumptionReport(mediaPlayerEntry)
         val msg: Message = Message.obtain(
             null,
             SessionHandlerMessageTypes.CONSUMPTION_REPORT
@@ -243,12 +277,17 @@ class MediaSessionHandlerAdapter() {
         val bundle = Bundle()
         bundle.putString("consumptionReport", consumptionReport)
         msg.data = bundle
-        msg.replyTo = mMessenger;
+        msg.replyTo = mMessenger
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
             e.printStackTrace()
         }
+    }
+
+    @UnstableApi
+    fun resetState() {
+        consumptionReportingController.resetState()
     }
 
 }
