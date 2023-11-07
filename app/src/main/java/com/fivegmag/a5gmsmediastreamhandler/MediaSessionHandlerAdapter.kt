@@ -188,7 +188,11 @@ class MediaSessionHandlerAdapter() {
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     fun onCellInfoUpdatedEvent(event: CellInfoUpdatedEvent) {
-        sendConsumptionReport()
+        val playbackConsumptionReportingConfiguration =
+            consumptionReportingController.getPlaybackConsumptionReportingConfiguration()
+        if (playbackConsumptionReportingConfiguration != null && playbackConsumptionReportingConfiguration.locationReporting == true) {
+            sendConsumptionReport()
+        }
     }
 
     fun reset(context: Context) {

@@ -43,7 +43,8 @@ class ConsumptionReportingController(
     private val utils: Utils = Utils()
     private val reportingClientId = utils.generateUUID()
     private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
-    private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? = null
+    private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
+        null
     private var activeLocations: ArrayList<TypedLocation> = ArrayList()
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
         @SuppressLint("Range")
@@ -61,6 +62,10 @@ class ConsumptionReportingController(
 
             EventBus.getDefault().post(CellInfoUpdatedEvent(cellInfoList))
         }
+    }
+
+    fun getPlaybackConsumptionReportingConfiguration(): PlaybackConsumptionReportingConfiguration? {
+        return playbackConsumptionReportingConfiguration
     }
 
     private fun createTypedLocationByCellInfo(cellInfo: CellInfo): TypedLocation? {
