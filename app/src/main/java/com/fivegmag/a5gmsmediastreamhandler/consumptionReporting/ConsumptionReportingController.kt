@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReport
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
+import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.CellIdentifierType
@@ -42,8 +43,7 @@ class ConsumptionReportingController(
     private val utils: Utils = Utils()
     private val reportingClientId = utils.generateUUID()
     private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
-    private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
-        PlaybackConsumptionReportingConfiguration(false, false)
+    private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? = null
     private var activeLocations: ArrayList<TypedLocation> = ArrayList()
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
         @SuppressLint("Range")
@@ -58,12 +58,14 @@ class ConsumptionReportingController(
                     }
                 }
             }
+
+            EventBus.getDefault().post(CellInfoUpdatedEvent(cellInfoList))
         }
     }
 
     private fun createTypedLocationByCellInfo(cellInfo: CellInfo): TypedLocation? {
         try {
-            var typedLocation: TypedLocation? = null
+            val typedLocation: TypedLocation?
             when (cellInfo) {
                 // CGI = MCC + MNC + LAC + CI
                 is CellInfoGsm -> {

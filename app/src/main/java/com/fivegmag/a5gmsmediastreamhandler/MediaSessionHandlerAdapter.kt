@@ -18,6 +18,7 @@ import android.os.*
 import android.util.Log
 import android.widget.Toast
 import androidx.media3.common.util.UnstableApi
+import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
@@ -68,7 +69,9 @@ class MediaSessionHandlerAdapter() {
                 if (dashEntryPoints.isNotEmpty()) {
                     val mpdUrl = dashEntryPoints[0].locator
                     exoPlayerAdapter.handleSourceChange()
-                    consumptionReportingController.setCurrentConsumptionReportingConfiguration(playbackRequest.playbackConsumptionReportingConfiguration)
+                    consumptionReportingController.setCurrentConsumptionReportingConfiguration(
+                        playbackRequest.playbackConsumptionReportingConfiguration
+                    )
                     exoPlayerAdapter.attach(mpdUrl, ContentTypes.DASH)
                     exoPlayerAdapter.preload()
                     exoPlayerAdapter.play()
@@ -115,8 +118,8 @@ class MediaSessionHandlerAdapter() {
                     null,
                     SessionHandlerMessageTypes.REGISTER_CLIENT
                 )
-                msg.replyTo = mMessenger;
-                mService!!.send(msg);
+                msg.replyTo = mMessenger
+                mService!!.send(msg)
                 bound = true
                 serviceConnectedCallbackFunction()
             } catch (e: RemoteException) {
@@ -136,7 +139,6 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-
     @UnstableApi
     fun initialize(
         context: Context,
@@ -155,21 +157,21 @@ class MediaSessionHandlerAdapter() {
                 "com.fivegmag.a5gmsmediasessionhandler.MediaSessionHandlerMessengerService"
             )
             if (context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
-                Log.i(TAG, "Binding to MediaSessionHandler service returned true");
+                Log.i(TAG, "Binding to MediaSessionHandler service returned true")
                 Toast.makeText(
                     context,
                     "Successfully bound to Media Session Handler",
                     Toast.LENGTH_SHORT
                 ).show()
             } else {
-                Log.d(TAG, "Binding to MediaSessionHandler service returned false");
+                Log.d(TAG, "Binding to MediaSessionHandler service returned false")
             }
             serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
         } catch (e: SecurityException) {
             Log.e(
                 TAG,
-                "Can't bind to ModemWatcherService, check permission in Manifest"
-            );
+                "Can't bind to MediaSessionHandler, check permission in Manifest"
+            )
         }
     }
 
@@ -181,6 +183,12 @@ class MediaSessionHandlerAdapter() {
         }
 
         updatePlaybackState(event.playbackState)
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    @UnstableApi
+    fun onCellInfoUpdatedEvent(event: CellInfoUpdatedEvent) {
+        sendConsumptionReport()
     }
 
     fun reset(context: Context) {
@@ -198,7 +206,7 @@ class MediaSessionHandlerAdapter() {
         val bundle = Bundle()
         bundle.putString("m5BaseUrl", m5BaseUrl)
         msg.data = bundle
-        msg.replyTo = mMessenger;
+        msg.replyTo = mMessenger
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
@@ -244,7 +252,7 @@ class MediaSessionHandlerAdapter() {
         val bundle = Bundle()
         bundle.putParcelable("serviceListEntry", serviceListEntry)
         msg.data = bundle
-        msg.replyTo = mMessenger;
+        msg.replyTo = mMessenger
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
@@ -265,7 +273,7 @@ class MediaSessionHandlerAdapter() {
         val bundle = Bundle()
         bundle.putString("consumptionReport", consumptionReport)
         msg.data = bundle
-        msg.replyTo = mMessenger;
+        msg.replyTo = mMessenger
         try {
             mService?.send(msg)
         } catch (e: RemoteException) {
