@@ -18,6 +18,7 @@ import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.MediaLoadData
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReport
@@ -193,6 +194,7 @@ class ConsumptionReportingController(
             consumptionReportingUnitList
         )
         val objectMapper: ObjectMapper = jacksonObjectMapper()
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         return objectMapper.writeValueAsString(consumptionReport)
     }
