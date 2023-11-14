@@ -5,15 +5,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.telephony.CellIdentityGsm
-import android.telephony.CellIdentityLte
-import android.telephony.CellIdentityNr
-import android.telephony.CellInfo
-import android.telephony.CellInfoGsm
-import android.telephony.CellInfoLte
-import android.telephony.CellInfoNr
-import android.telephony.TelephonyManager
+import android.telephony.*
 import androidx.annotation.RequiresApi
+import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -42,7 +36,9 @@ class ConsumptionReportingController(
 ) {
     private val TAG = "ConsumptionReportingController"
     private val utils: Utils = Utils()
-    private val reportingClientId = utils.generateUUID()
+
+    private val reportingClientId = genReportingClientId()
+
     private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
     private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
         null
@@ -62,6 +58,42 @@ class ConsumptionReportingController(
             }
 
             EventBus.getDefault().post(CellInfoUpdatedEvent(cellInfoList))
+        }
+    }
+
+    @SuppressLint("Range")
+    private fun getGPSI(): String {
+        var subscriptionId: String = ""
+
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_STATE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            val subscriptionManager: SubscriptionManager = SubscriptionManager.from(context)
+
+            val subscriptionInfoList: List<SubscriptionInfo> = subscriptionManager.getActiveSubscriptionInfoList()
+            if (subscriptionInfoList != null) {
+                for (subscriptionInfo in subscriptionInfoList) {
+                    subscriptionId = subscriptionInfo.getSubscriptionId().toString();
+                }
+            }
+        }
+
+        Log.d(TAG, "GPSI:- $subscriptionId")
+        return subscriptionId
+    }
+
+    private fun genReportingClientId(): String
+    {
+        val gpsiID: String = getGPSI()
+        if (gpsiID != "")
+        {
+            return gpsiID
+        }
+        else
+        {
+            return utils.generateUUID()
         }
     }
 
