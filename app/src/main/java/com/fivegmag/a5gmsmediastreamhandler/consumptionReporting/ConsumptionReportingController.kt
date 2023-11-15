@@ -9,6 +9,7 @@ import android.telephony.*
 import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
+import androidx.core.content.getSystemService
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.MediaLoadData
@@ -61,40 +62,53 @@ class ConsumptionReportingController(
         }
     }
 
+    /**
+     * MSISDN = CC + NDC + SN
+     *
+     */
     @SuppressLint("Range")
-    private fun getGPSI(): String {
-        var subscriptionId: String = ""
+    private fun getMSISDN(): String {
+        var strMSISDN: String = ""
 
         if (ActivityCompat.checkSelfPermission(
                 context,
-                Manifest.permission.READ_PHONE_STATE
+                Manifest.permission.READ_PHONE_NUMBERS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            val subscriptionManager: SubscriptionManager = SubscriptionManager.from(context)
+            val subscriptionManager: SubscriptionManager =
+                context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
 
             val subscriptionInfoList: List<SubscriptionInfo> = subscriptionManager.getActiveSubscriptionInfoList()
             if (subscriptionInfoList != null) {
                 for (subscriptionInfo in subscriptionInfoList) {
-                    subscriptionId = subscriptionInfo.getSubscriptionId().toString();
+                    strMSISDN = subscriptionManager.getPhoneNumber(subscriptionInfo.subscriptionId)
                 }
             }
         }
 
-        Log.d(TAG, "GPSI:- $subscriptionId")
-        return subscriptionId
+        return strMSISDN
     }
 
+    /**
+     * The GPSI is either a mobile subscriber ISDN number (MSISDN) or an external identifier
+     *
+     */
+    @SuppressLint("Range")
     private fun genReportingClientId(): String
     {
-        val gpsiID: String = getGPSI()
-        if (gpsiID != "")
+        var strGPSI: String = ""
+        val strMSISDN: String = getMSISDN()
+        if (strMSISDN != "")
         {
-            return gpsiID
+            strGPSI = strMSISDN
         }
         else
         {
-            return utils.generateUUID()
+            strGPSI = utils.generateUUID()
         }
+
+        Log.d(TAG, "ConsumptionReporting: GPSI = $strGPSI")
+        return strGPSI
     }
 
     fun getPlaybackConsumptionReportingConfiguration(): PlaybackConsumptionReportingConfiguration? {
