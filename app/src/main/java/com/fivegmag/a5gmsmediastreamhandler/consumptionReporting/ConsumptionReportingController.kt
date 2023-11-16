@@ -81,7 +81,7 @@ class ConsumptionReportingController(
             val subscriptionInfoList: List<SubscriptionInfo> = subscriptionManager.getActiveSubscriptionInfoList()
             if (subscriptionInfoList != null) {
                 for (subscriptionInfo in subscriptionInfoList) {
-                    strMSISDN = subscriptionManager.getPhoneNumber(subscriptionInfo.subscriptionId)
+                    strMSISDN = subscriptionManager.getPhoneNumber(getActiveSIMIdx(subscriptionInfoList))
                 }
             }
         }
@@ -109,6 +109,30 @@ class ConsumptionReportingController(
 
         Log.d(TAG, "ConsumptionReporting: GPSI = $strGPSI")
         return strGPSI
+    }
+
+    /**
+     * In case of multi SIM cards, get the the index of SIM which is used for the traffic
+     * If none of them match, use the first as default
+     *
+     */
+    private fun getActiveSIMIdx(subscriptionInfoList: List<SubscriptionInfo>): Int {
+        val telephonyManager =
+            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        var simOPName: String = telephonyManager.getSimOperatorName()
+
+        var subscriptionIdx: Int = 1
+        for (subscriptionInfo in subscriptionInfoList) {
+            var subscriptionId = subscriptionInfo.getSubscriptionId()
+            var subscriptionName: String = subscriptionInfo.getCarrierName() as String
+
+            if (subscriptionName == simOPName)
+            {
+                subscriptionIdx = subscriptionId
+            }
+        }
+
+        return subscriptionIdx
     }
 
     fun getPlaybackConsumptionReportingConfiguration(): PlaybackConsumptionReportingConfiguration? {
