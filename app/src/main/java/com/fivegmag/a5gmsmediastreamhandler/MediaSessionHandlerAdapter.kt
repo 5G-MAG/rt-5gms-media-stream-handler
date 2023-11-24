@@ -53,6 +53,10 @@ class MediaSessionHandlerAdapter() {
                     msg
                 )
 
+                SessionHandlerMessageTypes.UPDATE_PLAYBACK_CONSUMPTION_REPORTING_CONFIGURATION -> handleUpdatePlaybackConsumptionReportingConfiguration(
+                    msg
+                )
+
                 else -> super.handleMessage(msg)
             }
         }
@@ -76,6 +80,19 @@ class MediaSessionHandlerAdapter() {
                     exoPlayerAdapter.preload()
                     exoPlayerAdapter.play()
                 }
+            }
+        }
+
+        private fun handleUpdatePlaybackConsumptionReportingConfiguration(msg: Message) {
+            val bundle: Bundle = msg.data
+            bundle.classLoader = PlaybackConsumptionReportingConfiguration::class.java.classLoader
+            val playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
+                bundle.getParcelable("playbackConsumptionReportingConfiguration")
+
+            if (playbackConsumptionReportingConfiguration != null) {
+                consumptionReportingController.setCurrentConsumptionReportingConfiguration(
+                    playbackConsumptionReportingConfiguration
+                )
             }
         }
 
