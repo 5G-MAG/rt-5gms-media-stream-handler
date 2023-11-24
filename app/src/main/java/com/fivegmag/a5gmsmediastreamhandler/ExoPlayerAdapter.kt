@@ -102,7 +102,7 @@ class ExoPlayerAdapter() {
         activeManifestUrl = url
     }
 
-     fun handleSourceChange() {
+    fun handleSourceChange() {
         // Send the final consumption report
         if (activeMediaItem != null) {
             mediaSessionHandlerAdapter.sendConsumptionReport()
