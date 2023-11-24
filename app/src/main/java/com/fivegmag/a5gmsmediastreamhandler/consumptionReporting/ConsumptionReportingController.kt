@@ -14,7 +14,14 @@ import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.MediaLoadData
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializerProvider
+import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.ser.PropertyFilter
+import com.fasterxml.jackson.databind.ser.PropertyWriter
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReport
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
@@ -229,12 +236,11 @@ class ConsumptionReportingController(
             mediaConsumed?.let { ConsumptionReportingUnit(it, null, startTime, duration, null) }
         if (consumptionReportingUnit != null) {
             consumptionReportingUnit.mimeType = mimeType
-            if (playbackConsumptionReportingConfiguration?.locationReporting == true) {
-                consumptionReportingUnit.locations = activeLocations
-            }
-            if (playbackConsumptionReportingConfiguration?.accessReporting == true) {
-                consumptionReportingUnit.mediaEndpointAddress = getMediaEndpointAddress()
-            }
+
+            // We add locations and mediaEndpointAddress and filter the attributes later in case the corresponding configuration options are set to false
+            // If we do not add the information here we can not include it later in case the SAI configuration changes
+            consumptionReportingUnit.locations = activeLocations
+            consumptionReportingUnit.mediaEndpointAddress = getMediaEndpointAddress()
             consumptionReportingUnitList.add(consumptionReportingUnit)
         }
     }
@@ -264,9 +270,20 @@ class ConsumptionReportingController(
             consumptionReportingUnitList
         )
         val objectMapper: ObjectMapper = jacksonObjectMapper()
-        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
 
-        return objectMapper.writeValueAsString(consumptionReport)
+        // Filter the values according to the current configuration
+        val propertiesToIgnore = mutableListOf<String>()
+        if (playbackConsumptionReportingConfiguration?.locationReporting == false) {
+            propertiesToIgnore.add("locations")
+        }
+        if (playbackConsumptionReportingConfiguration?.accessReporting == false) {
+            propertiesToIgnore.add("mediaEndpointAddress")
+        }
+
+        val filters = ConsumptionReportingFilterProvider.createFilter(propertiesToIgnore)
+
+        return objectMapper.writer(filters).writeValueAsString(consumptionReport)
     }
 
     fun requestCellInfoUpdates() {
@@ -289,5 +306,62 @@ class ConsumptionReportingController(
      */
     fun cleanConsumptionReportingList() {
         consumptionReportingUnitList.removeIf { obj -> obj.finished }
+    }
+}
+
+class ConsumptionReportingUnitFilter(private val propertiesToIgnore: List<String>) :
+    PropertyFilter {
+    override fun serializeAsField(
+        pojo: Any?,
+        gen: JsonGenerator?,
+        prov: SerializerProvider?,
+        writer: PropertyWriter?
+    ) {
+        if (include(writer)) {
+            writer?.serializeAsField(pojo, gen, prov)
+        } else if (!gen?.canOmitFields()!!) {
+            writer?.serializeAsOmittedField(pojo, gen, prov)
+        }
+    }
+
+    override fun serializeAsElement(
+        elementValue: Any?,
+        gen: JsonGenerator?,
+        prov: SerializerProvider?,
+        writer: PropertyWriter?
+    ) {
+        if (include(writer)) {
+            writer?.serializeAsElement(elementValue, gen, prov)
+        } else if (!gen?.canOmitFields()!!) {
+            writer?.serializeAsOmittedField(elementValue, gen, prov)
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun depositSchemaProperty(
+        writer: PropertyWriter?,
+        propertiesNode: ObjectNode?,
+        provider: SerializerProvider?
+    ) {
+    }
+
+    override fun depositSchemaProperty(
+        writer: PropertyWriter?,
+        objectVisitor: JsonObjectFormatVisitor?,
+        provider: SerializerProvider?
+    ) {
+    }
+
+    private fun include(writer: PropertyWriter?): Boolean {
+        return writer?.name !in propertiesToIgnore
+    }
+}
+
+object ConsumptionReportingFilterProvider {
+    fun createFilter(propertiesToIgnore: List<String>): SimpleFilterProvider {
+        return SimpleFilterProvider().addFilter(
+            "consumptionReportingUnitFilter",
+            ConsumptionReportingUnitFilter(propertiesToIgnore)
+        )
     }
 }
