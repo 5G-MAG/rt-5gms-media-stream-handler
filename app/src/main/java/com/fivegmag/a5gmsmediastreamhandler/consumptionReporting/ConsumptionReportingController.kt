@@ -7,9 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.*
 import androidx.annotation.RequiresApi
-import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
-import androidx.core.content.getSystemService
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.MediaLoadData
@@ -45,6 +43,7 @@ class ConsumptionReportingController(
     private val TAG = "ConsumptionReportingController"
     private val utils: Utils = Utils()
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private val reportingClientId = genReportingClientId()
 
     private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
@@ -52,7 +51,6 @@ class ConsumptionReportingController(
         null
     private var activeLocations: ArrayList<TypedLocation> = ArrayList()
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
-        @SuppressLint("Range")
         override fun onCellInfo(cellInfoList: MutableList<CellInfo>) {
             // Process the received cell info
             activeLocations.clear()
@@ -73,9 +71,9 @@ class ConsumptionReportingController(
      * MSISDN = CC + NDC + SN
      *
      */
-    @SuppressLint("Range")
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun getMSISDN(): String {
-        var strMSISDN: String = ""
+        var strMSISDN = ""
 
         if (ActivityCompat.checkSelfPermission(
                 context,
@@ -85,11 +83,9 @@ class ConsumptionReportingController(
             val subscriptionManager: SubscriptionManager =
                 context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
 
-            val subscriptionInfoList: List<SubscriptionInfo> = subscriptionManager.getActiveSubscriptionInfoList()
-            if (subscriptionInfoList != null) {
-                for (subscriptionInfo in subscriptionInfoList) {
+            val subscriptionInfoList: List<SubscriptionInfo> = subscriptionManager.activeSubscriptionInfoList
+            for (subscriptionInfo in subscriptionInfoList) {
                     strMSISDN = subscriptionManager.getPhoneNumber(getActiveSIMIdx(subscriptionInfoList))
-                }
             }
         }
 
@@ -100,10 +96,11 @@ class ConsumptionReportingController(
      * The GPSI is either a mobile subscriber ISDN number (MSISDN) or an external identifier
      *
      */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @SuppressLint("Range")
     private fun genReportingClientId(): String
     {
-        var strGPSI: String = ""
+        var strGPSI = ""
         val strMSISDN: String = getMSISDN()
         if (strMSISDN != "")
         {
@@ -126,12 +123,12 @@ class ConsumptionReportingController(
     private fun getActiveSIMIdx(subscriptionInfoList: List<SubscriptionInfo>): Int {
         val telephonyManager =
             context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        var simOPName: String = telephonyManager.getSimOperatorName()
+        val simOPName: String = telephonyManager.simOperatorName
 
         var subscriptionIdx: Int = 1
         for (subscriptionInfo in subscriptionInfoList) {
-            var subscriptionId = subscriptionInfo.getSubscriptionId()
-            var subscriptionName: String = subscriptionInfo.getCarrierName() as String
+            val subscriptionId = subscriptionInfo.subscriptionId
+            val subscriptionName: String = subscriptionInfo.carrierName as String
 
             if (subscriptionName == simOPName)
             {
@@ -212,6 +209,7 @@ class ConsumptionReportingController(
         addConsumptionReportingUnit(event.mediaLoadData)
     }
 
+
     @SuppressLint("Range")
     @RequiresApi(Build.VERSION_CODES.R)
     private fun addConsumptionReportingUnit(mediaLoadData: MediaLoadData) {
@@ -251,6 +249,7 @@ class ConsumptionReportingController(
         return EndpointAddress(null, ipv4Address, ipv6Address, 80u)
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun getConsumptionReport(mediaPlayerEntry: String): String {
         // We need to add the duration of the consumption reporting units that are not yet finished
         for (consumptionReportingUnit in consumptionReportingUnitList) {
@@ -286,7 +285,7 @@ class ConsumptionReportingController(
         return objectMapper.writer(filters).writeValueAsString(consumptionReport)
     }
 
-    fun requestCellInfoUpdates() {
+    private fun requestCellInfoUpdates() {
         val telephonyManager =
             context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
 
