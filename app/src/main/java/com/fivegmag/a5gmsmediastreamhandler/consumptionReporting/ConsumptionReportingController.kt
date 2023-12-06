@@ -42,10 +42,7 @@ class ConsumptionReportingController(
 ) {
     private val TAG = "ConsumptionReportingController"
     private val utils: Utils = Utils()
-
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private val reportingClientId = genReportingClientId()
-
+    private val reportingClientId = generateReportingClientId()
     private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
     private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
         null
@@ -72,8 +69,8 @@ class ConsumptionReportingController(
      *
      */
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun getMSISDN(): String {
-        var strMSISDN = ""
+    private fun getMsisdn(): String {
+        var strMsisdn = ""
 
         if (ActivityCompat.checkSelfPermission(
                 context,
@@ -83,36 +80,36 @@ class ConsumptionReportingController(
             val subscriptionManager: SubscriptionManager =
                 context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
 
-            val subscriptionInfoList: List<SubscriptionInfo> = subscriptionManager.activeSubscriptionInfoList
+            val subscriptionInfoList: List<SubscriptionInfo> =
+                subscriptionManager.activeSubscriptionInfoList
             for (subscriptionInfo in subscriptionInfoList) {
-                    strMSISDN = subscriptionManager.getPhoneNumber(getActiveSIMIdx(subscriptionInfoList))
+                strMsisdn =
+                    subscriptionManager.getPhoneNumber(getActiveSIMIdx(subscriptionInfoList))
             }
         }
 
-        return strMSISDN
+        return strMsisdn
     }
 
     /**
      * The GPSI is either a mobile subscriber ISDN number (MSISDN) or an external identifier
      *
      */
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @SuppressLint("Range")
-    private fun genReportingClientId(): String
-    {
-        var strGPSI = ""
-        val strMSISDN: String = getMSISDN()
-        if (strMSISDN != "")
-        {
-            strGPSI = strMSISDN
+    private fun generateReportingClientId(): String {
+        val strGpsi: String
+        var strMsisdn = ""
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
+            strMsisdn = getMsisdn()
         }
-        else
-        {
-            strGPSI = utils.generateUUID()
+        strGpsi = if (strMsisdn != "") {
+            strMsisdn
+        } else {
+            utils.generateUUID()
         }
 
-        Log.d(TAG, "ConsumptionReporting: GPSI = $strGPSI")
-        return strGPSI
+        Log.d(TAG, "ConsumptionReporting: GPSI = $strGpsi")
+        return strGpsi
     }
 
     /**
@@ -125,13 +122,12 @@ class ConsumptionReportingController(
             context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val simOPName: String = telephonyManager.simOperatorName
 
-        var subscriptionIdx: Int = 1
+        var subscriptionIdx = 1
         for (subscriptionInfo in subscriptionInfoList) {
             val subscriptionId = subscriptionInfo.subscriptionId
             val subscriptionName: String = subscriptionInfo.carrierName as String
 
-            if (subscriptionName == simOPName)
-            {
+            if (subscriptionName == simOPName) {
                 subscriptionIdx = subscriptionId
             }
         }
@@ -249,7 +245,6 @@ class ConsumptionReportingController(
         return EndpointAddress(null, ipv4Address, ipv6Address, 80u)
     }
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun getConsumptionReport(mediaPlayerEntry: String): String {
         // We need to add the duration of the consumption reporting units that are not yet finished
         for (consumptionReportingUnit in consumptionReportingUnitList) {
