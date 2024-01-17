@@ -25,6 +25,7 @@ import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReport
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.CellIdentifierType
 import com.fivegmag.a5gmscommonlibrary.models.EndpointAddress
@@ -47,6 +48,7 @@ class ConsumptionReportingController(
     private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
         null
     private var activeLocations: ArrayList<TypedLocation> = ArrayList()
+    private var serverEndpointAddressesPerMediaType = mutableMapOf<String, EndpointAddress>()
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
         override fun onCellInfo(cellInfoList: MutableList<CellInfo>) {
             // Process the received cell info
@@ -187,6 +189,7 @@ class ConsumptionReportingController(
 
     fun resetState() {
         playbackConsumptionReportingConfiguration = null
+        serverEndpointAddressesPerMediaType.clear()
         consumptionReportingUnitList.clear()
     }
 
@@ -203,6 +206,33 @@ class ConsumptionReportingController(
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onDownstreamFormatChangedEvent(event: DownstreamFormatChangedEvent) {
         addConsumptionReportingUnit(event.mediaLoadData)
+    }
+
+    @SuppressLint("Range")
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onLoadStartedEvent(event: LoadStartedEvent) {
+        Log.d(TAG, "onLoadStartedEvent")
+        try {
+            val mimeType = event.mediaLoadData.trackFormat!!.containerMimeType
+            if (mimeType != null) {
+                val requestUrl = event.loadEventInfo.dataSpec.uri.toString()
+                val domainName = utils.getDomainName(requestUrl)
+
+                // If the domain name did not change no need to update anything
+                val currentEndpointAddress = serverEndpointAddressesPerMediaType[mimeType]
+                if (currentEndpointAddress != null && currentEndpointAddress.domainName == domainName) {
+                    return
+                }
+
+                utils.getEndpointAddressByRequestUrl(requestUrl) { endpointAddress ->
+                    if (endpointAddress != null) {
+                        serverEndpointAddressesPerMediaType[mimeType] = endpointAddress
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Error while creating server endpoint address: $e")
+        }
     }
 
 
@@ -227,22 +257,46 @@ class ConsumptionReportingController(
 
         // Add the new entry
         val consumptionReportingUnit =
-            mediaConsumed?.let { ConsumptionReportingUnit(it, null, startTime, duration, null) }
+            mediaConsumed?.let {
+                ConsumptionReportingUnit(
+                    it,
+                    null,
+                    null,
+                    startTime,
+                    duration,
+                    null
+                )
+            }
         if (consumptionReportingUnit != null) {
             consumptionReportingUnit.mimeType = mimeType
 
-            // We add locations and mediaEndpointAddress and filter the attributes later in case the corresponding configuration options are set to false
+            // We add locations and clientEndpointAddress and filter the attributes later in case the corresponding configuration options are set to false
             // If we do not add the information here we can not include it later in case the SAI configuration changes
             consumptionReportingUnit.locations = activeLocations
-            consumptionReportingUnit.mediaEndpointAddress = getMediaEndpointAddress()
+            consumptionReportingUnit.serverEndpointAddress = getServerEndpointAddress(mimeType)
+            consumptionReportingUnit.clientEndpointAddress =
+                getClientEndpointAddress(consumptionReportingUnit.serverEndpointAddress)
             consumptionReportingUnitList.add(consumptionReportingUnit)
         }
     }
 
-    private fun getMediaEndpointAddress(): EndpointAddress {
+    private fun getClientEndpointAddress(serverEndpointAddress: EndpointAddress?): EndpointAddress {
         val ipv4Address = utils.getIpAddress(4)
         val ipv6Address = utils.getIpAddress(6)
-        return EndpointAddress(null, ipv4Address, ipv6Address, 80u)
+        var portNumber = 80
+        if (serverEndpointAddress != null) {
+            portNumber = serverEndpointAddress.portNumber
+        }
+
+        return EndpointAddress(null, ipv4Address, ipv6Address, portNumber)
+    }
+
+    private fun getServerEndpointAddress(mimeType: String?): EndpointAddress? {
+        if (mimeType == null) {
+            return null
+        }
+
+        return serverEndpointAddressesPerMediaType[mimeType] ?: return null
     }
 
     fun getConsumptionReport(mediaPlayerEntry: String): String {
@@ -272,7 +326,8 @@ class ConsumptionReportingController(
             propertiesToIgnore.add("locations")
         }
         if (playbackConsumptionReportingConfiguration?.accessReporting == false) {
-            propertiesToIgnore.add("mediaEndpointAddress")
+            propertiesToIgnore.add("clientEndpointAddress")
+            propertiesToIgnore.add("serverEndpointAddress")
         }
 
         val filters = ConsumptionReportingFilterProvider.createFilter(propertiesToIgnore)
