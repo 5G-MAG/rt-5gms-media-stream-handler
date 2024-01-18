@@ -216,18 +216,9 @@ class ConsumptionReportingController(
             val mimeType = event.mediaLoadData.trackFormat!!.containerMimeType
             if (mimeType != null) {
                 val requestUrl = event.loadEventInfo.dataSpec.uri.toString()
-                val domainName = utils.getDomainName(requestUrl)
-
-                // If the domain name did not change no need to update anything
-                val currentEndpointAddress = serverEndpointAddressesPerMediaType[mimeType]
-                if (currentEndpointAddress != null && currentEndpointAddress.domainName == domainName) {
-                    return
-                }
-
-                utils.getEndpointAddressByRequestUrl(requestUrl) { endpointAddress ->
-                    if (endpointAddress != null) {
-                        serverEndpointAddressesPerMediaType[mimeType] = endpointAddress
-                    }
+                val endpointAddress = utils.getEndpointAddressByRequestUrl(requestUrl)
+                if (endpointAddress != null) {
+                    serverEndpointAddressesPerMediaType[mimeType] = endpointAddress
                 }
             }
         } catch (e: Exception) {
