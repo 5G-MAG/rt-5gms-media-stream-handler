@@ -211,7 +211,6 @@ class ConsumptionReportingController(
     @SuppressLint("Range")
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onLoadStartedEvent(event: LoadStartedEvent) {
-        Log.d(TAG, "onLoadStartedEvent")
         try {
             val mimeType = event.mediaLoadData.trackFormat!!.containerMimeType
             if (mimeType != null) {
