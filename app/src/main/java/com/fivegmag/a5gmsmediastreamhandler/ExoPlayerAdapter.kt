@@ -35,7 +35,8 @@ class ExoPlayerAdapter() {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
-    private lateinit var activeMediaItem: MediaItem
+    private var activeMediaItem: MediaItem? = null
+    private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
     private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
@@ -69,12 +70,13 @@ class ExoPlayerAdapter() {
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         playerView = exoPlayerView
         playerView.player = playerInstance
-        playerListener = ExoPlayerListener(mediaSessionHandlerAdapter, playerInstance, playerView)
+        playerListener =
+            ExoPlayerListener(playerInstance, playerView)
         playerInstance.addAnalyticsListener(playerListener)
     }
 
     fun attach(url: String, contentType: String = "") {
-        val mediaItem : MediaItem
+        val mediaItem: MediaItem
         when (contentType) {
             ContentTypes.DASH -> {
                 mediaItem = MediaItem.Builder()
@@ -82,12 +84,14 @@ class ExoPlayerAdapter() {
                     .setMimeType(MimeTypes.APPLICATION_MPD)
                     .build()
             }
+
             ContentTypes.HLS -> {
                 mediaItem = MediaItem.Builder()
                     .setUri(url)
                     .setMimeType(MimeTypes.APPLICATION_M3U8)
                     .build()
             }
+
             else -> {
                 mediaItem = MediaItem.fromUri(url)
             }
@@ -95,6 +99,20 @@ class ExoPlayerAdapter() {
 
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem
+        activeManifestUrl = url
+    }
+
+    fun handleSourceChange() {
+        // Send the final consumption report
+        if (activeMediaItem != null) {
+            mediaSessionHandlerAdapter.sendConsumptionReport()
+        }
+        playerListener.resetState()
+        mediaSessionHandlerAdapter.resetState()
+    }
+
+    fun getCurrentManifestUri(): String {
+        return activeManifestUrl
     }
 
     fun preload() {
@@ -108,7 +126,6 @@ class ExoPlayerAdapter() {
     fun pause() {
         playerInstance.pause()
     }
-
 
     fun seek(time: Long) {
         TODO("Not yet implemented")
