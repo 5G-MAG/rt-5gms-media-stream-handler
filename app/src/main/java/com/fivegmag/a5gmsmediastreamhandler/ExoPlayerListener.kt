@@ -21,6 +21,7 @@ import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.ui.PlayerView
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
@@ -74,6 +75,14 @@ class ExoPlayerListener(
         mediaLoadData: MediaLoadData
     ) {
         EventBus.getDefault().post(LoadStartedEvent(eventTime, loadEventInfo, mediaLoadData))
+    }
+
+    override fun onLoadCompleted(
+        eventTime: AnalyticsListener.EventTime,
+        loadEventInfo: LoadEventInfo,
+        mediaLoadData: MediaLoadData
+    ) {
+        EventBus.getDefault().post(LoadCompletedEvent(eventTime, loadEventInfo, mediaLoadData))
     }
 
     override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: PlaybackException) {

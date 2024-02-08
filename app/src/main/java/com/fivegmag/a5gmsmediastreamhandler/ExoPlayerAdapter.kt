@@ -19,6 +19,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.dash.manifest.DashManifest
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
@@ -115,6 +116,10 @@ class ExoPlayerAdapter() {
         return activeManifestUrl
     }
 
+    fun getCurrentManifestUrl(): String {
+        return playerInstance.currentMediaItem?.localConfiguration?.uri.toString()
+    }
+
     fun preload() {
         playerInstance.prepare()
     }
@@ -151,16 +156,30 @@ class ExoPlayerAdapter() {
         return playerInstance.playbackState
     }
 
-    private fun getAverageThroughput(): Long {
-        return bandwidthMeter.bitrateEstimate
+    fun getCurrentPosition(): Long {
+        return playerInstance.currentPosition
     }
 
-    private fun getBufferLength(): Long {
+    fun getBufferLength(): Long {
         return playerInstance.totalBufferedDuration
+    }
+    fun getAverageThroughput(): Long {
+        return bandwidthMeter.bitrateEstimate
     }
 
     private fun getLiveLatency(): Long {
         return playerInstance.currentLiveOffset
+    }
+
+    fun getCurrentPeriodId(): String {
+        val dashManifest = playerInstance.currentManifest as DashManifest
+        val periodId = dashManifest.getPeriod(playerInstance.currentPeriodIndex).id
+
+        if (periodId != null) {
+            return periodId
+        }
+
+        return ""
     }
 
     fun getStatusInformation(status: String): Any? {

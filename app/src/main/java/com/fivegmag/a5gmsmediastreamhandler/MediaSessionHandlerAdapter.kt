@@ -24,18 +24,26 @@ import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.*
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsResponse
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.SchemeSupport
 import com.fivegmag.a5gmsmediastreamhandler.consumptionReporting.ConsumptionReportingController
+import com.fivegmag.a5gmsmediastreamhandler.qoeMetricsReporting.QoEMetricsReportingController
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import java.lang.Exception
 import java.util.*
 
 class MediaSessionHandlerAdapter() {
-    private val TAG: String = "MediaSessionHandlerAdapter"
+    companion object {
+        const val TAG = "5GMS-MediaSessionHandlerAdapter"
+    }
     private var mService: Messenger? = null
     private var bound: Boolean = false
     private lateinit var exoPlayerAdapter: ExoPlayerAdapter
     private lateinit var consumptionReportingController: ConsumptionReportingController
+    private lateinit var qoeMetricsReportingController: QoEMetricsReportingController
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
 
     /**
@@ -54,6 +62,13 @@ class MediaSessionHandlerAdapter() {
                 )
 
                 SessionHandlerMessageTypes.UPDATE_PLAYBACK_CONSUMPTION_REPORTING_CONFIGURATION -> handleUpdatePlaybackConsumptionReportingConfiguration(
+                    msg
+                )
+
+                SessionHandlerMessageTypes.GET_QOE_METRICS_CAPABILITIES -> handleGetQoeMetricsCapabilitiesMessage(
+                    msg
+                )
+                SessionHandlerMessageTypes.GET_QOE_METRICS_REPORT -> handleGetQoeMetricsReport(
                     msg
                 )
 
@@ -110,6 +125,71 @@ class MediaSessionHandlerAdapter() {
             sendConsumptionReport()
             consumptionReportingController.cleanConsumptionReportingList()
         }
+
+        private fun handleGetQoeMetricsCapabilitiesMessage(msg: Message) {
+            val bundle: Bundle = msg.data
+            bundle.classLoader = QoeMetricsRequest::class.java.classLoader
+            val playbackMetricsRequests: ArrayList<QoeMetricsRequest>? =
+                bundle.getParcelableArrayList("qoeMetricsRequest")
+            val results: ArrayList<SchemeSupport> = ArrayList()
+
+            if (playbackMetricsRequests != null) {
+                for (playbackMetricsRequest in playbackMetricsRequests) {
+                    val supported =
+                        qoeMetricsReportingController.isMetricsSchemeSupported(playbackMetricsRequest.scheme)
+                    Log.d(TAG, "${playbackMetricsRequest.scheme} is supported:")
+                    results.add(SchemeSupport(playbackMetricsRequest.scheme, supported))
+                }
+            }
+
+            val responseMessenger: Messenger = msg.replyTo
+            val msgResponse: Message = Message.obtain(
+                null,
+                SessionHandlerMessageTypes.REPORT_QOE_METRICS_CAPABILITIES
+            )
+            val responseBundle = Bundle()
+            responseBundle.putParcelableArrayList("schemeSupport", results)
+            msgResponse.data = responseBundle
+            responseMessenger.send(msgResponse)
+        }
+
+        private fun handleGetQoeMetricsReport(msg: Message) {
+            val bundle: Bundle = msg.data
+            bundle.classLoader = QoeMetricsRequest::class.java.classLoader
+            val qoeMetricsRequest: QoeMetricsRequest? = bundle.getParcelable("qoeMetricsRequest")
+            val scheme = qoeMetricsRequest?.scheme
+
+            val qoeMetricsReport = getQoeMetrics(qoeMetricsRequest)
+            Log.d(TAG, "Media Session Handler requested playback stats for scheme $scheme")
+
+            val responseMessenger: Messenger = msg.replyTo
+            val msgResponse: Message = Message.obtain(
+                null,
+                SessionHandlerMessageTypes.REPORT_QOE_METRICS
+            )
+
+            val responseBundle = Bundle()
+            val playbackMetricsResponse = QoeMetricsResponse(
+                qoeMetricsReport,
+                qoeMetricsRequest?.metricReportingConfigurationId
+            )
+            responseBundle.putParcelable("qoeMetricsResponse", playbackMetricsResponse)
+            msgResponse.data = responseBundle
+            responseMessenger.send(msgResponse)
+        }
+
+        @UnstableApi
+        private fun getQoeMetrics(
+            qoeMetricsRequest: QoeMetricsRequest?
+        ): String {
+            return try {
+                qoeMetricsReportingController.getQoeMetricsReport(qoeMetricsRequest)
+
+            } catch (e: Exception) {
+                e.message?.let { Log.i(TAG, it) }
+                return ""
+            }
+        }
     }
 
     /**
@@ -138,6 +218,7 @@ class MediaSessionHandlerAdapter() {
                 msg.replyTo = mMessenger
                 mService!!.send(msg)
                 bound = true
+                Log.i(TAG, "Service connected")
                 serviceConnectedCallbackFunction()
             } catch (e: RemoteException) {
                 // In this case the service has crashed before we could even
@@ -145,7 +226,6 @@ class MediaSessionHandlerAdapter() {
                 // disconnected (and then reconnected if it can be restarted)
                 // so there is no need to do anything here.
             }
-
         }
 
         override fun onServiceDisconnected(className: ComponentName) {
@@ -165,6 +245,10 @@ class MediaSessionHandlerAdapter() {
         exoPlayerAdapter = epa
         consumptionReportingController = ConsumptionReportingController(context)
         consumptionReportingController.initialize()
+
+        qoeMetricsReportingController = QoEMetricsReportingController()
+        qoeMetricsReportingController.setDefaultExoplayerQoeMetricsReporter(exoPlayerAdapter)
+
         EventBus.getDefault().register(this)
 
         try {
@@ -175,13 +259,8 @@ class MediaSessionHandlerAdapter() {
             )
             if (context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
                 Log.i(TAG, "Binding to MediaSessionHandler service returned true")
-                Toast.makeText(
-                    context,
-                    "Successfully bound to Media Session Handler",
-                    Toast.LENGTH_SHORT
-                ).show()
             } else {
-                Log.d(TAG, "Binding to MediaSessionHandler service returned false")
+                Log.i(TAG, "Binding to MediaSessionHandler service returned false")
             }
             serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
         } catch (e: SecurityException) {
@@ -235,7 +314,7 @@ class MediaSessionHandlerAdapter() {
         }
     }
 
-    fun updatePlaybackState(state: String) {
+    private fun updatePlaybackState(state: String) {
         if (!bound) return
         val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
         val bundle = Bundle()
@@ -247,21 +326,6 @@ class MediaSessionHandlerAdapter() {
             e.printStackTrace()
         }
     }
-
-    fun reportMetrics() {
-        if (!bound) return
-        // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.METRIC_REPORTING_MESSAGE)
-        val bundle = Bundle()
-        bundle.putString("metricData", "")
-        msg.data = bundle
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
 
     fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
         if (!bound) return
