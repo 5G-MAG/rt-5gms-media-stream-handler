@@ -16,7 +16,7 @@ class QoEMetricsReportingController {
         setQoeMetricsReporterForScheme(qoeMetricsReporterExoplayer)
     }
 
-    fun setQoeMetricsReporterForScheme(qoeMetricsReporter: QoeMetricsReporter) {
+    private fun setQoeMetricsReporterForScheme(qoeMetricsReporter: QoeMetricsReporter) {
         val scheme = qoeMetricsReporter.getQoeMetricsReportingScheme()
         activeQoeMetricsReporter[scheme] = qoeMetricsReporter
     }

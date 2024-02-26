@@ -1,5 +1,7 @@
 package com.fivegmag.a5gmsmediastreamhandler.qoeMetricsReporting
 
+import android.annotation.SuppressLint
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
@@ -29,6 +31,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes.THREE_GPP_
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import java.lang.Exception
 
 @UnstableApi
 class QoeMetricsReporterExoplayer(
@@ -41,6 +44,10 @@ class QoeMetricsReporterExoplayer(
     private val bufferLevel: BufferLevel = BufferLevel(ArrayList<BufferLevelEntry>())
     private val mpdInformation: ArrayList<MpdInformation> = ArrayList()
     private val utils: Utils = Utils()
+
+    companion object {
+        const val TAG = "5GMS-QoeMetricsReporterExoplayer"
+    }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onDownstreamFormatChangedEvent(downstreamFormatChangedEvent: DownstreamFormatChangedEvent) {
@@ -170,48 +177,56 @@ class QoeMetricsReporterExoplayer(
         return THREE_GPP_DASH_METRIC_REPORTING
     }
 
+    @SuppressLint("Range")
     override fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest): String {
-        val qoeMetricsReport = QoeReport()
-        qoeMetricsReport.reportTime = utils.getCurrentXsDateTime()
-        qoeMetricsReport.periodId = exoPlayerAdapter.getCurrentPeriodId()
-        qoeMetricsReport.reportPeriod = qoeMetricsRequest.reportPeriod?.toInt()
+        try {
+            val qoeMetricsReport = QoeReport()
+            qoeMetricsReport.reportTime = utils.getCurrentXsDateTime()
+            qoeMetricsReport.periodId = exoPlayerAdapter.getCurrentPeriodId()
+            qoeMetricsReport.reportPeriod = qoeMetricsRequest.reportPeriod?.toInt()
 
-        if (shouldReportMetric(Metrics.BUFFER_LEVEL, qoeMetricsRequest.metrics)) {
-            if (bufferLevel.entries.size > 0) {
-                qoeMetricsReport.bufferLevel = arrayListOf(bufferLevel)
+            if (shouldReportMetric(Metrics.BUFFER_LEVEL, qoeMetricsRequest.metrics)) {
+                if (bufferLevel.entries.size > 0) {
+                    qoeMetricsReport.bufferLevel = arrayListOf(bufferLevel)
+                }
             }
-        }
 
-        if (shouldReportMetric(Metrics.REP_SWITCH_LIST, qoeMetricsRequest.metrics)) {
-            if (representationSwitchList.entries.size > 0) {
-                qoeMetricsReport.representationSwitchList = arrayListOf(representationSwitchList)
+            if (shouldReportMetric(Metrics.REP_SWITCH_LIST, qoeMetricsRequest.metrics)) {
+                if (representationSwitchList.entries.size > 0) {
+                    qoeMetricsReport.representationSwitchList =
+                        arrayListOf(representationSwitchList)
+                }
             }
-        }
 
-        if (shouldReportMetric(Metrics.HTTP_LIST, qoeMetricsRequest.metrics)) {
-            if (httpList.entries.size > 0) {
-                qoeMetricsReport.httpList = arrayListOf(httpList)
+            if (shouldReportMetric(Metrics.HTTP_LIST, qoeMetricsRequest.metrics)) {
+                if (httpList.entries.size > 0) {
+                    qoeMetricsReport.httpList = arrayListOf(httpList)
+                }
             }
-        }
 
-        if (shouldReportMetric(Metrics.MPD_INFORMATION, qoeMetricsRequest.metrics)) {
-            if (mpdInformation.size > 0) {
-                qoeMetricsReport.mpdInformation = mpdInformation
+            if (shouldReportMetric(Metrics.MPD_INFORMATION, qoeMetricsRequest.metrics)) {
+                if (mpdInformation.size > 0) {
+                    qoeMetricsReport.mpdInformation = mpdInformation
+                }
             }
+
+            val receptionReport =
+                ReceptionReport(qoeMetricsReport, exoPlayerAdapter.getCurrentManifestUrl())
+            receptionReport.xmlns =
+                XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA
+            receptionReport.schemaLocation =
+                XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA + " " + XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.LOCATION
+            receptionReport.xsi = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.XSI
+            receptionReport.sv = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SV
+
+            var xml = serializeReceptionReportToXml(receptionReport)
+            xml = addDelimiter(xml)
+
+            return xml
+        } catch (e: Exception) {
+            Log.e(TAG, e.message.toString())
+            return ""
         }
-
-        val receptionReport =
-            ReceptionReport(qoeMetricsReport, exoPlayerAdapter.getCurrentManifestUrl())
-        receptionReport.xmlns = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA
-        receptionReport.schemaLocation =
-            XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA + " " + XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.LOCATION
-        receptionReport.xsi = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.XSI
-        receptionReport.sv = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SV
-
-        var xml = serializeReceptionReportToXml(receptionReport)
-        xml = addDelimiter(xml)
-
-        return xml
     }
 
     private fun shouldReportMetric(metric: String, metricsList: ArrayList<String>?): Boolean {
@@ -241,6 +256,7 @@ class QoeMetricsReporterExoplayer(
         return xmlString
     }
 
+    @SuppressLint("Range")
     private fun serializeReceptionReportToXml(input: ReceptionReport): String {
         val xmlMapper = XmlMapper()
         val serializedResult = xmlMapper.writeValueAsString(input)

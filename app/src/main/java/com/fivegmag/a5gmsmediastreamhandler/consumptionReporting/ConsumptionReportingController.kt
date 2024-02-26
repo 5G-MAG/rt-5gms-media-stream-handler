@@ -197,11 +197,6 @@ class ConsumptionReportingController(
         playbackConsumptionReportingConfiguration = consumptionReportingConfiguration
     }
 
-    /**
-     * Callback function that is triggered via the event bus
-     *
-     * @param {DownstreamFormatChangedEvent} event
-     */
     @RequiresApi(Build.VERSION_CODES.R)
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onDownstreamFormatChangedEvent(event: DownstreamFormatChangedEvent) {
@@ -339,10 +334,6 @@ class ConsumptionReportingController(
         }
     }
 
-    /**
-     * Removes all entries in the consumption report that are finished
-     *
-     */
     fun cleanConsumptionReportingList() {
         consumptionReportingUnitList.removeIf { obj -> obj.finished }
     }
