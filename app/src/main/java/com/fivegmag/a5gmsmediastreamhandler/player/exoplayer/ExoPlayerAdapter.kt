@@ -1,13 +1,4 @@
-/*
-License: 5G-MAG Public License (v1.0)
-Author: Daniel Silhavy
-Copyright: (C) 2023 Fraunhofer FOKUS
-For full license terms please see the LICENSE file distributed with this
-program. If this file is missing then the license can be retrieved from
-https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
-*/
-
-package com.fivegmag.a5gmsmediastreamhandler
+package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import android.content.Context
 import androidx.media3.common.MediaItem
@@ -28,8 +19,6 @@ import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.helpers.UserAgentTokens
-import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
-
 
 @UnstableApi
 class ExoPlayerAdapter() {
@@ -40,13 +29,11 @@ class ExoPlayerAdapter() {
     private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
-    private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
 
 
     fun initialize(
         exoPlayerView: PlayerView,
-        context: Context,
-        msh: MediaSessionHandlerAdapter
+        context: Context
     ) {
         val defaultUserAgent = Util.getUserAgent(context, "A5GMSMediaStreamHandler")
         val deviceName = android.os.Build.MODEL
@@ -61,7 +48,6 @@ class ExoPlayerAdapter() {
                 val dataSource = httpDataSourceFactory.createDataSource()
                 dataSource
             }
-        mediaSessionHandlerAdapter = msh
         playerInstance = ExoPlayer.Builder(context)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
@@ -103,13 +89,8 @@ class ExoPlayerAdapter() {
         activeManifestUrl = url
     }
 
-    fun handleSourceChange() {
-        // Send the final consumption report
-        if (activeMediaItem != null) {
-            mediaSessionHandlerAdapter.sendConsumptionReport()
-        }
-        playerListener.resetState()
-        mediaSessionHandlerAdapter.resetState()
+    fun hasActiveMediaItem() : Boolean {
+        return activeMediaItem != null
     }
 
     fun getCurrentManifestUri(): String {

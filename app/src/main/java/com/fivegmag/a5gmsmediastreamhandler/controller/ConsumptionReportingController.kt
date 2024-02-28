@@ -1,10 +1,13 @@
-package com.fivegmag.a5gmsmediastreamhandler.consumptionReporting
+package com.fivegmag.a5gmsmediastreamhandler.controller
 
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
+import android.os.Message
+import android.os.RemoteException
 import android.telephony.*
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
@@ -26,11 +29,17 @@ import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReporting
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
+import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
+import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.CellIdentifierType
 import com.fivegmag.a5gmscommonlibrary.models.EndpointAddress
 import com.fivegmag.a5gmscommonlibrary.models.PlaybackConsumptionReportingConfiguration
+import com.fivegmag.a5gmscommonlibrary.models.PlaybackRequest
 import com.fivegmag.a5gmscommonlibrary.models.TypedLocation
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
+import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -39,16 +48,21 @@ import java.util.Date
 
 @UnstableApi
 class ConsumptionReportingController(
-    private val context: Context
+    private val context: Context,
+    private val exoPlayerAdapter: ExoPlayerAdapter,
+    private val outgoingMessageHandler: OutgoingMessageHandler
 ) {
-    private val TAG = "ConsumptionReportingController"
+    companion object {
+        const val TAG = "5GMS-ConsumptionReportingController"
+    }
+
     private val utils: Utils = Utils()
-    private val reportingClientId = generateReportingClientId()
     private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
     private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
         null
     private var activeLocations: ArrayList<TypedLocation> = ArrayList()
     private var serverEndpointAddressesPerMediaType = mutableMapOf<String, EndpointAddress>()
+    private lateinit var reportingClientId: String
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
         override fun onCellInfo(cellInfoList: MutableList<CellInfo>) {
             // Process the received cell info
@@ -66,79 +80,71 @@ class ConsumptionReportingController(
         }
     }
 
-    /**
-     * MSISDN = CC + NDC + SN
-     *
-     */
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun getMsisdn(): String {
-        var strMsisdn = ""
-
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.READ_PHONE_NUMBERS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            val subscriptionManager: SubscriptionManager =
-                context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
-
-            val subscriptionInfoList: List<SubscriptionInfo> =
-                subscriptionManager.activeSubscriptionInfoList
-            for (subscriptionInfo in subscriptionInfoList) {
-                strMsisdn =
-                    subscriptionManager.getPhoneNumber(getActiveSIMIdx(subscriptionInfoList))
-            }
-        }
-
-        return strMsisdn
+    fun initialize(repClientId: String) {
+        EventBus.getDefault().register(this)
+        reportingClientId = repClientId
+        requestCellInfoUpdates()
     }
 
-    /**
-     * The GPSI is either a mobile subscriber ISDN number (MSISDN) or an external identifier
-     *
-     */
-    @SuppressLint("Range")
-    private fun generateReportingClientId(): String {
-        val strGpsi: String
-        var strMsisdn = ""
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
-            strMsisdn = getMsisdn()
-        }
-        strGpsi = if (strMsisdn != "") {
-            strMsisdn
-        } else {
-            utils.generateUUID()
-        }
+    @UnstableApi
+    fun handleSourceChange(playbackRequest: PlaybackRequest) {
+        if (exoPlayerAdapter.hasActiveMediaItem()) {
+            sendConsumptionReport()
+            resetState()
 
-        Log.d(TAG, "ConsumptionReporting: GPSI = $strGpsi")
-        return strGpsi
+        }
+        setCurrentConsumptionReportingConfiguration(
+            playbackRequest.playbackConsumptionReportingConfiguration
+        )
     }
 
-    /**
-     * In case of multi SIM cards, get the the index of SIM which is used for the traffic
-     * If none of them match, use the first as default
-     *
-     */
-    private fun getActiveSIMIdx(subscriptionInfoList: List<SubscriptionInfo>): Int {
-        val telephonyManager =
-            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        val simOPName: String = telephonyManager.simOperatorName
-
-        var subscriptionIdx = 1
-        for (subscriptionInfo in subscriptionInfoList) {
-            val subscriptionId = subscriptionInfo.subscriptionId
-            val subscriptionName: String = subscriptionInfo.carrierName as String
-
-            if (subscriptionName == simOPName) {
-                subscriptionIdx = subscriptionId
-            }
-        }
-
-        return subscriptionIdx
+    private fun sendConsumptionReport() {
+        val mediaPlayerEntry = exoPlayerAdapter.getCurrentManifestUri()
+        val consumptionReport = getConsumptionReport(mediaPlayerEntry)
+        val bundle = Bundle()
+        bundle.putString("consumptionReport", consumptionReport)
+        outgoingMessageHandler.sendMessageByTypeAndBundle(
+            SessionHandlerMessageTypes.CONSUMPTION_REPORT,
+            bundle
+        )
     }
 
-    fun getPlaybackConsumptionReportingConfiguration(): PlaybackConsumptionReportingConfiguration? {
-        return playbackConsumptionReportingConfiguration
+    private fun resetState() {
+        playbackConsumptionReportingConfiguration = null
+        serverEndpointAddressesPerMediaType.clear()
+        consumptionReportingUnitList.clear()
+    }
+
+    private fun setCurrentConsumptionReportingConfiguration(consumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration) {
+        playbackConsumptionReportingConfiguration = consumptionReportingConfiguration
+    }
+
+    fun handleGetConsumptionReport(msg: Message) {
+        val playbackConsumptionReportingConfiguration = getPlaybackConsumptionReportingConfigurationFromMessage(msg)
+
+        if (playbackConsumptionReportingConfiguration != null) {
+            setCurrentConsumptionReportingConfiguration(
+                playbackConsumptionReportingConfiguration
+            )
+        }
+        sendConsumptionReport()
+        cleanConsumptionReportingList()
+    }
+
+    fun handleUpdatePlaybackConsumptionReportingConfiguration(msg: Message) {
+        val playbackConsumptionReportingConfiguration = getPlaybackConsumptionReportingConfigurationFromMessage(msg)
+
+        if (playbackConsumptionReportingConfiguration != null) {
+            setCurrentConsumptionReportingConfiguration(
+                playbackConsumptionReportingConfiguration
+            )
+        }
+    }
+
+    private fun getPlaybackConsumptionReportingConfigurationFromMessage(msg: Message): PlaybackConsumptionReportingConfiguration? {
+        val bundle: Bundle = msg.data
+        bundle.classLoader = PlaybackConsumptionReportingConfiguration::class.java.classLoader
+        return bundle.getParcelable("playbackConsumptionReportingConfiguration")
     }
 
     private fun createTypedLocationByCellInfo(cellInfo: CellInfo): TypedLocation? {
@@ -182,21 +188,21 @@ class ConsumptionReportingController(
         }
     }
 
-    fun initialize() {
-        EventBus.getDefault().register(this)
-        requestCellInfoUpdates()
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    @UnstableApi
+    fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
+        if (event.playbackState == PlayerStates.ENDED) {
+            sendConsumptionReport()
+        }
     }
 
-    fun resetState() {
-        playbackConsumptionReportingConfiguration = null
-        serverEndpointAddressesPerMediaType.clear()
-        consumptionReportingUnitList.clear()
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    @UnstableApi
+    fun onCellInfoUpdatedEvent(event: CellInfoUpdatedEvent) {
+        if (playbackConsumptionReportingConfiguration != null && playbackConsumptionReportingConfiguration!!.locationReporting == true) {
+            sendConsumptionReport()
+        }
     }
-
-    fun setCurrentConsumptionReportingConfiguration(consumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration) {
-        playbackConsumptionReportingConfiguration = consumptionReportingConfiguration
-    }
-
     @RequiresApi(Build.VERSION_CODES.R)
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onDownstreamFormatChangedEvent(event: DownstreamFormatChangedEvent) {
@@ -219,7 +225,6 @@ class ConsumptionReportingController(
             Log.d(TAG, "Error while creating server endpoint address: $e")
         }
     }
-
 
     @SuppressLint("Range")
     @RequiresApi(Build.VERSION_CODES.R)
@@ -284,7 +289,7 @@ class ConsumptionReportingController(
         return serverEndpointAddressesPerMediaType[mimeType] ?: return null
     }
 
-    fun getConsumptionReport(mediaPlayerEntry: String): String {
+    private fun getConsumptionReport(mediaPlayerEntry: String): String {
         // We need to add the duration of the consumption reporting units that are not yet finished
         for (consumptionReportingUnit in consumptionReportingUnitList) {
             if (!consumptionReportingUnit.finished) {
@@ -334,8 +339,12 @@ class ConsumptionReportingController(
         }
     }
 
-    fun cleanConsumptionReportingList() {
+    private fun cleanConsumptionReportingList() {
         consumptionReportingUnitList.removeIf { obj -> obj.finished }
+    }
+
+    fun reset() {
+        resetState()
     }
 }
 

@@ -1,4 +1,4 @@
-package com.fivegmag.a5gmsmediastreamhandler.qoeMetricsReporting
+package com.fivegmag.a5gmsmediastreamhandler.player
 
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 

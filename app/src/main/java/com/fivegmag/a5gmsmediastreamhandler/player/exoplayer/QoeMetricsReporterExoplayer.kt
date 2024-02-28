@@ -1,13 +1,15 @@
-package com.fivegmag.a5gmsmediastreamhandler.qoeMetricsReporting
+package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import android.annotation.SuppressLint
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
+import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.Metrics
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
@@ -25,9 +27,7 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.ReceptionReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitch
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitchList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Trace
-import com.fivegmag.a5gmsmediastreamhandler.ExoPlayerAdapter
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
+import com.fivegmag.a5gmsmediastreamhandler.player.QoeMetricsReporter
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -38,10 +38,10 @@ class QoeMetricsReporterExoplayer(
     private val exoPlayerAdapter: ExoPlayerAdapter
 ) : QoeMetricsReporter {
     private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(
-        ArrayList<RepresentationSwitch>()
+        ArrayList()
     )
-    private val httpList: HttpList = HttpList(ArrayList<HttpListEntry>())
-    private val bufferLevel: BufferLevel = BufferLevel(ArrayList<BufferLevelEntry>())
+    private val httpList: HttpList = HttpList(ArrayList())
+    private val bufferLevel: BufferLevel = BufferLevel(ArrayList())
     private val mpdInformation: ArrayList<MpdInformation> = ArrayList()
     private val utils: Utils = Utils()
 
@@ -107,19 +107,19 @@ class QoeMetricsReporterExoplayer(
         }
     }
 
+    private fun addBufferLevelEntry() {
+        val level: Int = exoPlayerAdapter.getBufferLength().toInt()
+        val time: String = utils.getCurrentXsDateTime()
+        val entry = BufferLevelEntry(time, level)
+        bufferLevel.entries.add(entry)
+    }
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onLoadCompleted(
         loadCompletedEvent: LoadCompletedEvent
     ) {
         addHttpListEntry(loadCompletedEvent.mediaLoadData, loadCompletedEvent.loadEventInfo)
         addBufferLevelEntry()
-    }
-
-    private fun addBufferLevelEntry() {
-        val level: Int = exoPlayerAdapter.getBufferLength().toInt()
-        val time: String = utils.getCurrentXsDateTime()
-        val entry = BufferLevelEntry(time, level)
-        bufferLevel.entries.add(entry)
     }
 
     private fun addHttpListEntry(mediaLoadData: MediaLoadData, loadEventInfo: LoadEventInfo) {
@@ -174,7 +174,7 @@ class QoeMetricsReporterExoplayer(
     }
 
     override fun getQoeMetricsReportingScheme(): String {
-        return THREE_GPP_DASH_METRIC_REPORTING
+        return MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
     }
 
     @SuppressLint("Range")

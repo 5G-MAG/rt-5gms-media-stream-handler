@@ -1,4 +1,4 @@
-package com.fivegmag.a5gmsmediastreamhandler.helpers
+package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import androidx.media3.common.Player
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
