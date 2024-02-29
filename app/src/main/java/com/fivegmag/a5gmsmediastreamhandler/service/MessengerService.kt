@@ -50,7 +50,7 @@ class MessengerService(
             val intent = Intent()
             intent.component = ComponentName(
                 "com.fivegmag.a5gmsmediasessionhandler",
-                "com.fivegmag.a5gmsmediasessionhandler.MediaSessionHandlerMessengerService"
+                "com.fivegmag.a5gmsmediasessionhandler.service.MediaSessionHandlerMessengerService"
             )
             if (context.bindService(intent, messengerConnection, Context.BIND_AUTO_CREATE)) {
                 Log.i(

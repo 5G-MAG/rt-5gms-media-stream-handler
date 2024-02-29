@@ -1,6 +1,5 @@
 package com.fivegmag.a5gmsmediastreamhandler.service
 
-import android.content.ComponentName
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Message
@@ -49,33 +48,27 @@ class OutgoingMessageHandler {
         if (!canSendMessage()) {
             return
         }
-        val msg = getMessage(SessionHandlerMessageTypes.SET_M5_ENDPOINT)
         val bundle = Bundle()
         bundle.putString("m5BaseUrl", m5BaseUrl)
-        msg.data = bundle
-        sendMessage(msg)
+        sendMessageByTypeAndBundle(SessionHandlerMessageTypes.SET_M5_ENDPOINT, bundle)
     }
 
     fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
         if (!canSendMessage()) {
             return
         }
-        val msg = getMessage(SessionHandlerMessageTypes.START_PLAYBACK_BY_SERVICE_LIST_ENTRY_MESSAGE)
         val bundle = Bundle()
         bundle.putParcelable("serviceListEntry", serviceListEntry)
-        msg.data = bundle
-        sendMessage(msg)
+        sendMessageByTypeAndBundle(SessionHandlerMessageTypes.START_PLAYBACK_BY_SERVICE_LIST_ENTRY_MESSAGE, bundle)
     }
 
     fun updatePlaybackState(state: String) {
         if (!canSendMessage()) {
             return
         }
-        val msg = getMessage(SessionHandlerMessageTypes.STATUS_MESSAGE)
         val bundle = Bundle()
         bundle.putString("playbackState", state)
-        msg.data = bundle
-        sendMessage(msg)
+        sendMessageByTypeAndBundle(SessionHandlerMessageTypes.STATUS_MESSAGE, bundle)
     }
 
     fun sendMessageByTypeAndBundle(messageType: Int, bundle: Bundle) {
