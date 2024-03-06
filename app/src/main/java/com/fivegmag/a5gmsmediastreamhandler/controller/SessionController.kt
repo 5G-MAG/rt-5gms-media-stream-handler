@@ -1,10 +1,17 @@
 package com.fivegmag.a5gmsmediastreamhandler.controller
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.telephony.CellInfo
+import android.telephony.TelephonyManager
+import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
+import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.models.EntryPoint
-import com.fivegmag.a5gmscommonlibrary.models.PlaybackRequest
+import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
 import org.greenrobot.eventbus.EventBus
@@ -12,16 +19,24 @@ import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
 class SessionController(
+    private val context: Context,
     private val exoPlayerAdapter: ExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
-) {
+) : Controller() {
 
-    fun initialize() {
+    private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
+        override fun onCellInfo(cellInfoList: MutableList<CellInfo>) {
+            EventBus.getDefault().post(CellInfoUpdatedEvent(cellInfoList))
+        }
+    }
+
+    override fun initialize() {
         EventBus.getDefault().register(this)
+        requestCellInfoUpdates()
     }
 
     @UnstableApi
-    fun triggerPlayback(playbackRequest: PlaybackRequest) {
+    override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
         if (playbackRequest.entryPoints.size > 0) {
             val dashEntryPoints: List<EntryPoint> =
                 playbackRequest.entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
@@ -35,6 +50,20 @@ class SessionController(
         }
     }
 
+    private fun requestCellInfoUpdates() {
+        val telephonyManager =
+            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+
+        // Register the cell info callback
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            telephonyManager.requestCellInfoUpdate(context.mainExecutor, cellInfoCallback)
+        }
+    }
+
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
@@ -42,7 +71,12 @@ class SessionController(
         outgoingMessageHandler.updatePlaybackState(event.playbackState)
     }
 
-    fun reset() {
+    override fun resetState() {
+
+    }
+
+    override fun reset() {
+        resetState()
     }
 
 }

@@ -178,12 +178,15 @@ class QoeMetricsReporterExoplayer(
     }
 
     @SuppressLint("Range")
-    override fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest): String {
+    override fun getQoeMetricsReport(
+        qoeMetricsRequest: QoeMetricsRequest,
+        reportingClientId: String
+    ): String {
         try {
             val qoeMetricsReport = QoeReport()
             qoeMetricsReport.reportTime = utils.getCurrentXsDateTime()
             qoeMetricsReport.periodId = exoPlayerAdapter.getCurrentPeriodId()
-            qoeMetricsReport.reportPeriod = qoeMetricsRequest.reportPeriod?.toInt()
+            qoeMetricsReport.reportPeriod = qoeMetricsRequest.reportingInterval?.toInt()
 
             if (shouldReportMetric(Metrics.BUFFER_LEVEL, qoeMetricsRequest.metrics)) {
                 if (bufferLevel.entries.size > 0) {
@@ -218,6 +221,7 @@ class QoeMetricsReporterExoplayer(
                 XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA + " " + XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.LOCATION
             receptionReport.xsi = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.XSI
             receptionReport.sv = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SV
+            receptionReport.clientId = reportingClientId
 
             var xml = serializeReceptionReportToXml(receptionReport)
             xml = addDelimiter(xml)
@@ -269,5 +273,8 @@ class QoeMetricsReporterExoplayer(
         httpList.entries.clear()
         bufferLevel.entries.clear()
         mpdInformation.clear()
+    }
+
+    override fun resetState() {
     }
 }

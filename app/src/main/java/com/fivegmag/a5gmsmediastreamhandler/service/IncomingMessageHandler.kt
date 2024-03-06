@@ -17,7 +17,7 @@ import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
-import com.fivegmag.a5gmscommonlibrary.models.PlaybackRequest
+import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.QoEMetricsReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.SessionController
@@ -46,7 +46,7 @@ class IncomingMessageHandler(private val context: Context) {
                     msg
                 )
 
-                SessionHandlerMessageTypes.GET_QOE_METRICS_CAPABILITIES -> handleGetQoeMetricsCapabilitiesMessage(
+                SessionHandlerMessageTypes.GET_QOE_METRICS_CAPABILITIES -> handleGetQoeMetricsCapabilities(
                     msg
                 )
 
@@ -63,8 +63,9 @@ class IncomingMessageHandler(private val context: Context) {
         bundle.classLoader = PlaybackRequest::class.java.classLoader
         val playbackRequest: PlaybackRequest? = bundle.getParcelable("playbackRequest")
         if (playbackRequest != null) {
-            consumptionReportingController.handleSourceChange(playbackRequest)
-            sessionController.triggerPlayback(playbackRequest)
+            consumptionReportingController.handleTriggerPlayback(playbackRequest)
+            qoeMetricsReportingController.handleTriggerPlayback(playbackRequest)
+            sessionController.handleTriggerPlayback(playbackRequest)
         }
     }
 
@@ -79,8 +80,8 @@ class IncomingMessageHandler(private val context: Context) {
     }
 
     @UnstableApi
-    private fun handleGetQoeMetricsCapabilitiesMessage(msg: Message) {
-        qoeMetricsReportingController.handleGetQoeMetricsCapabilitiesMessage(msg)
+    private fun handleGetQoeMetricsCapabilities(msg: Message) {
+        qoeMetricsReportingController.handleGetQoeMetricsCapabilities(msg)
     }
 
     @UnstableApi
@@ -96,13 +97,17 @@ class IncomingMessageHandler(private val context: Context) {
         val reportingClientId = generateReportingClientId()
         exoPlayerAdapter = exoAdapter
         consumptionReportingController =
-            ConsumptionReportingController(context, exoPlayerAdapter, outgoingMessageHandler )
-        consumptionReportingController.initialize(reportingClientId)
+            ConsumptionReportingController(exoPlayerAdapter, outgoingMessageHandler)
+        consumptionReportingController.setReportingClientId(reportingClientId)
+        consumptionReportingController.initialize()
 
-        qoeMetricsReportingController = QoEMetricsReportingController(exoPlayerAdapter, outgoingMessageHandler)
-        qoeMetricsReportingController.initialize(reportingClientId)
+        qoeMetricsReportingController =
+            QoEMetricsReportingController(exoPlayerAdapter, outgoingMessageHandler)
+        qoeMetricsReportingController.setReportingClientId(reportingClientId)
+        qoeMetricsReportingController.initialize()
 
         sessionController = SessionController(
+            context,
             exoAdapter,
             outgoingMessageHandler
         )

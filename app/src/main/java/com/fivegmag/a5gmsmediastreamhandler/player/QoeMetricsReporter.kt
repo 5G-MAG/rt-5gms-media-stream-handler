@@ -8,7 +8,9 @@ interface QoeMetricsReporter {
 
     fun getQoeMetricsReportingScheme() : String
 
-    fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest) : String
+    fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest, reportingClientId: String) : String
 
     fun reset()
+
+    fun resetState()
 }
