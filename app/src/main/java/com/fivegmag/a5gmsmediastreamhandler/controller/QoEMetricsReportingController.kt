@@ -4,18 +4,21 @@ import android.os.Bundle
 import android.os.Message
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
+import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
+import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsResponse
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.SchemeSupport
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.MediaSessionHandlerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.player.QoeMetricsReporter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.QoeMetricsReporterExoplayer
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
 import java.lang.Exception
-import java.util.ArrayList
 
 @UnstableApi
 class QoEMetricsReportingController(
@@ -28,13 +31,11 @@ class QoEMetricsReportingController(
     }
 
     private val activeQoeMetricsReporter = mutableMapOf<String, QoeMetricsReporter>()
+    private var lastQoeMetricsRequests = mutableMapOf<String, QoeMetricsRequest>()
 
     override fun initialize() {
+        EventBus.getDefault().register(this)
         setDefaultExoplayerQoeMetricsReporter()
-    }
-
-    override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
-        TODO("Not yet implemented")
     }
 
     private fun setDefaultExoplayerQoeMetricsReporter() {
@@ -42,6 +43,60 @@ class QoEMetricsReportingController(
         qoeMetricsReporterExoplayer.initialize()
         setQoeMetricsReporterForScheme(qoeMetricsReporterExoplayer)
     }
+
+    override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
+        if (exoPlayerAdapter.hasActiveMediaItem()) {
+            triggerQoeMetricsReports()
+        }
+        setLastQoeMetricsRequests(
+            playbackRequest.qoeMetricsRequests
+        )
+    }
+
+    private fun triggerQoeMetricsReports() {
+        try {
+            if (lastQoeMetricsRequests.isEmpty()) {
+                return
+            }
+            for (qoeMetricsRequest in lastQoeMetricsRequests.values) {
+                triggerSingleQoeMetricsReport(qoeMetricsRequest)
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, e.message.toString())
+        }
+    }
+
+    private fun triggerSingleQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest) {
+        try {
+            if (qoeMetricsRequest.metricReportingConfigurationId != null) {
+                val qoeMetricsReport = getQoeMetricsReport(qoeMetricsRequest)
+                sendQoeMetricsReport(
+                    qoeMetricsReport,
+                    qoeMetricsRequest.metricReportingConfigurationId!!
+                )
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, e.message.toString())
+        }
+    }
+
+    private fun setLastQoeMetricsRequests(qoeMetricsRequests: ArrayList<QoeMetricsRequest>) {
+        for (qoeMetricsRequest in qoeMetricsRequests) {
+            if (qoeMetricsRequest.metricReportingConfigurationId != null) {
+                lastQoeMetricsRequests[qoeMetricsRequest.metricReportingConfigurationId!!] =
+                    qoeMetricsRequest
+            }
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    @UnstableApi
+    fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
+        if (event.playbackState == PlayerStates.ENDED) {
+            triggerQoeMetricsReports()
+        }
+    }
+
 
     private fun setQoeMetricsReporterForScheme(qoeMetricsReporter: QoeMetricsReporter) {
         val scheme = qoeMetricsReporter.getQoeMetricsReportingScheme()
@@ -54,50 +109,13 @@ class QoEMetricsReportingController(
         }
 
         val qoeMetricsReporterForScheme = activeQoeMetricsReporter[qoeMetricsRequest.scheme]
-            ?: throw Exception("No QoeMetricsReporter for scheme $qoeMetricsRequest.scheme")
+            ?: throw Exception("No QoE Metrics Reporter for scheme ${qoeMetricsRequest.scheme}")
 
         val qoeMetricsReport =
             qoeMetricsReporterForScheme.getQoeMetricsReport(qoeMetricsRequest, reportingClientId)
         qoeMetricsReporterForScheme.reset()
 
         return qoeMetricsReport
-    }
-
-    private fun isMetricsSchemeSupported(scheme: String): Boolean {
-        val qoeMetricsReporterForScheme = activeQoeMetricsReporter[scheme]
-
-        return qoeMetricsReporterForScheme != null
-    }
-
-    fun handleGetQoeMetricsCapabilities(msg: Message) {
-        val bundle: Bundle = msg.data
-        bundle.classLoader = QoeMetricsRequest::class.java.classLoader
-        val playbackMetricsRequests: ArrayList<QoeMetricsRequest>? =
-            bundle.getParcelableArrayList("qoeMetricsRequest")
-        val schemeSupports: ArrayList<SchemeSupport> = ArrayList()
-
-        if (playbackMetricsRequests != null) {
-            for (playbackMetricsRequest in playbackMetricsRequests) {
-                val supported =
-                    isMetricsSchemeSupported(playbackMetricsRequest.scheme)
-                Log.d(
-                    MediaSessionHandlerAdapter.TAG,
-                    "${playbackMetricsRequest.scheme} is supported: $supported"
-                )
-                schemeSupports.add(SchemeSupport(playbackMetricsRequest.scheme, supported))
-            }
-        }
-
-        sendQoeMetricsCapabilities(schemeSupports)
-    }
-
-    private fun sendQoeMetricsCapabilities(schemeSupports: ArrayList<SchemeSupport>) {
-        val bundle = Bundle()
-        bundle.putParcelableArrayList("schemeSupport", schemeSupports)
-        outgoingMessageHandler.sendMessageByTypeAndBundle(
-            SessionHandlerMessageTypes.REPORT_QOE_METRICS_CAPABILITIES,
-            bundle
-        )
     }
 
     private fun sendQoeMetricsReport(
@@ -123,19 +141,13 @@ class QoEMetricsReportingController(
         val qoeMetricsRequest: QoeMetricsRequest? = bundle.getParcelable("qoeMetricsRequest")
         val scheme = qoeMetricsRequest?.scheme
 
-        val qoeMetricsReport = getQoeMetricsReport(qoeMetricsRequest)
         Log.d(
             MediaSessionHandlerAdapter.TAG,
             "Media Session Handler requested QoE metrics for scheme $scheme"
         )
 
         if (qoeMetricsRequest != null) {
-            qoeMetricsRequest.metricReportingConfigurationId?.let {
-                sendQoeMetricsReport(
-                    qoeMetricsReport,
-                    it
-                )
-            }
+            triggerSingleQoeMetricsReport(qoeMetricsRequest)
         }
     }
 
@@ -144,7 +156,7 @@ class QoEMetricsReportingController(
     }
 
     override fun resetState() {
-
+        lastQoeMetricsRequests.clear()
     }
 
 }

@@ -14,7 +14,4 @@ abstract class Controller {
 
     abstract fun handleTriggerPlayback(playbackRequest: PlaybackRequest)
 
-    fun setReportingClientId(id: String) {
-        reportingClientId = id
-    }
 }

@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.databind.ser.PropertyFilter
 import com.fasterxml.jackson.databind.ser.PropertyWriter
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider
-import com.fivegmag.a5gmscommonlibrary.consumptionReporting.PlaybackConsumptionReportingConfiguration
+import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionRequest
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
@@ -36,7 +36,7 @@ class ConsumptionReportingController(
     }
 
     private val activeConsumptionReporter = mutableListOf<ConsumptionReporter>()
-    private var playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
+    private var lastConsumptionRequest: ConsumptionRequest? =
         null
 
 
@@ -63,19 +63,19 @@ class ConsumptionReportingController(
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     fun onCellInfoUpdatedEvent(event: CellInfoUpdatedEvent) {
-        if (playbackConsumptionReportingConfiguration != null && playbackConsumptionReportingConfiguration!!.locationReporting == true) {
+        if (lastConsumptionRequest != null && lastConsumptionRequest!!.locationReporting == true) {
             triggerConsumptionReport()
         }
     }
 
     private fun triggerConsumptionReport() {
-        if (playbackConsumptionReportingConfiguration == null) {
+        if (lastConsumptionRequest == null) {
             return
         }
         for (consumptionReporter in activeConsumptionReporter) {
             val consumptionReport = consumptionReporter.getConsumptionReport(
                 reportingClientId,
-                playbackConsumptionReportingConfiguration!!
+                lastConsumptionRequest!!
             )
             sendConsumptionReport(consumptionReport)
             consumptionReporter.resetState()
@@ -96,39 +96,39 @@ class ConsumptionReportingController(
         if (exoPlayerAdapter.hasActiveMediaItem()) {
             triggerConsumptionReport()
         }
-        setCurrentConsumptionReportingConfiguration(
-            playbackRequest.playbackConsumptionReportingConfiguration
+        setLastConsumptionRequest(
+            playbackRequest.consumptionRequest
         )
     }
 
-    private fun setCurrentConsumptionReportingConfiguration(consumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration) {
-        playbackConsumptionReportingConfiguration = consumptionReportingConfiguration
+    private fun setLastConsumptionRequest(consumptionRequest: ConsumptionRequest) {
+        lastConsumptionRequest = consumptionRequest
     }
 
-    fun handleUpdatePlaybackConsumptionReportingConfiguration(msg: Message) {
-        val playbackConsumptionReportingConfiguration =
-            getPlaybackConsumptionReportingConfigurationFromMessage(msg)
+    fun updateLastConsumptionRequest(msg: Message) {
+        val consumptionRequest =
+            getConsumptionRequestFromMessage(msg)
 
-        if (playbackConsumptionReportingConfiguration != null) {
-            setCurrentConsumptionReportingConfiguration(
-                playbackConsumptionReportingConfiguration
+        if (consumptionRequest != null) {
+            setLastConsumptionRequest(
+                consumptionRequest
             )
         }
     }
 
-    private fun getPlaybackConsumptionReportingConfigurationFromMessage(msg: Message): PlaybackConsumptionReportingConfiguration? {
+    private fun getConsumptionRequestFromMessage(msg: Message): ConsumptionRequest? {
         val bundle: Bundle = msg.data
-        bundle.classLoader = PlaybackConsumptionReportingConfiguration::class.java.classLoader
-        return bundle.getParcelable("playbackConsumptionReportingConfiguration")
+        bundle.classLoader = ConsumptionRequest::class.java.classLoader
+        return bundle.getParcelable("consumptionRequest")
     }
 
     fun handleGetConsumptionReport(msg: Message) {
-        val playbackConsumptionReportingConfiguration =
-            getPlaybackConsumptionReportingConfigurationFromMessage(msg)
+        val consumptionRequest =
+            getConsumptionRequestFromMessage(msg)
 
-        if (playbackConsumptionReportingConfiguration != null) {
-            setCurrentConsumptionReportingConfiguration(
-                playbackConsumptionReportingConfiguration
+        if (consumptionRequest != null) {
+            setLastConsumptionRequest(
+                consumptionRequest
             )
         }
         triggerConsumptionReport()
@@ -138,7 +138,7 @@ class ConsumptionReportingController(
         resetState()
     }
     override fun resetState() {
-        playbackConsumptionReportingConfiguration = null
+        lastConsumptionRequest = null
     }
 }
 

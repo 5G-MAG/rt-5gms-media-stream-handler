@@ -7,7 +7,7 @@ import android.telephony.CellInfo
 import android.telephony.CellInfoGsm
 import android.telephony.CellInfoLte
 import android.telephony.CellInfoNr
-import com.fivegmag.a5gmscommonlibrary.consumptionReporting.PlaybackConsumptionReportingConfiguration
+import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionRequest
 import com.fivegmag.a5gmscommonlibrary.models.CellIdentifierType
 import com.fivegmag.a5gmscommonlibrary.models.TypedLocation
 import java.lang.Exception
@@ -18,7 +18,7 @@ abstract class ConsumptionReporter {
 
     abstract fun getConsumptionReport(
         reportingClientId: String,
-        playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration
+        consumptionRequest: ConsumptionRequest
     ): String
 
     abstract fun resetState()

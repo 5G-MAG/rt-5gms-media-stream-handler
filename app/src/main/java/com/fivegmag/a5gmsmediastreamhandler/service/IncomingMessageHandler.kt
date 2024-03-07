@@ -46,10 +46,6 @@ class IncomingMessageHandler(private val context: Context) {
                     msg
                 )
 
-                SessionHandlerMessageTypes.GET_QOE_METRICS_CAPABILITIES -> handleGetQoeMetricsCapabilities(
-                    msg
-                )
-
                 SessionHandlerMessageTypes.GET_QOE_METRICS_REPORT -> handleGetQoeMetricsReport(msg)
 
                 else -> super.handleMessage(msg)
@@ -76,12 +72,7 @@ class IncomingMessageHandler(private val context: Context) {
 
     @UnstableApi
     private fun handleUpdatePlaybackConsumptionReportingConfiguration(msg: Message) {
-        consumptionReportingController.handleUpdatePlaybackConsumptionReportingConfiguration(msg)
-    }
-
-    @UnstableApi
-    private fun handleGetQoeMetricsCapabilities(msg: Message) {
-        qoeMetricsReportingController.handleGetQoeMetricsCapabilities(msg)
+        consumptionReportingController.updateLastConsumptionRequest(msg)
     }
 
     @UnstableApi
@@ -98,12 +89,12 @@ class IncomingMessageHandler(private val context: Context) {
         exoPlayerAdapter = exoAdapter
         consumptionReportingController =
             ConsumptionReportingController(exoPlayerAdapter, outgoingMessageHandler)
-        consumptionReportingController.setReportingClientId(reportingClientId)
+        consumptionReportingController.reportingClientId = reportingClientId
         consumptionReportingController.initialize()
 
         qoeMetricsReportingController =
             QoEMetricsReportingController(exoPlayerAdapter, outgoingMessageHandler)
-        qoeMetricsReportingController.setReportingClientId(reportingClientId)
+        qoeMetricsReportingController.reportingClientId = reportingClientId
         qoeMetricsReportingController.initialize()
 
         sessionController = SessionController(

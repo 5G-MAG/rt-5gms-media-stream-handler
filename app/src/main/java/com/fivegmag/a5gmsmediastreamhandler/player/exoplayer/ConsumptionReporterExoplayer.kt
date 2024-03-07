@@ -3,7 +3,6 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 import android.annotation.SuppressLint
 import android.os.Build
 import android.telephony.CellInfo
-import android.telephony.TelephonyManager
 import androidx.annotation.RequiresApi
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -13,14 +12,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReport
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
-import com.fivegmag.a5gmscommonlibrary.consumptionReporting.PlaybackConsumptionReportingConfiguration
+import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionRequest
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.EndpointAddress
 import com.fivegmag.a5gmscommonlibrary.models.TypedLocation
-import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingFilterProvider
 import com.fivegmag.a5gmsmediastreamhandler.player.ConsumptionReporter
 import org.greenrobot.eventbus.EventBus
@@ -31,8 +29,7 @@ import java.util.Date
 
 class ConsumptionReporterExoplayer(
     private val exoPlayerAdapter: ExoPlayerAdapter
-) :
-    ConsumptionReporter() {
+) : ConsumptionReporter() {
 
     companion object {
         const val TAG = "5GMS-ConsumptionReporterExoplayer"
@@ -132,7 +129,7 @@ class ConsumptionReporterExoplayer(
     @UnstableApi
     override fun getConsumptionReport(
         reportingClientId: String,
-        playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration
+        consumptionRequest: ConsumptionRequest
     ): String {
         val mediaPlayerEntry = exoPlayerAdapter.getCurrentManifestUri()
         // We need to add the duration of the consumption reporting units that are not yet finished
@@ -157,10 +154,10 @@ class ConsumptionReporterExoplayer(
 
         // Filter the values according to the current configuration
         val propertiesToIgnore = mutableListOf<String>()
-        if (playbackConsumptionReportingConfiguration.locationReporting == false) {
+        if (consumptionRequest.locationReporting == false) {
             propertiesToIgnore.add("locations")
         }
-        if (playbackConsumptionReportingConfiguration.accessReporting == false) {
+        if (consumptionRequest.accessReporting == false) {
             propertiesToIgnore.add("clientEndpointAddress")
             propertiesToIgnore.add("serverEndpointAddress")
         }
