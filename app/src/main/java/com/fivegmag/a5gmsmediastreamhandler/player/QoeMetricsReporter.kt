@@ -4,9 +4,7 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 
 interface QoeMetricsReporter {
 
-    fun initialize()
-
-    fun setConfigurationParameters(samplingPeriod: Long)
+    fun initialize(lastQoeMetricsRequest: QoeMetricsRequest)
 
     fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest, reportingClientId: String) : String
 

@@ -1,7 +1,8 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import android.annotation.SuppressLint
-import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.LoadEventInfo
@@ -33,6 +34,8 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.lang.Exception
+import java.util.Timer
+import java.util.TimerTask
 
 @UnstableApi
 class QoeMetricsReporterExoplayer(
@@ -45,10 +48,16 @@ class QoeMetricsReporterExoplayer(
     private val bufferLevel: BufferLevel = BufferLevel(ArrayList())
     private val mpdInformation: ArrayList<MpdInformation> = ArrayList()
     private val utils: Utils = Utils()
-    private var samplingPeriod: Long? = null
+    private var lastQoeMetricsRequest: QoeMetricsRequest? = null
+    private var samplingPeriodTimer: Timer? = null
+
     companion object {
         const val TAG = "5GMS-QoeMetricsReporterExoplayer"
         const val SCHEME = MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
+    }
+
+    fun setLastQoeMetricsRequest(lastQoeMetricsRequest: QoeMetricsRequest) {
+        this.lastQoeMetricsRequest = lastQoeMetricsRequest
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -171,12 +180,10 @@ class QoeMetricsReporterExoplayer(
         }
     }
 
-    override fun initialize() {
+    override fun initialize(lastQoeMetricsRequest: QoeMetricsRequest) {
         EventBus.getDefault().register(this)
-    }
-
-    override fun setConfigurationParameters(samplingPeriod: Long) {
-        this.samplingPeriod = samplingPeriod
+        setLastQoeMetricsRequest(lastQoeMetricsRequest)
+        initializeSamplingPeriodTimer()
     }
 
     @SuppressLint("Range")
@@ -235,6 +242,38 @@ class QoeMetricsReporterExoplayer(
         }
     }
 
+    private fun initializeSamplingPeriodTimer() {
+        if (samplingPeriodTimer != null) {
+            return
+        }
+        val timer = Timer()
+        val samplingPeriod = lastQoeMetricsRequest?.samplingPeriod?.times(1000)
+        if (samplingPeriod != null) {
+            timer.scheduleAtFixedRate(
+                object : TimerTask() {
+                    @SuppressLint("Range")
+                    override fun run() {
+                        Log.d(TAG, "Adding BufferLevelEntry due to sampling period timer")
+                        Handler(Looper.getMainLooper()).post {
+                            addBufferLevelEntry()
+                        }
+                    }
+                },
+                0,
+                samplingPeriod
+            )
+        }
+        samplingPeriodTimer = timer
+    }
+
+    private fun stopSamplingPeriodTimer() {
+        if (samplingPeriodTimer != null) {
+            samplingPeriodTimer!!.cancel()
+            samplingPeriodTimer = null
+        }
+    }
+
+
     private fun shouldReportMetric(metric: String, metricsList: ArrayList<String>?): Boolean {
         // Special handling for HTTP List. Needs to be enabled explicitly as not part of TS 26.247
         if (metric == Metrics.HTTP_LIST) {
@@ -271,12 +310,17 @@ class QoeMetricsReporterExoplayer(
     }
 
     override fun reset() {
+        resetState()
+        lastQoeMetricsRequest = null
+        stopSamplingPeriodTimer()
+    }
+
+    @SuppressLint("Range")
+    override fun resetState() {
         representationSwitchList.entries.clear()
         httpList.entries.clear()
         bufferLevel.entries.clear()
         mpdInformation.clear()
     }
 
-    override fun resetState() {
-    }
 }
