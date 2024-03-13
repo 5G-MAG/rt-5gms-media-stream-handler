@@ -22,7 +22,7 @@ class SessionController(
     private val context: Context,
     private val exoPlayerAdapter: ExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
-) : Controller {
+) : ISessionController {
 
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
         override fun onCellInfo(cellInfoList: MutableList<CellInfo>) {
@@ -67,7 +67,7 @@ class SessionController(
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
-    fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
+    override fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
         outgoingMessageHandler.updatePlaybackState(event.playbackState)
     }
 

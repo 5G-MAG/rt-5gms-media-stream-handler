@@ -25,7 +25,7 @@ import kotlin.reflect.full.primaryConstructor
 class QoEMetricsReportingController(
     private val exoPlayerAdapter: ExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
-) : Controller {
+) : IQoEMetricsReportingController {
 
     companion object {
         const val TAG = "5GMS-QoEMetricsReportingController"
@@ -81,7 +81,7 @@ class QoEMetricsReportingController(
         }
     }
 
-    fun triggerQoeMetricsReports() {
+    override fun triggerQoeMetricsReports() {
         try {
             if (lastQoeMetricsRequestsById.isEmpty()) {
                 return
@@ -120,7 +120,7 @@ class QoEMetricsReportingController(
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
-    fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
+    override fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
         if (event.playbackState == PlayerStates.ENDED) {
             triggerQoeMetricsReports()
         }
@@ -163,7 +163,7 @@ class QoEMetricsReportingController(
         )
     }
 
-    fun handleGetQoeMetricsReport(msg: Message) {
+    override fun handleGetQoeMetricsReport(msg: Message) {
         val bundle: Bundle = msg.data
         bundle.classLoader = QoeMetricsRequest::class.java.classLoader
         val qoeMetricsRequest: QoeMetricsRequest? = bundle.getParcelable("qoeMetricsRequest")

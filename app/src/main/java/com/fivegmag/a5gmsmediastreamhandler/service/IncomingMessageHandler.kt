@@ -7,16 +7,15 @@ import android.os.Messenger
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
-import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingController
-import com.fivegmag.a5gmsmediastreamhandler.controller.QoEMetricsReportingController
-import com.fivegmag.a5gmsmediastreamhandler.controller.SessionController
+import com.fivegmag.a5gmsmediastreamhandler.controller.IConsumptionReportingController
+import com.fivegmag.a5gmsmediastreamhandler.controller.IQoEMetricsReportingController
+import com.fivegmag.a5gmsmediastreamhandler.controller.ISessionController
 
 class IncomingMessageHandler() {
 
-    private lateinit var consumptionReportingController: ConsumptionReportingController
-    private lateinit var qoeMetricsReportingController: QoEMetricsReportingController
-    private lateinit var sessionController: SessionController
-
+    private lateinit var consumptionReportingController: IConsumptionReportingController
+    private lateinit var qoeMetricsReportingController: IQoEMetricsReportingController
+    private lateinit var sessionController: ISessionController
 
     @UnstableApi
     private val incomingMessenger = Messenger(IncomingHandler())
@@ -69,9 +68,9 @@ class IncomingMessageHandler() {
 
     @UnstableApi
     fun initialize(
-        consumptionReportingController: ConsumptionReportingController,
-        qoEMetricsReportingController: QoEMetricsReportingController,
-        sessionController: SessionController
+        consumptionReportingController: IConsumptionReportingController,
+        qoEMetricsReportingController: IQoEMetricsReportingController,
+        sessionController: ISessionController
     ) {
         this.consumptionReportingController = consumptionReportingController
         this.qoeMetricsReportingController = qoEMetricsReportingController

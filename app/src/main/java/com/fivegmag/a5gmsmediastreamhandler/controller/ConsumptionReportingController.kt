@@ -25,12 +25,11 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
-
 @UnstableApi
 class ConsumptionReportingController(
     private val exoPlayerAdapter: ExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
-) : Controller {
+) : IConsumptionReportingController {
     companion object {
         const val TAG = "5GMS-ConsumptionReportingController"
     }
@@ -47,7 +46,7 @@ class ConsumptionReportingController(
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
-    fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
+    override fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
         if (event.playbackState == PlayerStates.ENDED) {
             triggerConsumptionReport()
         }
@@ -55,13 +54,13 @@ class ConsumptionReportingController(
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
-    fun onCellInfoUpdatedEvent(event: CellInfoUpdatedEvent) {
+    override fun onCellInfoUpdatedEvent(event: CellInfoUpdatedEvent) {
         if (lastConsumptionRequest != null && lastConsumptionRequest!!.locationReporting == true) {
             triggerConsumptionReport()
         }
     }
 
-    fun triggerConsumptionReport() {
+    override fun triggerConsumptionReport() {
         if (lastConsumptionRequest == null) {
             return
         }
@@ -103,7 +102,7 @@ class ConsumptionReportingController(
         lastConsumptionRequest = consumptionRequest
     }
 
-    fun updateLastConsumptionRequest(msg: Message) {
+    override fun updateLastConsumptionRequest(msg: Message) {
         val consumptionRequest =
             getConsumptionRequestFromMessage(msg)
 
@@ -120,7 +119,7 @@ class ConsumptionReportingController(
         return bundle.getParcelable("consumptionRequest")
     }
 
-    fun handleGetConsumptionReport(msg: Message) {
+    override fun handleGetConsumptionReport(msg: Message) {
         val consumptionRequest =
             getConsumptionRequestFromMessage(msg)
 
