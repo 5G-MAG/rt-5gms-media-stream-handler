@@ -6,7 +6,7 @@ interface QoeMetricsReporter {
 
     fun initialize()
 
-    fun getQoeMetricsReportingScheme() : String
+    fun setConfigurationParameters(samplingPeriod: Long)
 
     fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest, reportingClientId: String) : String
 

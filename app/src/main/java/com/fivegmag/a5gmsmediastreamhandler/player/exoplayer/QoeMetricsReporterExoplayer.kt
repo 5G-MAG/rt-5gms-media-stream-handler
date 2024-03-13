@@ -1,6 +1,7 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import android.annotation.SuppressLint
+import android.content.Context
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.LoadEventInfo
@@ -44,9 +45,10 @@ class QoeMetricsReporterExoplayer(
     private val bufferLevel: BufferLevel = BufferLevel(ArrayList())
     private val mpdInformation: ArrayList<MpdInformation> = ArrayList()
     private val utils: Utils = Utils()
-
+    private var samplingPeriod: Long? = null
     companion object {
         const val TAG = "5GMS-QoeMetricsReporterExoplayer"
+        const val SCHEME = MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -173,8 +175,8 @@ class QoeMetricsReporterExoplayer(
         EventBus.getDefault().register(this)
     }
 
-    override fun getQoeMetricsReportingScheme(): String {
-        return MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
+    override fun setConfigurationParameters(samplingPeriod: Long) {
+        this.samplingPeriod = samplingPeriod
     }
 
     @SuppressLint("Range")

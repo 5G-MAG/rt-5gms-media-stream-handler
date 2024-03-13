@@ -12,13 +12,14 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsResponse
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.MediaSessionHandlerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
-import com.fivegmag.a5gmsmediastreamhandler.player.QoeMetricsReporter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.QoeMetricsReporterExoplayer
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.lang.Exception
+import kotlin.reflect.KClass
+import kotlin.reflect.full.primaryConstructor
 
 @UnstableApi
 class QoEMetricsReportingController(
@@ -30,18 +31,19 @@ class QoEMetricsReportingController(
         const val TAG = "5GMS-QoEMetricsReportingController"
     }
 
-    private val activeQoeMetricsReporter = mutableMapOf<String, QoeMetricsReporter>()
-    private var lastQoeMetricsRequests = mutableMapOf<String, QoeMetricsRequest>()
+    private val availableQoeMetricsReporterExoplayerByScheme =
+        mutableMapOf<String, KClass<QoeMetricsReporterExoplayer>>()
+    private val activeQoeMetricsReporterById = mutableMapOf<String, QoeMetricsReporterExoplayer>()
+    private var lastQoeMetricsRequestsById = mutableMapOf<String, QoeMetricsRequest>()
 
     override fun initialize() {
         EventBus.getDefault().register(this)
-        setDefaultExoplayerQoeMetricsReporter()
+        registerExoplayerQoeMetricsReporter()
     }
 
-    private fun setDefaultExoplayerQoeMetricsReporter() {
-        val qoeMetricsReporterExoplayer = QoeMetricsReporterExoplayer(exoPlayerAdapter)
-        qoeMetricsReporterExoplayer.initialize()
-        setQoeMetricsReporterForScheme(qoeMetricsReporterExoplayer)
+    private fun registerExoplayerQoeMetricsReporter() {
+        val scheme = QoeMetricsReporterExoplayer.SCHEME
+        availableQoeMetricsReporterExoplayerByScheme[scheme] = QoeMetricsReporterExoplayer::class
     }
 
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
@@ -55,10 +57,10 @@ class QoEMetricsReportingController(
 
     private fun triggerQoeMetricsReports() {
         try {
-            if (lastQoeMetricsRequests.isEmpty()) {
+            if (lastQoeMetricsRequestsById.isEmpty()) {
                 return
             }
-            for (qoeMetricsRequest in lastQoeMetricsRequests.values) {
+            for (qoeMetricsRequest in lastQoeMetricsRequestsById.values) {
                 triggerSingleQoeMetricsReport(qoeMetricsRequest)
             }
         } catch (e: Exception) {
@@ -68,13 +70,11 @@ class QoEMetricsReportingController(
 
     private fun triggerSingleQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest) {
         try {
-            if (qoeMetricsRequest.metricReportingConfigurationId != null) {
-                val qoeMetricsReport = getQoeMetricsReport(qoeMetricsRequest)
-                sendQoeMetricsReport(
-                    qoeMetricsReport,
-                    qoeMetricsRequest.metricReportingConfigurationId!!
-                )
-            }
+            val qoeMetricsReport = getQoeMetricsReport(qoeMetricsRequest)
+            sendQoeMetricsReport(
+                qoeMetricsReport,
+                qoeMetricsRequest.metricsReportingConfigurationId
+            )
         } catch (e: Exception) {
             Log.d(TAG, e.message.toString())
         }
@@ -82,10 +82,8 @@ class QoEMetricsReportingController(
 
     private fun setLastQoeMetricsRequests(qoeMetricsRequests: ArrayList<QoeMetricsRequest>) {
         for (qoeMetricsRequest in qoeMetricsRequests) {
-            if (qoeMetricsRequest.metricReportingConfigurationId != null) {
-                lastQoeMetricsRequests[qoeMetricsRequest.metricReportingConfigurationId!!] =
-                    qoeMetricsRequest
-            }
+            lastQoeMetricsRequestsById[qoeMetricsRequest.metricsReportingConfigurationId] =
+                qoeMetricsRequest
         }
     }
 
@@ -97,35 +95,57 @@ class QoEMetricsReportingController(
         }
     }
 
-
-    private fun setQoeMetricsReporterForScheme(qoeMetricsReporter: QoeMetricsReporter) {
-        val scheme = qoeMetricsReporter.getQoeMetricsReportingScheme()
-        activeQoeMetricsReporter[scheme] = qoeMetricsReporter
-    }
-
     private fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest?): String {
         if (qoeMetricsRequest == null) {
             throw Exception("qoeMetricsRequest can not be null")
         }
 
-        val qoeMetricsReporterForScheme = activeQoeMetricsReporter[qoeMetricsRequest.scheme]
-            ?: throw Exception("No QoE Metrics Reporter for scheme ${qoeMetricsRequest.scheme}")
+
+        val qoeMetricsReporterForConfigurationId =
+            initializeQoeMetricsReporterForConfigurationId(qoeMetricsRequest)
+                ?: throw Exception("No available QoeMetricsReporter for scheme ${qoeMetricsRequest.scheme} and id ${qoeMetricsRequest.metricsReportingConfigurationId}")
+
 
         val qoeMetricsReport =
-            qoeMetricsReporterForScheme.getQoeMetricsReport(qoeMetricsRequest, reportingClientId)
-        qoeMetricsReporterForScheme.reset()
+            qoeMetricsReporterForConfigurationId.getQoeMetricsReport(
+                qoeMetricsRequest,
+                reportingClientId
+            )
+        qoeMetricsReporterForConfigurationId.reset()
 
         return qoeMetricsReport
     }
 
+    private fun initializeQoeMetricsReporterForConfigurationId(qoeMetricsRequest: QoeMetricsRequest): QoeMetricsReporterExoplayer? {
+        val qoeMetricsReporterForConfigurationId =
+            activeQoeMetricsReporterById[qoeMetricsRequest.metricsReportingConfigurationId]
+
+        if (qoeMetricsReporterForConfigurationId != null) {
+            return qoeMetricsReporterForConfigurationId
+        }
+
+        val qoeMetricsReporterExoplayerForScheme =
+            availableQoeMetricsReporterExoplayerByScheme[qoeMetricsRequest.scheme] ?: return null
+        val instance =
+            qoeMetricsReporterExoplayerForScheme.primaryConstructor?.call(exoPlayerAdapter)
+        instance?.initialize()
+
+        if (instance != null) {
+            activeQoeMetricsReporterById[qoeMetricsRequest.metricsReportingConfigurationId] =
+                instance
+        }
+
+        return instance
+    }
+
     private fun sendQoeMetricsReport(
         qoeMetricsReport: String,
-        metricReportingConfigurationId: String
+        metricsReportingConfigurationId: String
     ) {
         val bundle = Bundle()
         val playbackMetricsResponse = QoeMetricsResponse(
             qoeMetricsReport,
-            metricReportingConfigurationId
+            metricsReportingConfigurationId
         )
         bundle.putParcelable("qoeMetricsResponse", playbackMetricsResponse)
 
@@ -156,7 +176,7 @@ class QoEMetricsReportingController(
     }
 
     override fun resetState() {
-        lastQoeMetricsRequests.clear()
+        lastQoeMetricsRequestsById.clear()
     }
 
 }
