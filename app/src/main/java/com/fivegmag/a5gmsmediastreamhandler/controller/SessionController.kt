@@ -22,7 +22,7 @@ class SessionController(
     private val context: Context,
     private val exoPlayerAdapter: ExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
-) : Controller() {
+) : Controller {
 
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
         override fun onCellInfo(cellInfoList: MutableList<CellInfo>) {

@@ -30,11 +30,12 @@ import org.greenrobot.eventbus.ThreadMode
 class ConsumptionReportingController(
     private val exoPlayerAdapter: ExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
-) : Controller() {
+) : Controller {
     companion object {
         const val TAG = "5GMS-ConsumptionReportingController"
     }
 
+    lateinit var reportingClientId: String
     private val activeConsumptionReporter = mutableListOf<ConsumptionReporter>()
     private var lastConsumptionRequest: ConsumptionRequest? =
         null

@@ -2,16 +2,14 @@ package com.fivegmag.a5gmsmediastreamhandler.controller
 
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 
-abstract class Controller {
+interface Controller {
 
-    lateinit var reportingClientId: String
+    fun reset()
 
-    abstract fun reset()
+    fun resetState()
 
-    abstract fun resetState()
+    fun initialize()
 
-    abstract fun initialize()
-
-    abstract fun handleTriggerPlayback(playbackRequest: PlaybackRequest)
+    fun handleTriggerPlayback(playbackRequest: PlaybackRequest)
 
 }

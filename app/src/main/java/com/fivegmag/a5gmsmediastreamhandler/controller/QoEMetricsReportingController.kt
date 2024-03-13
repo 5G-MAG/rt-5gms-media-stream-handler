@@ -25,12 +25,13 @@ import kotlin.reflect.full.primaryConstructor
 class QoEMetricsReportingController(
     private val exoPlayerAdapter: ExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
-) : Controller() {
+) : Controller {
 
     companion object {
         const val TAG = "5GMS-QoEMetricsReportingController"
     }
 
+    lateinit var reportingClientId: String
     private val availableQoeMetricsReporterExoplayerByScheme =
         mutableMapOf<String, KClass<QoeMetricsReporterExoplayer>>()
     private val activeQoeMetricsReporterById = mutableMapOf<String, QoeMetricsReporterExoplayer>()
