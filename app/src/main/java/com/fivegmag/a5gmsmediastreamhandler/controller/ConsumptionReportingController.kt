@@ -42,14 +42,6 @@ class ConsumptionReportingController(
 
     override fun initialize() {
         EventBus.getDefault().register(this)
-        setDefaultExoplayerConsumptionReporter()
-
-    }
-
-    private fun setDefaultExoplayerConsumptionReporter() {
-        val consumptionReporterExoplayer = ConsumptionReporterExoplayer(exoPlayerAdapter)
-        consumptionReporterExoplayer.initialize()
-        activeConsumptionReporter.add(consumptionReporterExoplayer)
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -68,7 +60,7 @@ class ConsumptionReportingController(
         }
     }
 
-    private fun triggerConsumptionReport() {
+    fun triggerConsumptionReport() {
         if (lastConsumptionRequest == null) {
             return
         }
@@ -93,12 +85,17 @@ class ConsumptionReportingController(
 
     @UnstableApi
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
-        if (exoPlayerAdapter.hasActiveMediaItem()) {
-            triggerConsumptionReport()
-        }
+        resetState()
+        setDefaultExoplayerConsumptionReporter()
         setLastConsumptionRequest(
             playbackRequest.consumptionRequest
         )
+    }
+
+    private fun setDefaultExoplayerConsumptionReporter() {
+        val consumptionReporterExoplayer = ConsumptionReporterExoplayer(exoPlayerAdapter)
+        consumptionReporterExoplayer.initialize()
+        activeConsumptionReporter.add(consumptionReporterExoplayer)
     }
 
     private fun setLastConsumptionRequest(consumptionRequest: ConsumptionRequest) {
@@ -137,8 +134,13 @@ class ConsumptionReportingController(
     override fun reset() {
         resetState()
     }
+
     override fun resetState() {
         lastConsumptionRequest = null
+        for (reporter in activeConsumptionReporter) {
+            reporter.reset()
+        }
+        activeConsumptionReporter.clear()
     }
 }
 

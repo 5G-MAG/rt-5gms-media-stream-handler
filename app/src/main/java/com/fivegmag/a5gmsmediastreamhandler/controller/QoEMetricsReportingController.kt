@@ -47,9 +47,6 @@ class QoEMetricsReportingController(
     }
 
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
-        if (exoPlayerAdapter.hasActiveMediaItem()) {
-            triggerQoeMetricsReports()
-        }
         resetState()
         setLastQoeMetricsRequests(
             playbackRequest.qoeMetricsRequests
@@ -83,7 +80,7 @@ class QoEMetricsReportingController(
         }
     }
 
-    private fun triggerQoeMetricsReports() {
+    fun triggerQoeMetricsReports() {
         try {
             if (lastQoeMetricsRequestsById.isEmpty()) {
                 return

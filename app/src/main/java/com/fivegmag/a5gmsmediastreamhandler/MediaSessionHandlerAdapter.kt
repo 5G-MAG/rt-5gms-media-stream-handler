@@ -188,6 +188,10 @@ class MediaSessionHandlerAdapter() {
      * @param serviceListEntry
      */
     fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
+        if (exoPlayerAdapter.hasActiveMediaItem()) {
+            consumptionReportingController.triggerConsumptionReport()
+            qoeMetricsReportingController.triggerQoeMetricsReports()
+        }
         messengerService.initializePlaybackByServiceListEntry(serviceListEntry)
     }
 
