@@ -19,10 +19,9 @@ class MessengerService(
     }
 
     private var boundToMediaSessionHandler = false
-    private val outgoingMessageHandler = OutgoingMessageHandler()
-    private val incomingMessageHandler = IncomingMessageHandler(context)
     private lateinit var serviceConnectedCallbackFunction: () -> Unit
-
+    private lateinit var incomingMessageHandler: IncomingMessageHandler
+    private lateinit var outgoingMessageHandler: OutgoingMessageHandler
     private val messengerConnection = object : ServiceConnection {
 
         @UnstableApi
@@ -39,9 +38,12 @@ class MessengerService(
         }
     }
 
-    @UnstableApi
-    fun initialize(exoPlayerAdapter: ExoPlayerAdapter) {
-        incomingMessageHandler.initialize(exoPlayerAdapter, outgoingMessageHandler)
+    fun initialize(
+        incomingMessageHandler: IncomingMessageHandler,
+        outgoingMessageHandler: OutgoingMessageHandler
+    ) {
+        this.incomingMessageHandler = incomingMessageHandler
+        this.outgoingMessageHandler = outgoingMessageHandler
     }
 
 

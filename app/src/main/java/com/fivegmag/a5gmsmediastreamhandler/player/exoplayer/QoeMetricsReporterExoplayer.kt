@@ -29,7 +29,7 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.ReceptionReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitch
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitchList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Trace
-import com.fivegmag.a5gmsmediastreamhandler.player.QoeMetricsReporter
+import com.fivegmag.a5gmsmediastreamhandler.player.IQoeMetricsReporter
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -40,7 +40,7 @@ import java.util.TimerTask
 @UnstableApi
 class QoeMetricsReporterExoplayer(
     private val exoPlayerAdapter: ExoPlayerAdapter
-) : QoeMetricsReporter {
+) : IQoeMetricsReporter {
     private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(
         ArrayList()
     )
@@ -56,7 +56,7 @@ class QoeMetricsReporterExoplayer(
         const val SCHEME = MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
     }
 
-    fun setLastQoeMetricsRequest(lastQoeMetricsRequest: QoeMetricsRequest) {
+    override fun setLastQoeMetricsRequest(lastQoeMetricsRequest: QoeMetricsRequest) {
         this.lastQoeMetricsRequest = lastQoeMetricsRequest
     }
 
