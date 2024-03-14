@@ -22,8 +22,7 @@ import org.greenrobot.eventbus.EventBus
 class ExoPlayerListener(
     private val playerInstance: ExoPlayer,
     private val playerView: PlayerView,
-) :
-    AnalyticsListener {
+) : AnalyticsListener {
 
     companion object {
         const val TAG = "5GMS-ExoPlayerListener"

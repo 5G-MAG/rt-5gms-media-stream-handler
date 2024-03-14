@@ -8,7 +8,6 @@ import android.os.IBinder
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
-import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
 
 class MessengerService(
     private val context: Context

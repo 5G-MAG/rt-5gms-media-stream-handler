@@ -19,7 +19,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.player.ConsumptionReporter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ConsumptionReporterExoplayer
-import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -27,7 +27,7 @@ import org.greenrobot.eventbus.ThreadMode
 
 @UnstableApi
 class ConsumptionReportingController(
-    private val exoPlayerAdapter: ExoPlayerAdapter,
+    private val exoPlayerAdapter: IExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
 ) : IConsumptionReportingController {
     companion object {

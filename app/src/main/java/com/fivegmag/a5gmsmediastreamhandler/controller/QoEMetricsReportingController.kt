@@ -11,19 +11,18 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsResponse
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.MediaSessionHandlerAdapter
-import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.QoeMetricsReporterExoplayer
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import java.lang.Exception
 import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor
 
 @UnstableApi
 class QoEMetricsReportingController(
-    private val exoPlayerAdapter: ExoPlayerAdapter,
+    private val exoPlayerAdapter: IExoPlayerAdapter,
     private val outgoingMessageHandler: OutgoingMessageHandler
 ) : IQoEMetricsReportingController {
 

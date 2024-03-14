@@ -28,7 +28,7 @@ import java.lang.Exception
 import java.util.Date
 
 class ConsumptionReporterExoplayer(
-    private val exoPlayerAdapter: ExoPlayerAdapter
+    private val exoPlayerAdapter: IExoPlayerAdapter
 ) : ConsumptionReporter() {
 
     companion object {

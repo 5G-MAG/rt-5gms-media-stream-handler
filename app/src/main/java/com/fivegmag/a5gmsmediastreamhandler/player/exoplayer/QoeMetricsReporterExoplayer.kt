@@ -39,7 +39,7 @@ import java.util.TimerTask
 
 @UnstableApi
 class QoeMetricsReporterExoplayer(
-    private val exoPlayerAdapter: ExoPlayerAdapter
+    private val exoPlayerAdapter: IExoPlayerAdapter
 ) : IQoeMetricsReporter {
     private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(
         ArrayList()

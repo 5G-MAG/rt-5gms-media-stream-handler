@@ -21,7 +21,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.helpers.UserAgentTokens
 
 @UnstableApi
-class ExoPlayerAdapter() {
+class ExoPlayerAdapter() : IExoPlayerAdapter {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
@@ -31,7 +31,7 @@ class ExoPlayerAdapter() {
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
 
-    fun initialize(
+    override fun initialize(
         exoPlayerView: PlayerView,
         context: Context
     ) {
@@ -62,7 +62,7 @@ class ExoPlayerAdapter() {
         playerInstance.addAnalyticsListener(playerListener)
     }
 
-    fun attach(url: String, contentType: String = "") {
+    override fun attach(url: String, contentType: String) {
         val mediaItem: MediaItem
         when (contentType) {
             ContentTypes.DASH -> {
@@ -89,62 +89,62 @@ class ExoPlayerAdapter() {
         activeManifestUrl = url
     }
 
-    fun hasActiveMediaItem() : Boolean {
+    override fun hasActiveMediaItem() : Boolean {
         return activeMediaItem != null
     }
 
-    fun getCurrentManifestUri(): String {
+    override fun getCurrentManifestUri(): String {
         return activeManifestUrl
     }
 
-    fun getCurrentManifestUrl(): String {
+    override fun getCurrentManifestUrl(): String {
         return playerInstance.currentMediaItem?.localConfiguration?.uri.toString()
     }
 
-    fun preload() {
+    override fun preload() {
         playerInstance.prepare()
     }
 
-    fun play() {
+    override fun play() {
         playerInstance.play()
     }
 
-    fun pause() {
+    override fun pause() {
         playerInstance.pause()
     }
 
-    fun seek(time: Long) {
+    override fun seek(time: Long) {
         TODO("Not yet implemented")
     }
 
-    fun stop() {
+    override fun stop() {
         playerInstance.stop()
     }
 
-    fun reset() {
+    override fun reset() {
         TODO("Not yet implemented")
     }
 
-    fun destroy() {
+    override fun destroy() {
         playerInstance.release()
     }
 
-    fun getPlayerInstance(): ExoPlayer {
+    override fun getPlayerInstance(): ExoPlayer {
         return playerInstance
     }
 
-    fun getPlaybackState(): Int {
+    override fun getPlaybackState(): Int {
         return playerInstance.playbackState
     }
 
-    fun getCurrentPosition(): Long {
+    override fun getCurrentPosition(): Long {
         return playerInstance.currentPosition
     }
 
-    fun getBufferLength(): Long {
+    override fun getBufferLength(): Long {
         return playerInstance.totalBufferedDuration
     }
-    fun getAverageThroughput(): Long {
+    override fun getAverageThroughput(): Long {
         return bandwidthMeter.bitrateEstimate
     }
 
@@ -152,7 +152,7 @@ class ExoPlayerAdapter() {
         return playerInstance.currentLiveOffset
     }
 
-    fun getCurrentPeriodId(): String {
+    override fun getCurrentPeriodId(): String {
         val dashManifest = playerInstance.currentManifest as DashManifest
         val periodId = dashManifest.getPeriod(playerInstance.currentPeriodIndex).id
 
@@ -163,7 +163,7 @@ class ExoPlayerAdapter() {
         return ""
     }
 
-    fun getStatusInformation(status: String): Any? {
+    override fun getStatusInformation(status: String): Any? {
         when (status) {
             StatusInformation.AVERAGE_THROUGHPUT -> return getAverageThroughput()
             StatusInformation.BUFFER_LENGTH -> return getBufferLength()
@@ -174,7 +174,7 @@ class ExoPlayerAdapter() {
         }
     }
 
-    fun getPlayerState(): String {
+    override fun getPlayerState(): String {
         val state: String?
         if (playerInstance.isPlaying) {
             state = PlayerStates.PLAYING
