@@ -1,13 +1,4 @@
-/*
-License: 5G-MAG Public License (v1.0)
-Author: Daniel Silhavy
-Copyright: (C) 2023 Fraunhofer FOKUS
-For full license terms please see the LICENSE file distributed with this
-program. If this file is missing then the license can be retrieved from
-https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
-*/
-
-package com.fivegmag.a5gmsmediastreamhandler
+package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import android.os.Build
 import android.util.Log
@@ -21,22 +12,21 @@ import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.ui.PlayerView
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
-import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
 import org.greenrobot.eventbus.EventBus
 
-
-const val TAG = "ExoPlayerListener"
-
-// See https://exoplayer.dev/doc/reference/com/google/android/exoplayer2/Player.Listener.html for possible events
 @UnstableApi
 class ExoPlayerListener(
     private val playerInstance: ExoPlayer,
     private val playerView: PlayerView,
-) :
-    AnalyticsListener {
+) : AnalyticsListener {
+
+    companion object {
+        const val TAG = "5GMS-ExoPlayerListener"
+    }
 
     override fun onPlaybackStateChanged(
         eventTime: AnalyticsListener.EventTime,
@@ -45,6 +35,7 @@ class ExoPlayerListener(
         val state: String = mapStateToConstant(playbackState)
 
         playerView.keepScreenOn = !(state == PlayerStates.IDLE || state == PlayerStates.ENDED)
+        Log.d(TAG, "Playback state changed to $state")
         EventBus.getDefault().post(PlaybackStateChangedEvent(eventTime, state))
     }
 
@@ -76,17 +67,16 @@ class ExoPlayerListener(
         EventBus.getDefault().post(LoadStartedEvent(eventTime, loadEventInfo, mediaLoadData))
     }
 
-    override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: PlaybackException) {
-        Log.d("ExoPlayer", "Error")
+    override fun onLoadCompleted(
+        eventTime: AnalyticsListener.EventTime,
+        loadEventInfo: LoadEventInfo,
+        mediaLoadData: MediaLoadData
+    ) {
+        EventBus.getDefault().post(LoadCompletedEvent(eventTime, loadEventInfo, mediaLoadData))
     }
 
-    /**
-     * Removes all entries from the consumption reporting list
-     *
-     */
-
-    fun resetState() {
-        Log.d(TAG, "Resetting ExoPlayerListener")
+    override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: PlaybackException) {
+        Log.d("ExoPlayer", "Error")
     }
 
 }

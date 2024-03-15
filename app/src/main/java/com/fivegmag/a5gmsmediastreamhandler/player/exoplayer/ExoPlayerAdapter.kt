@@ -1,13 +1,4 @@
-/*
-License: 5G-MAG Public License (v1.0)
-Author: Daniel Silhavy
-Copyright: (C) 2023 Fraunhofer FOKUS
-For full license terms please see the LICENSE file distributed with this
-program. If this file is missing then the license can be retrieved from
-https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
-*/
-
-package com.fivegmag.a5gmsmediastreamhandler
+package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import android.content.Context
 import androidx.media3.common.MediaItem
@@ -19,6 +10,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.dash.manifest.DashManifest
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
@@ -27,11 +19,9 @@ import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.helpers.UserAgentTokens
-import com.fivegmag.a5gmsmediastreamhandler.helpers.mapStateToConstant
-
 
 @UnstableApi
-class ExoPlayerAdapter() {
+class ExoPlayerAdapter() : IExoPlayerAdapter {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
@@ -39,13 +29,11 @@ class ExoPlayerAdapter() {
     private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
-    private lateinit var mediaSessionHandlerAdapter: MediaSessionHandlerAdapter
 
 
-    fun initialize(
+    override fun initialize(
         exoPlayerView: PlayerView,
-        context: Context,
-        msh: MediaSessionHandlerAdapter
+        context: Context
     ) {
         val defaultUserAgent = Util.getUserAgent(context, "A5GMSMediaStreamHandler")
         val deviceName = android.os.Build.MODEL
@@ -60,7 +48,6 @@ class ExoPlayerAdapter() {
                 val dataSource = httpDataSourceFactory.createDataSource()
                 dataSource
             }
-        mediaSessionHandlerAdapter = msh
         playerInstance = ExoPlayer.Builder(context)
             .setMediaSourceFactory(
                 DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
@@ -75,7 +62,7 @@ class ExoPlayerAdapter() {
         playerInstance.addAnalyticsListener(playerListener)
     }
 
-    fun attach(url: String, contentType: String = "") {
+    override fun attach(url: String, contentType: String) {
         val mediaItem: MediaItem
         when (contentType) {
             ContentTypes.DASH -> {
@@ -102,68 +89,81 @@ class ExoPlayerAdapter() {
         activeManifestUrl = url
     }
 
-    fun handleSourceChange() {
-        // Send the final consumption report
-        if (activeMediaItem != null) {
-            mediaSessionHandlerAdapter.sendConsumptionReport()
-        }
-        playerListener.resetState()
-        mediaSessionHandlerAdapter.resetState()
+    override fun hasActiveMediaItem() : Boolean {
+        return activeMediaItem != null
     }
 
-    fun getCurrentManifestUri(): String {
+    override fun getCurrentManifestUri(): String {
         return activeManifestUrl
     }
 
-    fun preload() {
+    override fun getCurrentManifestUrl(): String {
+        return playerInstance.currentMediaItem?.localConfiguration?.uri.toString()
+    }
+
+    override fun preload() {
         playerInstance.prepare()
     }
 
-    fun play() {
+    override fun play() {
         playerInstance.play()
     }
 
-    fun pause() {
+    override fun pause() {
         playerInstance.pause()
     }
 
-    fun seek(time: Long) {
+    override fun seek(time: Long) {
         TODO("Not yet implemented")
     }
 
-    fun stop() {
+    override fun stop() {
         playerInstance.stop()
     }
 
-    fun reset() {
+    override fun reset() {
         TODO("Not yet implemented")
     }
 
-    fun destroy() {
+    override fun destroy() {
         playerInstance.release()
     }
 
-    fun getPlayerInstance(): ExoPlayer {
+    override fun getPlayerInstance(): ExoPlayer {
         return playerInstance
     }
 
-    fun getPlaybackState(): Int {
+    override fun getPlaybackState(): Int {
         return playerInstance.playbackState
     }
 
-    private fun getAverageThroughput(): Long {
-        return bandwidthMeter.bitrateEstimate
+    override fun getCurrentPosition(): Long {
+        return playerInstance.currentPosition
     }
 
-    private fun getBufferLength(): Long {
+    override fun getBufferLength(): Long {
         return playerInstance.totalBufferedDuration
+    }
+    override fun getAverageThroughput(): Long {
+        return bandwidthMeter.bitrateEstimate
     }
 
     private fun getLiveLatency(): Long {
         return playerInstance.currentLiveOffset
     }
 
-    fun getStatusInformation(status: String): Any? {
+    override fun getCurrentPeriodId(): String {
+        val dashManifest = playerInstance.currentManifest as DashManifest
+        val periodId = dashManifest.getPeriod(playerInstance.currentPeriodIndex).id
+
+        if (periodId != null) {
+            return periodId
+        }
+
+        return ""
+    }
+
+    override fun getStatusInformation(status: String): Any? {
         when (status) {
             StatusInformation.AVERAGE_THROUGHPUT -> return getAverageThroughput()
             StatusInformation.BUFFER_LENGTH -> return getBufferLength()
@@ -174,7 +174,7 @@ class ExoPlayerAdapter() {
         }
     }
 
-    fun getPlayerState(): String {
+    override fun getPlayerState(): String {
         val state: String?
         if (playerInstance.isPlaying) {
             state = PlayerStates.PLAYING
