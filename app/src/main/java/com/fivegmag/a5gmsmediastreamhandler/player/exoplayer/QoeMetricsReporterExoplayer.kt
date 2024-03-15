@@ -189,13 +189,15 @@ class QoeMetricsReporterExoplayer(
     @SuppressLint("Range")
     override fun getQoeMetricsReport(
         qoeMetricsRequest: QoeMetricsRequest,
-        reportingClientId: String
+        reportingClientId: String,
+        recordingSessionId: String
     ): String {
         try {
             val qoeMetricsReport = QoeReport()
             qoeMetricsReport.reportTime = utils.getCurrentXsDateTime()
             qoeMetricsReport.periodId = exoPlayerAdapter.getCurrentPeriodId()
             qoeMetricsReport.reportPeriod = qoeMetricsRequest.reportingInterval?.toInt()
+            qoeMetricsReport.recordingSessionId = recordingSessionId
 
             if (shouldReportMetric(Metrics.BUFFER_LEVEL, qoeMetricsRequest.metrics)) {
                 if (bufferLevel.entries.size > 0) {

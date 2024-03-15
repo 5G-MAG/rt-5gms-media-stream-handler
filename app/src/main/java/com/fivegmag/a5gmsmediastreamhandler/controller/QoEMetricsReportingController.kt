@@ -31,6 +31,7 @@ class QoEMetricsReportingController(
     }
 
     lateinit var reportingClientId: String
+    private lateinit var recordingSessionId: String
     private val availableQoeMetricsReporterExoplayerByScheme =
         mutableMapOf<String, KClass<QoeMetricsReporterExoplayer>>()
     private val activeQoeMetricsReporterById = mutableMapOf<String, QoeMetricsReporterExoplayer>()
@@ -48,6 +49,7 @@ class QoEMetricsReportingController(
 
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
         resetState()
+        recordingSessionId = playbackRequest.mediaStreamingSessionIdentifier
         setLastQoeMetricsRequests(
             playbackRequest.qoeMetricsRequests
         )
@@ -138,7 +140,8 @@ class QoEMetricsReportingController(
         val qoeMetricsReport =
             qoeMetricsReporterForConfigurationId.getQoeMetricsReport(
                 qoeMetricsRequest,
-                reportingClientId
+                reportingClientId,
+                recordingSessionId
             )
         qoeMetricsReporterForConfigurationId.resetState()
 

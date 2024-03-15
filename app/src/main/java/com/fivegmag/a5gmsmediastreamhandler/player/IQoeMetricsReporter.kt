@@ -6,7 +6,11 @@ interface IQoeMetricsReporter {
 
     fun initialize(lastQoeMetricsRequest: QoeMetricsRequest)
 
-    fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest, reportingClientId: String) : String
+    fun getQoeMetricsReport(
+        qoeMetricsRequest: QoeMetricsRequest,
+        reportingClientId: String,
+        recordingSessionId: String
+    ): String
 
     fun reset()
 
