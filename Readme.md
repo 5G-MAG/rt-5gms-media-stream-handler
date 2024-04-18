@@ -87,7 +87,7 @@ dependencyResolutionManagement {
 }
 ````
 
-#### 2. Include the 5GMS Common Library in your module gradle file
+#### 2. Include the 5GMS Media Stream Handler in your module gradle file
 
 Replace the version number in the example below with the version number you are using,
 e.g. `1.2.0` instead of `1.0.0`.
