@@ -1,13 +1,16 @@
-# 5GMS Media Stream Handler
-
-This repository holds the 5GMS Media Stream Handler implementation of the 5G-MAG Reference Tools.
-Note that currently this implementation only supports downlink media streaming.
+<h1 align="center">5GMS Media Stream Handler</h1>
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Under_Development-yellow" alt="Under Development">
+  <img src="https://img.shields.io/github/v/tag/5G-MAG/rt-5gms-media-session-handler?label=version" alt="Version">
+  <img src="https://img.shields.io/badge/License-5G--MAG%20Public%20License%20(v1.0)-blue" alt="License">
+</p>
 
 ## Introduction
 
 The 5GMS Media Stream Handler is a 5GMS client component that forms part of the 5G Media Services
-framework as defined in
-ETSI TS 126.501.
+framework as defined in ETSI TS 126.501.
+
+Additional information can be found at: https://5g-mag.github.io/Getting-Started/pages/5g-media-streaming/
 
 ### Media Stream Handler (Media Player) for 5GMSd
 
@@ -16,13 +19,7 @@ presentation based on a media player entry and exposing some basic controls such
 seek, stop to the 5GMSd-Aware Application. It consumes media from the 5GMSd AS at reference point
 M4d.
 
-#### Specifications
-
-A list of specification related to 5G Downlink Media Streaming is available in
-the [Standards Wiki](https://github.com/5G-MAG/Standards/wiki/5G-Downlink-Media-Streaming-Architecture-(5GMSd):-Relevant-Specifications)
-.
-
-#### About the implementation
+### About the implementation
 
 The 5GMSd Media Stream Handler is an Android library that includes
 the [ExoPlayer](https://github.com/google/ExoPlayer) as a dependency. The 5GMSd Media Stream Handler
