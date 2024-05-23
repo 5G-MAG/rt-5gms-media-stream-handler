@@ -9,302 +9,197 @@ https://drive.google.com/file/d/1cinCiA778IErENZ3JN52VFW-1ffHpx7Z/view
 
 package com.fivegmag.a5gmsmediastreamhandler
 
+import android.Manifest
 import android.annotation.SuppressLint
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.os.*
-import android.util.Log
-import android.widget.Toast
+import android.telephony.SubscriptionInfo
+import android.telephony.SubscriptionManager
+import android.telephony.TelephonyManager
+import androidx.annotation.RequiresApi
+import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
-import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
-import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
-import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
-import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
-import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
+import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.*
-import com.fivegmag.a5gmsmediastreamhandler.consumptionReporting.ConsumptionReportingController
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.ThreadMode
+import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingController
+import com.fivegmag.a5gmsmediastreamhandler.controller.QoEMetricsReportingController
+import com.fivegmag.a5gmsmediastreamhandler.controller.SessionController
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
+import com.fivegmag.a5gmsmediastreamhandler.service.IncomingMessageHandler
+import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
+import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
 import java.util.*
 
+@UnstableApi
 class MediaSessionHandlerAdapter() {
-    private val TAG: String = "MediaSessionHandlerAdapter"
-    private var mService: Messenger? = null
-    private var bound: Boolean = false
-    private lateinit var exoPlayerAdapter: ExoPlayerAdapter
+    companion object {
+        const val TAG = "5GMS-MediaSessionHandlerAdapter"
+    }
+
+    private lateinit var context: Context
+    private lateinit var messengerService: MessengerService
     private lateinit var consumptionReportingController: ConsumptionReportingController
-    private lateinit var serviceConnectedCallbackFunction: () -> Unit
+    private lateinit var qoeMetricsReportingController: QoEMetricsReportingController
+    private lateinit var sessionController: SessionController
+    private lateinit var outgoingMessageHandler: OutgoingMessageHandler
+    private lateinit var incomingMessageHandler: IncomingMessageHandler
+    private val utils = Utils()
+    private val exoPlayerAdapter = ExoPlayerAdapter()
 
     /**
-     * Handler of incoming messages from clients.
+     * API endpoint to initialize Media Session handling. Connects to the Media Session Handler and calls the provided callback function afterwards
+     *
+     * @param ctxt
+     * @param epa
+     * @param onConnectionToMediaSessionHandlerEstablished
      */
-    @UnstableApi
-    inner class IncomingHandler() : Handler() {
-        override fun handleMessage(msg: Message) {
-            when (msg.what) {
-                SessionHandlerMessageTypes.SESSION_HANDLER_TRIGGERS_PLAYBACK -> handleSessionHandlerTriggersPlaybackMessage(
-                    msg
-                )
 
-                SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReportMessage(
-                    msg
-                )
-
-                SessionHandlerMessageTypes.UPDATE_PLAYBACK_CONSUMPTION_REPORTING_CONFIGURATION -> handleUpdatePlaybackConsumptionReportingConfiguration(
-                    msg
-                )
-
-                else -> super.handleMessage(msg)
-            }
-        }
-
-        private fun handleSessionHandlerTriggersPlaybackMessage(msg: Message) {
-            val bundle: Bundle = msg.data
-            bundle.classLoader = PlaybackRequest::class.java.classLoader
-            val playbackRequest: PlaybackRequest? = bundle.getParcelable("playbackRequest")
-
-            if (playbackRequest != null && playbackRequest.entryPoints.size > 0) {
-                val dashEntryPoints: List<EntryPoint> =
-                    playbackRequest.entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
-
-                if (dashEntryPoints.isNotEmpty()) {
-                    val mpdUrl = dashEntryPoints[0].locator
-                    exoPlayerAdapter.handleSourceChange()
-                    consumptionReportingController.setCurrentConsumptionReportingConfiguration(
-                        playbackRequest.playbackConsumptionReportingConfiguration
-                    )
-                    exoPlayerAdapter.attach(mpdUrl, ContentTypes.DASH)
-                    exoPlayerAdapter.preload()
-                    exoPlayerAdapter.play()
-                }
-            }
-        }
-
-        private fun handleUpdatePlaybackConsumptionReportingConfiguration(msg: Message) {
-            val bundle: Bundle = msg.data
-            bundle.classLoader = PlaybackConsumptionReportingConfiguration::class.java.classLoader
-            val playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
-                bundle.getParcelable("playbackConsumptionReportingConfiguration")
-
-            if (playbackConsumptionReportingConfiguration != null) {
-                consumptionReportingController.setCurrentConsumptionReportingConfiguration(
-                    playbackConsumptionReportingConfiguration
-                )
-            }
-        }
-
-        private fun handleGetConsumptionReportMessage(msg: Message) {
-            val bundle: Bundle = msg.data
-            bundle.classLoader = PlaybackConsumptionReportingConfiguration::class.java.classLoader
-            val playbackConsumptionReportingConfiguration: PlaybackConsumptionReportingConfiguration? =
-                bundle.getParcelable("playbackConsumptionReportingConfiguration")
-
-            if (playbackConsumptionReportingConfiguration != null) {
-                consumptionReportingController.setCurrentConsumptionReportingConfiguration(
-                    playbackConsumptionReportingConfiguration
-                )
-            }
-            sendConsumptionReport()
-            consumptionReportingController.cleanConsumptionReportingList()
-        }
-    }
-
-    /**
-     * Target we publish for clients to send messages to IncomingHandler.
-     */
-    @SuppressLint("UnsafeOptInUsageError")
-    private val mMessenger: Messenger = Messenger(IncomingHandler())
-
-    /**
-     * Class for interacting with the main interface of the service.
-     */
-    private val mConnection = object : ServiceConnection {
-
-        override fun onServiceConnected(className: ComponentName, service: IBinder) {
-            // This is called when the connection with the service has been
-            // established, giving us the object we can use to
-            // interact with the service.  We are communicating with the
-            // service using a Messenger, so here we get a client-side
-            // representation of that from the raw IBinder object.
-            mService = Messenger(service)
-            try {
-                val msg: Message = Message.obtain(
-                    null,
-                    SessionHandlerMessageTypes.REGISTER_CLIENT
-                )
-                msg.replyTo = mMessenger
-                mService!!.send(msg)
-                bound = true
-                serviceConnectedCallbackFunction()
-            } catch (e: RemoteException) {
-                // In this case the service has crashed before we could even
-                // do anything with it; we can count on soon being
-                // disconnected (and then reconnected if it can be restarted)
-                // so there is no need to do anything here.
-            }
-
-        }
-
-        override fun onServiceDisconnected(className: ComponentName) {
-            // This is called when the connection with the service has been
-            // unexpectedly disconnected -- that is, its process crashed.
-            mService = null
-            bound = false
-        }
-    }
-
-    @UnstableApi
     fun initialize(
         context: Context,
-        epa: ExoPlayerAdapter,
         onConnectionToMediaSessionHandlerEstablished: () -> (Unit)
     ) {
-        exoPlayerAdapter = epa
-        consumptionReportingController = ConsumptionReportingController(context)
+        this.context = context
+
+        outgoingMessageHandler = OutgoingMessageHandler()
+        incomingMessageHandler = IncomingMessageHandler()
+
+        val reportingClientId = generateReportingClientId()
+
+        consumptionReportingController =
+            ConsumptionReportingController(exoPlayerAdapter, outgoingMessageHandler)
+        consumptionReportingController.reportingClientId = reportingClientId
         consumptionReportingController.initialize()
-        EventBus.getDefault().register(this)
 
-        try {
-            val intent = Intent()
-            intent.component = ComponentName(
-                "com.fivegmag.a5gmsmediasessionhandler",
-                "com.fivegmag.a5gmsmediasessionhandler.MediaSessionHandlerMessengerService"
-            )
-            if (context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
-                Log.i(TAG, "Binding to MediaSessionHandler service returned true")
-                Toast.makeText(
-                    context,
-                    "Successfully bound to Media Session Handler",
-                    Toast.LENGTH_SHORT
-                ).show()
-            } else {
-                Log.d(TAG, "Binding to MediaSessionHandler service returned false")
+        qoeMetricsReportingController =
+            QoEMetricsReportingController(exoPlayerAdapter, outgoingMessageHandler)
+        qoeMetricsReportingController.reportingClientId = reportingClientId
+        qoeMetricsReportingController.initialize()
+
+        sessionController = SessionController(
+            context,
+            exoPlayerAdapter,
+            outgoingMessageHandler
+        )
+        sessionController.initialize()
+
+        incomingMessageHandler.initialize(
+            consumptionReportingController,
+            qoeMetricsReportingController,
+            sessionController
+        )
+
+        messengerService = MessengerService(this.context)
+        messengerService.initialize(incomingMessageHandler, outgoingMessageHandler)
+        messengerService.bind(onConnectionToMediaSessionHandlerEstablished)
+    }
+
+    /**
+     * The GPSI is either a mobile subscriber ISDN number (MSISDN) or an external identifier
+     *
+     */
+    @SuppressLint("Range")
+    fun generateReportingClientId(): String {
+        val strGpsi: String
+        var strMsisdn = ""
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
+            strMsisdn = getMsisdn()
+        }
+        strGpsi = if (strMsisdn != "") {
+            strMsisdn
+        } else {
+            utils.generateUUID()
+        }
+
+        return strGpsi
+    }
+
+    /**
+     * MSISDN = CC + NDC + SN
+     *
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun getMsisdn(): String {
+        var strMsisdn = ""
+
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_PHONE_NUMBERS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            val subscriptionManager: SubscriptionManager =
+                context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
+
+            val subscriptionInfoList: List<SubscriptionInfo> =
+                subscriptionManager.activeSubscriptionInfoList
+            for (subscriptionInfo in subscriptionInfoList) {
+                strMsisdn =
+                    subscriptionManager.getPhoneNumber(getActiveSIMIdx(subscriptionInfoList))
             }
-            serviceConnectedCallbackFunction = onConnectionToMediaSessionHandlerEstablished
-        } catch (e: SecurityException) {
-            Log.e(
-                TAG,
-                "Can't bind to MediaSessionHandler, check permission in Manifest"
-            )
-        }
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    @UnstableApi
-    fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
-        if (event.playbackState == PlayerStates.ENDED) {
-            sendConsumptionReport()
         }
 
-        updatePlaybackState(event.playbackState)
+        return strMsisdn
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    @UnstableApi
-    fun onCellInfoUpdatedEvent(event: CellInfoUpdatedEvent) {
-        val playbackConsumptionReportingConfiguration =
-            consumptionReportingController.getPlaybackConsumptionReportingConfiguration()
-        if (playbackConsumptionReportingConfiguration != null && playbackConsumptionReportingConfiguration.locationReporting == true) {
-            sendConsumptionReport()
+    /**
+     * In case of multi SIM cards, get the the index of SIM which is used for the traffic
+     * If none of them match, use the first as default
+     *
+     */
+    private fun getActiveSIMIdx(subscriptionInfoList: List<SubscriptionInfo>): Int {
+        val telephonyManager =
+            context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        val simOPName: String = telephonyManager.simOperatorName
+
+        var subscriptionIdx = 1
+        for (subscriptionInfo in subscriptionInfoList) {
+            val subscriptionId = subscriptionInfo.subscriptionId
+            val subscriptionName: String = subscriptionInfo.carrierName as String
+
+            if (subscriptionName == simOPName) {
+                subscriptionIdx = subscriptionId
+            }
         }
+
+        return subscriptionIdx
     }
 
-    fun reset(context: Context) {
-        if (bound) {
-            context.unbindService(mConnection)
-            bound = false
-        }
+    /**
+     * API endpoint to close the connection to the MediaSessionHandler
+     *
+     */
+    fun reset() {
+        messengerService.reset()
     }
 
+    /**
+     * API endpoint for application to set the M5 endpoint in the MediaSessionHandler.
+     * An IPC call is send by this function to the MediaSessionHandler to update the M5 URL.
+     *
+     * @param m5BaseUrl
+     */
     fun setM5Endpoint(m5BaseUrl: String) {
-        val msg: Message = Message.obtain(
-            null,
-            SessionHandlerMessageTypes.SET_M5_ENDPOINT
-        )
-        val bundle = Bundle()
-        bundle.putString("m5BaseUrl", m5BaseUrl)
-        msg.data = bundle
-        msg.replyTo = mMessenger
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
+        messengerService.setM5Endpoint(m5BaseUrl)
     }
 
-    fun updatePlaybackState(state: String) {
-        if (!bound) return
-        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.STATUS_MESSAGE)
-        val bundle = Bundle()
-        bundle.putString("playbackState", state)
-        msg.data = bundle
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
-    fun reportMetrics() {
-        if (!bound) return
-        // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(null, SessionHandlerMessageTypes.METRIC_REPORTING_MESSAGE)
-        val bundle = Bundle()
-        bundle.putString("metricData", "")
-        msg.data = bundle
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
-    }
-
-
+    /**
+     * API endpoint to send a ServiceListEntry to the MediaSessionHandler to trigger the playback process.
+     *
+     * @param serviceListEntry
+     */
     fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
-        if (!bound) return
-        // Create and send a message to the service, using a supported 'what' value
-        val msg: Message = Message.obtain(
-            null,
-            SessionHandlerMessageTypes.START_PLAYBACK_BY_SERVICE_LIST_ENTRY_MESSAGE
-        )
-        val bundle = Bundle()
-        bundle.putParcelable("serviceListEntry", serviceListEntry)
-        msg.data = bundle
-        msg.replyTo = mMessenger
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
+        if (exoPlayerAdapter.hasActiveMediaItem()) {
+            consumptionReportingController.triggerConsumptionReport()
+            qoeMetricsReportingController.triggerQoeMetricsReports()
         }
+        messengerService.initializePlaybackByServiceListEntry(serviceListEntry)
     }
 
-    @UnstableApi
-    fun sendConsumptionReport() {
-        val mediaPlayerEntry = exoPlayerAdapter.getCurrentManifestUri()
-        val consumptionReport =
-            consumptionReportingController.getConsumptionReport(mediaPlayerEntry)
-        val msg: Message = Message.obtain(
-            null,
-            SessionHandlerMessageTypes.CONSUMPTION_REPORT
-        )
-
-        val bundle = Bundle()
-        bundle.putString("consumptionReport", consumptionReport)
-        msg.data = bundle
-        msg.replyTo = mMessenger
-        try {
-            mService?.send(msg)
-        } catch (e: RemoteException) {
-            e.printStackTrace()
-        }
+    /**
+     * API endpoint to get the instance of ExoPlayerAdapter
+     *
+     */
+    fun getExoPlayerAdapter(): ExoPlayerAdapter {
+        return exoPlayerAdapter
     }
-
-    @UnstableApi
-    fun resetState() {
-        consumptionReportingController.resetState()
-    }
-
 }
