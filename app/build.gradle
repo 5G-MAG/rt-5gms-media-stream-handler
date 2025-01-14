@@ -6,13 +6,13 @@ plugins {
 
 android {
     namespace 'com.fivegmag.a5gmsmediastreamhandler'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         minSdk 29
-        targetSdk 32
+        targetSdk 34
         versionCode 1
-        versionName "1.2.0"
+        versionName "1.2.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -37,7 +37,7 @@ publishing {
         release(MavenPublication) {
             groupId = 'com.fivegmag'
             artifactId = 'a5gmsmediastreamhandler'
-            version = '1.2.0'
+            version = '1.2.1'
             afterEvaluate {
                 from components.release
             }
@@ -74,7 +74,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.15.0'
 
     // 5G-MAG
-    implementation 'com.fivegmag:a5gmscommonlibrary:1.2.0'
+    implementation 'com.fivegmag:a5gmscommonlibrary:1.2.1'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.4'
