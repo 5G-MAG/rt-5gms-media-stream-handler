@@ -17,6 +17,13 @@ jobs:
         with:
           java-version: '17'
           distribution: 'oracle'
+      - name: Checkout Common Library Dependency
+        uses: actions/checkout@v3
+        with:
+          repository: '5G-MAG/rt-5gms-common-android-library'
+          ref: 'main'
+      - name: Publish to dependency to MavenLocal
+        run: ./gradlew publishToMavenLocal
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@e6e38bacfdf1a337459f332974bb2327a31aaf4b
       - name: Publish package
