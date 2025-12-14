@@ -5,35 +5,41 @@ import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.source.LoadEventInfo
+
 import androidx.media3.exoplayer.source.MediaLoadData
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
-import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
+
+
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.Metrics
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.helpers.XmlSchemaStrings
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.BufferLevel
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.BufferLevelEntry
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.HttpList
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.HttpListEntry
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.HttpListEntryType
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.MpdInfo
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.BufferLevelTracker
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.InitialPlayoutDelay
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.PlayoutDelayforMediaStartup
+
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.MpdInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.ReceptionReport
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitch
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Delimiter
+
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitchList
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Trace
+
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.InitialPlayoutDelayTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.PlayoutDelayForMediaStartupTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.DeviceInformationTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.ThroughputTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.PlayListTracker
+
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.RepresentationSwitchTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.MpdInformationTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.IQoeMetricsReporter
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import java.lang.Exception
 import java.util.Timer
 import java.util.TimerTask
 
@@ -41,15 +47,28 @@ import java.util.TimerTask
 class QoeMetricsReporterExoplayer(
     private val exoPlayerAdapter: IExoPlayerAdapter
 ) : IQoeMetricsReporter {
-    private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(
-        ArrayList()
-    )
-    private val httpList: HttpList = HttpList(ArrayList())
-    private val bufferLevel: BufferLevel = BufferLevel(ArrayList())
-    private val mpdInformation: ArrayList<MpdInformation> = ArrayList()
     private val utils: Utils = Utils()
+    private val bufferLevelTracker: BufferLevelTracker = BufferLevelTracker(exoPlayerAdapter, utils)
+    private val representationSwitchTracker: RepresentationSwitchTracker =
+        RepresentationSwitchTracker(exoPlayerAdapter, utils)
+    private val mpdInformationTracker: MpdInformationTracker = MpdInformationTracker()
     private var lastQoeMetricsRequest: QoeMetricsRequest? = null
-    private var samplingPeriodTimer: Timer? = null
+
+    // Initial playout delay tracking per TS 26.247 clause 10.2.5
+    private val initialPlayoutDelayTracker: InitialPlayoutDelayTracker = InitialPlayoutDelayTracker()
+
+    // Playout delay for media start-up tracking per TS 26.247 clause 10.2.9
+    private val playoutDelayForMediaStartupTracker: PlayoutDelayForMediaStartupTracker = PlayoutDelayForMediaStartupTracker()
+
+    // Device information tracking per TS 26.247 clause 10.2.10
+    private val deviceInformationTracker: DeviceInformationTracker = DeviceInformationTracker(exoPlayerAdapter, utils)
+
+    // Average throughput tracking per TS 26.247 clause 10.2.4
+    private val throughputTracker: ThroughputTracker = ThroughputTracker(utils)
+
+    // PlayList tracking per TS 26.247 clause 10.2.6
+    private val playListTracker: PlayListTracker = PlayListTracker(exoPlayerAdapter)
+
 
     companion object {
         const val TAG = "5GMS-QoeMetricsReporterExoplayer"
@@ -60,130 +79,24 @@ class QoeMetricsReporterExoplayer(
         this.lastQoeMetricsRequest = lastQoeMetricsRequest
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onDownstreamFormatChangedEvent(downstreamFormatChangedEvent: DownstreamFormatChangedEvent) {
-        val isRepresentationSwitchAdded =
-            addRepresentationSwitch(downstreamFormatChangedEvent.mediaLoadData)
 
-        if (isRepresentationSwitchAdded) {
-            addMpdInformation(downstreamFormatChangedEvent.mediaLoadData)
-        }
-    }
 
-    private fun addRepresentationSwitch(mediaLoadData: MediaLoadData): Boolean {
-        val t: String = utils.getCurrentXsDateTime()
-        val currentPosition = exoPlayerAdapter.getCurrentPosition()
-        val mt: String? = utils.millisecondsToISO8601(currentPosition)
-        val to: String? = mediaLoadData.trackFormat?.id
-        val representationSwitch = to?.let { RepresentationSwitch(t, mt, it) }
+    // Buffer level handling moved to BufferLevelTracker
 
-        if (representationSwitch != null) {
-            representationSwitchList.entries.add(representationSwitch)
-            return true
-        }
-
-        return false
-    }
-
-    private fun addMpdInformation(mediaLoadData: MediaLoadData) {
-        val format = mediaLoadData.trackFormat
-        if (format != null) {
-            val representationId = mediaLoadData.trackFormat!!.id
-            val codecs = mediaLoadData.trackFormat!!.codecs
-            val bandwidth = mediaLoadData.trackFormat!!.peakBitrate
-            val mimeType = mediaLoadData.trackFormat!!.containerMimeType
-            val frameRate = mediaLoadData.trackFormat!!.frameRate
-            val width = mediaLoadData.trackFormat!!.width
-            val height = mediaLoadData.trackFormat!!.height
-            val mpdInfo = MpdInfo(codecs, bandwidth, mimeType)
-
-            if (frameRate > 0) {
-                mpdInfo.frameRate = frameRate.toDouble()
-            }
-            if (width > 0) {
-                mpdInfo.width = width
-            }
-
-            if (height > 0) {
-                mpdInfo.height = height
-            }
-            mpdInformation.add(MpdInformation(representationId, null, mpdInfo))
-        }
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onPlaybackStateChangedEvent(playbackStateChangedEvent: PlaybackStateChangedEvent) {
-        if (playbackStateChangedEvent.playbackState == PlayerStates.BUFFERING) {
-            addBufferLevelEntry()
-        }
-    }
-
-    private fun addBufferLevelEntry() {
-        val level: Int = exoPlayerAdapter.getBufferLength().toInt()
-        val time: String = utils.getCurrentXsDateTime()
-        val entry = BufferLevelEntry(time, level)
-        bufferLevel.entries.add(entry)
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onLoadCompleted(
-        loadCompletedEvent: LoadCompletedEvent
-    ) {
-        addHttpListEntry(loadCompletedEvent.mediaLoadData, loadCompletedEvent.loadEventInfo)
-        addBufferLevelEntry()
-    }
-
-    private fun addHttpListEntry(mediaLoadData: MediaLoadData, loadEventInfo: LoadEventInfo) {
-        val tcpId = null
-        val type = getRequestType(mediaLoadData)
-        val url = loadEventInfo.uri.toString()
-        val actualUrl = loadEventInfo.uri.toString()
-        val range = ""
-        val tRequest =
-            utils.convertTimestampToXsDateTime(utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs)
-        val tResponse =
-            utils.convertTimestampToXsDateTime(utils.getCurrentTimestamp() - loadEventInfo.loadDurationMs)
-        val responseCode = 200
-        val interval = loadEventInfo.loadDurationMs.toInt()
-        val bytes = loadEventInfo.bytesLoaded.toInt()
-        val trace = Trace(
-            tResponse,
-            loadEventInfo.loadDurationMs,
-            bytes
-        )
-        val traceList = ArrayList<Trace>()
-        traceList.add(trace)
-        val httpListEntry = HttpListEntry(
-            tcpId,
-            type,
-            url,
-            actualUrl,
-            range,
-            tRequest,
-            tResponse,
-            responseCode,
-            interval,
-            traceList
-        )
-
-        httpList.entries.add(httpListEntry)
-    }
-
-    private fun getRequestType(mediaLoadData: MediaLoadData): String {
-        return when (mediaLoadData.dataType) {
-            androidx.media3.common.C.DATA_TYPE_UNKNOWN -> HttpListEntryType.OTHER.value
-            androidx.media3.common.C.DATA_TYPE_MEDIA -> HttpListEntryType.MEDIA_SEGMENT.value
-            androidx.media3.common.C.DATA_TYPE_MEDIA_INITIALIZATION -> HttpListEntryType.INITIALIZATION_SEGMENT.value
-            androidx.media3.common.C.DATA_TYPE_MANIFEST -> HttpListEntryType.MPD.value
-            else -> HttpListEntryType.OTHER.value
-
-        }
-    }
+    // HttpList handling moved to HttpListTracker
 
     override fun initialize(lastQoeMetricsRequest: QoeMetricsRequest) {
-        EventBus.getDefault().register(this)
+        // EventBus.getDefault().register(this) // No longer needed as we moved all event handling to trackers
+        initialPlayoutDelayTracker.initialize()
+        playoutDelayForMediaStartupTracker.initialize()
+        deviceInformationTracker.initialize()
+        throughputTracker.initialize()
+        playListTracker.initialize()
+        bufferLevelTracker.initialize()
+        representationSwitchTracker.initialize()
+        mpdInformationTracker.initialize()
+        bufferLevelTracker.configure(lastQoeMetricsRequest)
         setLastQoeMetricsRequest(lastQoeMetricsRequest)
-        initializeSamplingPeriodTimer()
     }
 
     @SuppressLint("Range")
@@ -198,44 +111,82 @@ class QoeMetricsReporterExoplayer(
             qoeMetricsReport.periodId = exoPlayerAdapter.getCurrentPeriodId()
             qoeMetricsReport.reportPeriod = qoeMetricsRequest.reportingInterval?.toInt()
             qoeMetricsReport.recordingSessionId = recordingSessionId
+            qoeMetricsReport.delimiters = arrayListOf(Delimiter(), Delimiter(), Delimiter(), Delimiter())
 
             if (shouldReportMetric(Metrics.BUFFER_LEVEL, qoeMetricsRequest.metrics)) {
+                bufferLevelTracker.addCurrentEntry()
+                val bufferLevel = bufferLevelTracker.getBufferLevel()
                 if (bufferLevel.entries.size > 0) {
                     qoeMetricsReport.bufferLevel = arrayListOf(bufferLevel)
                 }
             }
 
             if (shouldReportMetric(Metrics.REP_SWITCH_LIST, qoeMetricsRequest.metrics)) {
+                val representationSwitchList = representationSwitchTracker.getRepresentationSwitchList()
                 if (representationSwitchList.entries.size > 0) {
                     qoeMetricsReport.representationSwitchList =
                         arrayListOf(representationSwitchList)
                 }
             }
 
-            if (shouldReportMetric(Metrics.HTTP_LIST, qoeMetricsRequest.metrics)) {
-                if (httpList.entries.size > 0) {
-                    qoeMetricsReport.httpList = arrayListOf(httpList)
-                }
-            }
-
             if (shouldReportMetric(Metrics.MPD_INFORMATION, qoeMetricsRequest.metrics)) {
+                val mpdInformation = mpdInformationTracker.getMpdInformation()
                 if (mpdInformation.size > 0) {
                     qoeMetricsReport.mpdInformation = mpdInformation
                 }
             }
 
-            val receptionReport =
-                ReceptionReport(qoeMetricsReport, exoPlayerAdapter.getCurrentManifestUrl())
-            receptionReport.xmlns =
-                XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA
-            receptionReport.schemaLocation =
-                XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SCHEMA + " " + XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.LOCATION
-            receptionReport.xsi = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.XSI
-            receptionReport.sv = XmlSchemaStrings.THREE_GPP_METADATA_2011_HSD_RECEPTION_REPORT.SV
-            receptionReport.clientId = reportingClientId
+            if (shouldReportMetric(Metrics.INITIAL_PLAYOUT_DELAY, qoeMetricsRequest.metrics)) {
+                val initialPlayoutDelay = initialPlayoutDelayTracker.getInitialPlayoutDelay()
+                if (initialPlayoutDelay != null) {
+                    qoeMetricsReport.initialPlayoutDelay = arrayListOf(InitialPlayoutDelay(initialPlayoutDelay))
+                }
+            }
 
-            var xml = serializeReceptionReportToXml(receptionReport)
-            xml = addDelimiter(xml)
+            if (shouldReportMetric(Metrics.PLAYOUT_DELAY_FOR_MEDIA_STARTUP, qoeMetricsRequest.metrics)) {
+                val playoutDelayForMediaStartup = playoutDelayForMediaStartupTracker.getPlayoutDelayForMediaStartup()
+                if (playoutDelayForMediaStartup != null) {
+                    qoeMetricsReport.playoutDelayForMediaStartup = arrayListOf(PlayoutDelayforMediaStartup(playoutDelayForMediaStartup))
+                }
+            }
+
+            if (shouldReportMetric(Metrics.DEVICE_INFORMATION, qoeMetricsRequest.metrics)) {
+                val deviceInformation = deviceInformationTracker.getDeviceInformation()
+                if (deviceInformation.entries.size > 0) {
+                    val supplementQoeMetric = com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.SupplementQoeMetric(deviceInformation)
+                    qoeMetricsReport.supplementQoEMetric = arrayListOf(supplementQoeMetric)
+                }
+            }
+
+            if (shouldReportMetric(Metrics.AVG_THROUGHPUT, qoeMetricsRequest.metrics)) {
+                throughputTracker.addCurrentEntry()
+                val avgThroughputList = throughputTracker.getAvgThroughputList()
+                if (avgThroughputList.size > 0) {
+                    qoeMetricsReport.avgThroughputList = avgThroughputList
+                }
+            }
+
+            if (shouldReportMetric(Metrics.PLAY_LIST, qoeMetricsRequest.metrics)) {
+                val playListSnapshot = playListTracker.createSnapshot()
+                if (playListSnapshot != null && playListSnapshot.entries.isNotEmpty()) {
+                    qoeMetricsReport.playList = arrayListOf(playListSnapshot)
+                }
+            }
+
+            val receptionReport =
+                ReceptionReport(qoeReport = qoeMetricsReport, contentUri = exoPlayerAdapter.getCurrentManifestUrl())
+            receptionReport.schemaVersion = "TSG105-Rel18"
+            receptionReport.xmlns =
+                XmlSchemaStrings.THREE_GPP_METADATA_2017_HSD_RECEPTION_REPORT.SCHEMA
+            receptionReport.schemaLocation =
+                XmlSchemaStrings.THREE_GPP_METADATA_2017_HSD_RECEPTION_REPORT.SCHEMA + " " + XmlSchemaStrings.THREE_GPP_METADATA_2017_HSD_RECEPTION_REPORT.LOCATION
+            receptionReport.xsi = XmlSchemaStrings.THREE_GPP_METADATA_2017_HSD_RECEPTION_REPORT.XSI
+            receptionReport.sv = XmlSchemaStrings.THREE_GPP_METADATA_2017_HSD_RECEPTION_REPORT.SV
+            receptionReport.sup = "urn:3gpp:metadata:2016:PSS:SupplementQoEMetric"
+            receptionReport.clientId = reportingClientId
+            receptionReport.delimiter = Delimiter()
+
+            val xml = serializeReceptionReportToXml(receptionReport)
 
             return xml
         } catch (e: Exception) {
@@ -244,64 +195,15 @@ class QoeMetricsReporterExoplayer(
         }
     }
 
-    private fun initializeSamplingPeriodTimer() {
-        if (samplingPeriodTimer != null) {
-            return
-        }
-        val timer = Timer()
-        val samplingPeriod = lastQoeMetricsRequest?.samplingPeriod?.times(1000)
-        if (samplingPeriod != null) {
-            timer.scheduleAtFixedRate(
-                object : TimerTask() {
-                    @SuppressLint("Range")
-                    override fun run() {
-                        Log.d(TAG, "Adding BufferLevelEntry due to sampling period timer")
-                        Handler(Looper.getMainLooper()).post {
-                            addBufferLevelEntry()
-                        }
-                    }
-                },
-                0,
-                samplingPeriod
-            )
-        }
-        samplingPeriodTimer = timer
-    }
+    // Sampling timer moved to BufferLevelTracker
 
-    private fun stopSamplingPeriodTimer() {
-        if (samplingPeriodTimer != null) {
-            samplingPeriodTimer!!.cancel()
-            samplingPeriodTimer = null
-        }
-    }
 
 
     private fun shouldReportMetric(metric: String, metricsList: ArrayList<String>?): Boolean {
-        // Special handling for HTTP List. Needs to be enabled explicitly as not part of TS 26.247
-        if (metric == Metrics.HTTP_LIST) {
-            if (metricsList != null) {
-                return metricsList.contains(metric)
-            }
-        }
         return metricsList.isNullOrEmpty() || metricsList.contains(metric)
     }
 
-    private fun addDelimiter(xmlString: String): String {
-        val delimiter = "<sv:delimiter>0</sv:delimiter>"
-        val qoeMetricEndTag = "</QoeMetric>"
 
-        // Find the last occurrence of the </QoeMetric> tag
-        val lastIndex = xmlString.lastIndexOf(qoeMetricEndTag)
-        if (lastIndex != -1) {
-            // Insert the delimiter after the last </QoeMetric> tag
-            val stringBuilder = StringBuilder(xmlString)
-            stringBuilder.insert(lastIndex + qoeMetricEndTag.length, delimiter)
-            return stringBuilder.toString()
-        }
-
-        // If the </QoeMetric> tag is not found, return the original XML string
-        return xmlString
-    }
 
     @SuppressLint("Range")
     private fun serializeReceptionReportToXml(input: ReceptionReport): String {
@@ -313,16 +215,29 @@ class QoeMetricsReporterExoplayer(
 
     override fun reset() {
         resetState()
+        initialPlayoutDelayTracker.unregister()
+        playoutDelayForMediaStartupTracker.unregister()
+        deviceInformationTracker.unregister()
+        throughputTracker.unregister()
+        playListTracker.unregister()
+
+        bufferLevelTracker.unregister()
+        representationSwitchTracker.unregister()
+        mpdInformationTracker.unregister()
         lastQoeMetricsRequest = null
-        stopSamplingPeriodTimer()
     }
 
     @SuppressLint("Range")
     override fun resetState() {
-        representationSwitchList.entries.clear()
-        httpList.entries.clear()
-        bufferLevel.entries.clear()
-        mpdInformation.clear()
+        representationSwitchTracker.reset()
+
+        bufferLevelTracker.reset()
+        mpdInformationTracker.reset()
+        deviceInformationTracker.reset()
+        throughputTracker.reset()
+        playListTracker.reset()
+        initialPlayoutDelayTracker.reset()
+        playoutDelayForMediaStartupTracker.reset()
     }
 
 }

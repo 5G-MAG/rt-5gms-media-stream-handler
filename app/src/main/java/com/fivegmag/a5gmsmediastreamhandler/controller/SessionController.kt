@@ -8,6 +8,7 @@ import android.telephony.TelephonyManager
 import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStartTriggerEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.models.EntryPoint
@@ -37,6 +38,10 @@ class SessionController(
 
     @UnstableApi
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
+        // Fire PlaybackStartTriggerEvent for Playout Delay for Media Start-up metric (TS 26.247 clause 10.2.9)
+        // This marks the instant when the DASH player receives the playback-start trigger
+        EventBus.getDefault().post(PlaybackStartTriggerEvent(android.os.SystemClock.elapsedRealtime()))
+
         if (playbackRequest.entryPoints.size > 0) {
             val dashEntryPoints: List<EntryPoint> =
                 playbackRequest.entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }

@@ -30,4 +30,12 @@ interface IExoPlayerAdapter {
     fun getCurrentPeriodId(): String
     fun getStatusInformation(status: String): Any?
     fun getPlayerState(): String
+
+    // Device information for QoE metrics
+    fun getVideoWidth(): Int
+    fun getVideoHeight(): Int
+    fun getScreenWidth(): Int
+    fun getScreenHeight(): Int
+    fun getPixelDensityX(): Float
+    fun getPixelDensityY(): Float
 }

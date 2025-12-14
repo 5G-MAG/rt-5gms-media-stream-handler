@@ -25,6 +25,7 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
+    private lateinit var context: Context
     private var activeMediaItem: MediaItem? = null
     private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
@@ -43,9 +44,14 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
         val httpDataSourceFactory: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent(modifiedUserAgent)
+
+        // transferListenerRef is captured by the factory lambda and set after playerListener is created.
+        // DataSources are created lazily when media loads, so the listener is guaranteed to be set by then.
+        var transferListenerRef: ExoPlayerListener? = null
         val dataSourceFactory =
             DataSource.Factory {
                 val dataSource = httpDataSourceFactory.createDataSource()
+                transferListenerRef?.let { dataSource.addTransferListener(it) }
                 dataSource
             }
         playerInstance = ExoPlayer.Builder(context)
@@ -55,14 +61,19 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
             .build()
         playerInstance.addAnalyticsListener(EventLogger())
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
+        this.context = context
         playerView = exoPlayerView
         playerView.player = playerInstance
         playerListener =
             ExoPlayerListener(playerInstance, playerView)
         playerInstance.addAnalyticsListener(playerListener)
+        transferListenerRef = playerListener
     }
 
     override fun attach(url: String, contentType: String) {
+        // Reset listener state for new presentation
+        playerListener.newPlaybackSession()
+        
         val mediaItem: MediaItem
         when (contentType) {
             ContentTypes.DASH -> {
@@ -153,13 +164,18 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
     }
 
     override fun getCurrentPeriodId(): String {
-        val dashManifest = playerInstance.currentManifest as DashManifest
-        val periodId = dashManifest.getPeriod(playerInstance.currentPeriodIndex).id
-
-        if (periodId != null) {
-            return periodId
+        try {
+            val manifest = playerInstance.currentManifest
+            if (manifest is DashManifest) {
+                val periodId = manifest.getPeriod(playerInstance.currentPeriodIndex).id
+                if (periodId != null) {
+                    return periodId
+                }
+            }
+        } catch (e: Exception) {
+            // Manifest not loaded yet or period index out of bounds
+            return ""
         }
-
         return ""
     }
 
@@ -185,5 +201,31 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
         }
 
         return state
+    }
+
+    override fun getVideoWidth(): Int {
+        // Return displayed video width (rendered size), not encoded resolution
+        return playerView.width
+    }
+
+    override fun getVideoHeight(): Int {
+        // Return displayed video height (rendered size), not encoded resolution
+        return playerView.height
+    }
+
+    override fun getScreenWidth(): Int {
+        return context.resources.displayMetrics.widthPixels
+    }
+
+    override fun getScreenHeight(): Int {
+        return context.resources.displayMetrics.heightPixels
+    }
+
+    override fun getPixelDensityX(): Float {
+        return context.resources.displayMetrics.xdpi
+    }
+
+    override fun getPixelDensityY(): Float {
+        return context.resources.displayMetrics.ydpi
     }
 }

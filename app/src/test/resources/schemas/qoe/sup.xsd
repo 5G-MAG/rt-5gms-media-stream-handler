@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="urn:3gpp:metadata:2016:PSS:SupplementQoEMetric"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:3gpp:metadata:2016:PSS:SupplementQoEMetric" elementFormDefault="qualified">
+
+    <xs:element name="supplementQoEMetric" type="SupplementQoEMetricType"/>
+
+    <xs:complexType name="SupplementQoEMetricType">
+        <xs:sequence>
+            <xs:element name="deviceinformation" type="DeviceInformationType" minOccurs="0"/>
+            <xs:any namespace="##other" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="DeviceInformationType">
+        <xs:choice>
+            <xs:element name="Entry" type="DeviceInformationEntryType" maxOccurs="unbounded"/>
+        </xs:choice>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="DeviceInformationEntryType">
+        <xs:attribute name="start" type="xs:dateTime" use="required"/>
+        <xs:attribute name="mstart" type="xs:duration" use="required"/>
+        <xs:attribute name="videoWidth" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="videoHeight" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="screenWidth" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="screenHeight" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="pixelWidth" type="xs:double" use="required"/>
+        <xs:attribute name="pixelHeight" type="xs:double" use="required"/>
+        <xs:attribute name="fieldOfView" type="xs:double" use="required"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+</xs:schema>
