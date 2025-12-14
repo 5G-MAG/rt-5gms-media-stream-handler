@@ -30,6 +30,7 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitch
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitchList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Trace
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.InitialPlayoutDelayTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.PlayoutDelayForMediaStartupTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.DeviceInformationTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.ThroughputTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.PlayListTracker
@@ -56,6 +57,9 @@ class QoeMetricsReporterExoplayer(
 
     // Initial playout delay tracking per TS 26.247 clause 10.2.5
     private val initialPlayoutDelayTracker: InitialPlayoutDelayTracker = InitialPlayoutDelayTracker()
+
+    // Playout delay for media start-up tracking per TS 26.247 clause 10.2.9
+    private val playoutDelayForMediaStartupTracker: PlayoutDelayForMediaStartupTracker = PlayoutDelayForMediaStartupTracker()
 
     // Device information tracking per TS 26.247 clause 10.2.10
     private val deviceInformationTracker: DeviceInformationTracker = DeviceInformationTracker(exoPlayerAdapter, utils)
@@ -199,6 +203,7 @@ class QoeMetricsReporterExoplayer(
     override fun initialize(lastQoeMetricsRequest: QoeMetricsRequest) {
         EventBus.getDefault().register(this)
         initialPlayoutDelayTracker.initialize()
+        playoutDelayForMediaStartupTracker.initialize()
         deviceInformationTracker.initialize()
         throughputTracker.initialize()
         playListTracker.initialize()
@@ -248,6 +253,13 @@ class QoeMetricsReporterExoplayer(
                 val initialPlayoutDelay = initialPlayoutDelayTracker.getInitialPlayoutDelay()
                 if (initialPlayoutDelay != null) {
                     qoeMetricsReport.initialPlayoutDelay = initialPlayoutDelay
+                }
+            }
+
+            if (shouldReportMetric(Metrics.PLAYOUT_DELAY_FOR_MEDIA_STARTUP, qoeMetricsRequest.metrics)) {
+                val playoutDelayForMediaStartup = playoutDelayForMediaStartupTracker.getPlayoutDelayForMediaStartup()
+                if (playoutDelayForMediaStartup != null) {
+                    qoeMetricsReport.playoutDelayForMediaStartup = playoutDelayForMediaStartup
                 }
             }
 
@@ -364,6 +376,7 @@ class QoeMetricsReporterExoplayer(
     override fun reset() {
         resetState()
         initialPlayoutDelayTracker.unregister()
+        playoutDelayForMediaStartupTracker.unregister()
         deviceInformationTracker.unregister()
         throughputTracker.unregister()
         playListTracker.unregister()
@@ -380,7 +393,7 @@ class QoeMetricsReporterExoplayer(
         deviceInformationTracker.reset()
         throughputTracker.reset()
         playListTracker.reset()
-        // Note: initialPlayoutDelayTracker is NOT reset here as it's a one-time measurement per session
+        // Note: initialPlayoutDelayTracker and playoutDelayForMediaStartupTracker are NOT reset here as they are one-time measurements per session
     }
 
 }
