@@ -30,6 +30,7 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitch
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitchList
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Trace
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.InitialPlayoutDelayTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.DeviceInformationTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.IQoeMetricsReporter
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -55,6 +56,8 @@ class QoeMetricsReporterExoplayer(
     // Initial playout delay tracking per TS 26.247 clause 10.2.5
     private val initialPlayoutDelayTracker: InitialPlayoutDelayTracker = InitialPlayoutDelayTracker()
 
+    // Device information tracking per TS 26.247 clause 10.2.10
+    private val deviceInformationTracker: DeviceInformationTracker = DeviceInformationTracker(exoPlayerAdapter, utils)
 
     companion object {
         const val TAG = "5GMS-QoeMetricsReporterExoplayer"
@@ -188,6 +191,7 @@ class QoeMetricsReporterExoplayer(
     override fun initialize(lastQoeMetricsRequest: QoeMetricsRequest) {
         EventBus.getDefault().register(this)
         initialPlayoutDelayTracker.initialize()
+        deviceInformationTracker.initialize()
         setLastQoeMetricsRequest(lastQoeMetricsRequest)
         initializeSamplingPeriodTimer()
     }
@@ -234,6 +238,14 @@ class QoeMetricsReporterExoplayer(
                 val initialPlayoutDelay = initialPlayoutDelayTracker.getInitialPlayoutDelay()
                 if (initialPlayoutDelay != null) {
                     qoeMetricsReport.initialPlayoutDelay = initialPlayoutDelay
+                }
+            }
+
+            if (shouldReportMetric(Metrics.DEVICE_INFORMATION, qoeMetricsRequest.metrics)) {
+                deviceInformationTracker.addCurrentEntry()
+                val deviceInformation = deviceInformationTracker.getDeviceInformation()
+                if (deviceInformation.entries.size > 0) {
+                    qoeMetricsReport.deviceInformation = arrayListOf(deviceInformation)
                 }
             }
 
@@ -327,6 +339,7 @@ class QoeMetricsReporterExoplayer(
     override fun reset() {
         resetState()
         initialPlayoutDelayTracker.unregister()
+        deviceInformationTracker.unregister()
         lastQoeMetricsRequest = null
         stopSamplingPeriodTimer()
     }
@@ -337,6 +350,7 @@ class QoeMetricsReporterExoplayer(
         httpList.entries.clear()
         bufferLevel.entries.clear()
         mpdInformation.clear()
+        deviceInformationTracker.reset()
     }
 
 }

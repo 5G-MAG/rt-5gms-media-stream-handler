@@ -34,6 +34,37 @@ class ExoPlayerListener(
     private var firstMediaSegmentRequested: Boolean = false
     private var firstFrameRendered: Boolean = false
 
+    private var lastVideoWidth: Int = 0
+    private var lastVideoHeight: Int = 0
+
+    init {
+        // Listen for layout changes to detect orientation/size changes for Device Information QoE metric
+        playerView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            val newWidth = right - left
+            val newHeight = bottom - top
+            val oldWidth = oldRight - oldLeft
+            val oldHeight = oldBottom - oldTop
+
+            // Only fire event if size actually changed
+            if (newWidth != oldWidth || newHeight != oldHeight) {
+                if (newWidth > 0 && newHeight > 0) {
+                    lastVideoWidth = newWidth
+                    lastVideoHeight = newHeight
+                    val displayMetrics = playerView.context.resources.displayMetrics
+                    Log.d(TAG, "Video size changed: ${newWidth}x${newHeight}")
+                    EventBus.getDefault().post(
+                        VideoSizeChangedEvent(
+                            videoWidth = newWidth,
+                            videoHeight = newHeight,
+                            screenWidth = displayMetrics.widthPixels,
+                            screenHeight = displayMetrics.heightPixels
+                        )
+                    )
+                }
+            }
+        }
+    }
+
     override fun onPlaybackStateChanged(
         eventTime: AnalyticsListener.EventTime,
         playbackState: Int

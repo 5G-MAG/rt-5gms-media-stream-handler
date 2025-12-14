@@ -25,6 +25,7 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
 
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
+    private lateinit var context: Context
     private var activeMediaItem: MediaItem? = null
     private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
@@ -55,6 +56,7 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
             .build()
         playerInstance.addAnalyticsListener(EventLogger())
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
+        this.context = context
         playerView = exoPlayerView
         playerView.player = playerInstance
         playerListener =
@@ -188,5 +190,31 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
         }
 
         return state
+    }
+
+    override fun getVideoWidth(): Int {
+        // Return displayed video width (rendered size), not encoded resolution
+        return playerView.width
+    }
+
+    override fun getVideoHeight(): Int {
+        // Return displayed video height (rendered size), not encoded resolution
+        return playerView.height
+    }
+
+    override fun getScreenWidth(): Int {
+        return context.resources.displayMetrics.widthPixels
+    }
+
+    override fun getScreenHeight(): Int {
+        return context.resources.displayMetrics.heightPixels
+    }
+
+    override fun getPixelDensityX(): Float {
+        return context.resources.displayMetrics.xdpi
+    }
+
+    override fun getPixelDensityY(): Float {
+        return context.resources.displayMetrics.ydpi
     }
 }
