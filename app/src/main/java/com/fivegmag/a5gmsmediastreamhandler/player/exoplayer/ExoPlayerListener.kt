@@ -17,7 +17,10 @@ import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstMediaSegmentRequestedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackSpeedChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.SeekEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.VideoSizeChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import org.greenrobot.eventbus.EventBus
 
@@ -153,6 +156,46 @@ class ExoPlayerListener(
 
     override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: PlaybackException) {
         Log.d("ExoPlayer", "Error")
+    }
+
+    /**
+     * Called when a position discontinuity occurs (e.g., seek, period transition).
+     * Used for PlayList QoE metric per TS 26.247 clause 10.2.6
+     */
+    override fun onPositionDiscontinuity(
+        eventTime: AnalyticsListener.EventTime,
+        oldPosition: Player.PositionInfo,
+        newPosition: Player.PositionInfo,
+        reason: Int
+    ) {
+        // Only track user-initiated seeks
+        if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
+            Log.d(TAG, "Seek detected: ${oldPosition.positionMs}ms -> ${newPosition.positionMs}ms")
+            EventBus.getDefault().post(
+                SeekEvent(
+                    eventTime = eventTime,
+                    oldPositionMs = oldPosition.positionMs,
+                    newPositionMs = newPosition.positionMs
+                )
+            )
+        }
+    }
+
+    /**
+     * Called when playback speed changes.
+     * Used for PlayList QoE metric per TS 26.247 clause 10.2.6
+     */
+    override fun onPlaybackParametersChanged(
+        eventTime: AnalyticsListener.EventTime,
+        playbackParameters: androidx.media3.common.PlaybackParameters
+    ) {
+        Log.d(TAG, "Playback speed changed to: ${playbackParameters.speed}")
+        EventBus.getDefault().post(
+            PlaybackSpeedChangedEvent(
+                eventTime = eventTime,
+                playbackSpeed = playbackParameters.speed
+            )
+        )
     }
 
 }

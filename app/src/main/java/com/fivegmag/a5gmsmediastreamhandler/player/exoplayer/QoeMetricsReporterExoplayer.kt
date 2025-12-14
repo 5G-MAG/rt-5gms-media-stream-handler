@@ -32,11 +32,11 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Trace
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.InitialPlayoutDelayTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.DeviceInformationTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.ThroughputTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.PlayListTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.IQoeMetricsReporter
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import java.lang.Exception
 import java.util.Timer
 import java.util.TimerTask
 
@@ -62,6 +62,9 @@ class QoeMetricsReporterExoplayer(
 
     // Average throughput tracking per TS 26.247 clause 10.2.4
     private val throughputTracker: ThroughputTracker = ThroughputTracker(utils)
+
+    // PlayList tracking per TS 26.247 clause 10.2.6
+    private val playListTracker: PlayListTracker = PlayListTracker(exoPlayerAdapter)
 
 
     companion object {
@@ -198,6 +201,7 @@ class QoeMetricsReporterExoplayer(
         initialPlayoutDelayTracker.initialize()
         deviceInformationTracker.initialize()
         throughputTracker.initialize()
+        playListTracker.initialize()
         setLastQoeMetricsRequest(lastQoeMetricsRequest)
         initializeSamplingPeriodTimer()
     }
@@ -260,6 +264,13 @@ class QoeMetricsReporterExoplayer(
                 val avgThroughputList = throughputTracker.getAvgThroughputList()
                 if (avgThroughputList.entries.size > 0) {
                     qoeMetricsReport.avgThroughputList = arrayListOf(avgThroughputList)
+                }
+            }
+
+            if (shouldReportMetric(Metrics.PLAY_LIST, qoeMetricsRequest.metrics)) {
+                val playListSnapshot = playListTracker.createSnapshot()
+                if (playListSnapshot != null && playListSnapshot.entries.isNotEmpty()) {
+                    qoeMetricsReport.playList = arrayListOf(playListSnapshot)
                 }
             }
 
@@ -355,6 +366,7 @@ class QoeMetricsReporterExoplayer(
         initialPlayoutDelayTracker.unregister()
         deviceInformationTracker.unregister()
         throughputTracker.unregister()
+        playListTracker.unregister()
         lastQoeMetricsRequest = null
         stopSamplingPeriodTimer()
     }
@@ -367,6 +379,8 @@ class QoeMetricsReporterExoplayer(
         mpdInformation.clear()
         deviceInformationTracker.reset()
         throughputTracker.reset()
+        playListTracker.reset()
+        // Note: initialPlayoutDelayTracker is NOT reset here as it's a one-time measurement per session
     }
 
 }
