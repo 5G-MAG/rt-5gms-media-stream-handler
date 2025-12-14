@@ -19,12 +19,12 @@ import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
 /**
- * Helper class for tracking PlayList QoE metric per TS 26.247 clause 10.2.6
+ * Helper class for tracking PlayList QoE metric per TS 26.247 clause 10.2.7
  * 
  * Tracks playback sessions including:
  * - Start types (NEW, RESUME, SEEK)
- * - Trace entries with representation switches, speed changes
- * - Stop reasons (USER_REQUEST, END_OF_CONTENT, REP_SWITCH, etc.)
+ * - Trace entries with representation switches, speed changes, rebuffering
+ * - Stop reasons (USER_REQUEST, END_OF_CONTENT, REP_SWITCH, REBUFFERING, etc.)
  */
 @UnstableApi
 class PlayListTracker(
@@ -118,9 +118,18 @@ class PlayListTracker(
                         // New playback session
                         startNewPlayListEntry(StartType.NEW)
                     } else if (currentTraceEntryStartTime == null) {
-                        // Resuming from pause
+                        // Resuming from pause or rebuffering - start new trace entry
                         startNewTraceEntry()
                     }
+                }
+            }
+            PlayerStates.BUFFERING -> {
+                if (isPlaybackActive && currentTraceEntryStartTime != null) {
+                    // Rebuffering/stalling occurred during playback
+                    // Per TS 26.247 clause 10.2.7: finalize trace entry with REBUFFERING
+                    finalizeCurrentTraceEntry(StopReasonType.REBUFFERING)
+                    // Note: isPlaybackActive remains true - we're still in a playback session
+                    // A new trace entry will be started when PLAYING state resumes
                 }
             }
             PlayerStates.PAUSED -> {
