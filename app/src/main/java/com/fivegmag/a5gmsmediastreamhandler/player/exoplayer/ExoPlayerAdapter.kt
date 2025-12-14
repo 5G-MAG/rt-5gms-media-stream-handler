@@ -63,6 +63,9 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
     }
 
     override fun attach(url: String, contentType: String) {
+        // Reset listener state for new presentation
+        playerListener.newPlaybackSession()
+        
         val mediaItem: MediaItem
         when (contentType) {
             ContentTypes.DASH -> {

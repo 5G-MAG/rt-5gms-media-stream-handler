@@ -11,7 +11,10 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.ui.PlayerView
+import androidx.media3.common.C
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.FirstMediaSegmentRequestedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
@@ -27,6 +30,9 @@ class ExoPlayerListener(
     companion object {
         const val TAG = "5GMS-ExoPlayerListener"
     }
+
+    private var firstMediaSegmentRequested: Boolean = false
+    private var firstFrameRendered: Boolean = false
 
     override fun onPlaybackStateChanged(
         eventTime: AnalyticsListener.EventTime,
@@ -65,6 +71,45 @@ class ExoPlayerListener(
         mediaLoadData: MediaLoadData
     ) {
         EventBus.getDefault().post(LoadStartedEvent(eventTime, loadEventInfo, mediaLoadData))
+
+        // Fire FirstMediaSegmentRequestedEvent on first media segment load
+        // Per TS 26.247: Initial playout delay starts from fetch of first media segment
+        if (!firstMediaSegmentRequested && isMediaSegment(mediaLoadData.dataType)) {
+            firstMediaSegmentRequested = true
+            Log.d(TAG, "First media segment requested at realtimeMs: ${eventTime.realtimeMs}")
+            EventBus.getDefault().post(FirstMediaSegmentRequestedEvent(eventTime.realtimeMs))
+        }
+    }
+
+    /**
+     * Check if the data type is a media segment (video/audio data or initialization segment)
+     */
+    private fun isMediaSegment(dataType: Int): Boolean {
+        return dataType == C.DATA_TYPE_MEDIA || dataType == C.DATA_TYPE_MEDIA_INITIALIZATION
+    }
+    
+    /**
+     * Called when the first video frame is rendered.
+     * Used for Initial Playout Delay per TS 26.247 clause 10.2.5
+     */
+    override fun onRenderedFirstFrame(
+        eventTime: AnalyticsListener.EventTime,
+        output: Any,
+        renderTimeMs: Long
+    ) {
+        if (!firstFrameRendered) {
+            firstFrameRendered = true
+            Log.d(TAG, "First frame rendered at realtimeMs: ${eventTime.realtimeMs}")
+            EventBus.getDefault().post(FirstFrameRenderedEvent(eventTime.realtimeMs))
+        }
+    }
+
+    /**
+     * Reset state for new playback session
+     */
+    fun newPlaybackSession() {
+        firstMediaSegmentRequested = false
+        firstFrameRendered = false
     }
 
     override fun onLoadCompleted(
