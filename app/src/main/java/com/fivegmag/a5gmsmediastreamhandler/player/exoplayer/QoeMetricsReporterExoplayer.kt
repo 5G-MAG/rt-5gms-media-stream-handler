@@ -31,6 +31,7 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitchL
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Trace
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.InitialPlayoutDelayTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.DeviceInformationTracker
+import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.ThroughputTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.IQoeMetricsReporter
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -58,6 +59,10 @@ class QoeMetricsReporterExoplayer(
 
     // Device information tracking per TS 26.247 clause 10.2.10
     private val deviceInformationTracker: DeviceInformationTracker = DeviceInformationTracker(exoPlayerAdapter, utils)
+
+    // Average throughput tracking per TS 26.247 clause 10.2.4
+    private val throughputTracker: ThroughputTracker = ThroughputTracker(utils)
+
 
     companion object {
         const val TAG = "5GMS-QoeMetricsReporterExoplayer"
@@ -192,6 +197,7 @@ class QoeMetricsReporterExoplayer(
         EventBus.getDefault().register(this)
         initialPlayoutDelayTracker.initialize()
         deviceInformationTracker.initialize()
+        throughputTracker.initialize()
         setLastQoeMetricsRequest(lastQoeMetricsRequest)
         initializeSamplingPeriodTimer()
     }
@@ -246,6 +252,14 @@ class QoeMetricsReporterExoplayer(
                 val deviceInformation = deviceInformationTracker.getDeviceInformation()
                 if (deviceInformation.entries.size > 0) {
                     qoeMetricsReport.deviceInformation = arrayListOf(deviceInformation)
+                }
+            }
+
+            if (shouldReportMetric(Metrics.AVG_THROUGHPUT, qoeMetricsRequest.metrics)) {
+                throughputTracker.addCurrentEntry()
+                val avgThroughputList = throughputTracker.getAvgThroughputList()
+                if (avgThroughputList.entries.size > 0) {
+                    qoeMetricsReport.avgThroughputList = arrayListOf(avgThroughputList)
                 }
             }
 
@@ -340,6 +354,7 @@ class QoeMetricsReporterExoplayer(
         resetState()
         initialPlayoutDelayTracker.unregister()
         deviceInformationTracker.unregister()
+        throughputTracker.unregister()
         lastQoeMetricsRequest = null
         stopSamplingPeriodTimer()
     }
@@ -351,6 +366,7 @@ class QoeMetricsReporterExoplayer(
         bufferLevel.entries.clear()
         mpdInformation.clear()
         deviceInformationTracker.reset()
+        throughputTracker.reset()
     }
 
 }
