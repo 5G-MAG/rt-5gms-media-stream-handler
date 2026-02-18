@@ -158,13 +158,18 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
     }
 
     override fun getCurrentPeriodId(): String {
-        val dashManifest = playerInstance.currentManifest as DashManifest
-        val periodId = dashManifest.getPeriod(playerInstance.currentPeriodIndex).id
-
-        if (periodId != null) {
-            return periodId
+        try {
+            val manifest = playerInstance.currentManifest
+            if (manifest is DashManifest) {
+                val periodId = manifest.getPeriod(playerInstance.currentPeriodIndex).id
+                if (periodId != null) {
+                    return periodId
+                }
+            }
+        } catch (e: Exception) {
+            // Manifest not loaded yet or period index out of bounds
+            return ""
         }
-
         return ""
     }
 

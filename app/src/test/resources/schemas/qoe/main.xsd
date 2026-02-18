@@ -1,0 +1,192 @@
+<?xml version="1.0"?>
+<xs:schema version="TSG105-Rel18"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:3gpp:metadata:2017:HSD:receptionreport"
+    xmlns:sup="urn:3gpp:metadata:2016:PSS:SupplementQoEMetric"
+    xmlns:rtc="urn:3gpp:metadata:2023:RTC:QoEMetrics"
+    xmlns:src="urn:3gpp:metadata:2024:RTC:SR_MSEQoEMetrics"
+    xmlns:evex="urn:3gpp:metadata:2024:PSS:SupplementalEventExposureReportingFields"
+    xmlns:sv="urn:3gpp:metadata:2016:PSS:schemaVersion"
+    xmlns="urn:3gpp:metadata:2017:HSD:receptionreport" elementFormDefault="qualified">
+
+    <xs:import namespace="urn:3gpp:metadata:2016:PSS:SupplementQoEMetric" schemaLocation="sup.xsd"/>
+    <xs:import namespace="urn:3gpp:metadata:2023:RTC:QoEMetrics" schemaLocation="rtc.xsd"/>
+    <xs:import namespace="urn:3gpp:metadata:2024:RTC:SR_MSEQoEMetrics" schemaLocation="src.xsd"/>
+    <xs:import namespace="urn:3gpp:metadata:2024:PSS:SupplementalEventExposureReportingFields" schemaLocation="evex.xsd"/>
+    <xs:import namespace="urn:3gpp:metadata:2016:PSS:schemaVersion" schemaLocation="sv.xsd"/>
+
+    <xs:element name="ReceptionReport" type="ReceptionReportType"/>
+
+    <xs:complexType name="ReceptionReportType">
+        <xs:sequence>
+            <xs:element ref="sv:schemaVersion"/>
+            <xs:element name="QoeReport" type="QoeReportType" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element ref="sv:delimiter"/>
+            <xs:any namespace="##other" processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="contentURI" type="xs:anyURI" use="required"/>
+        <xs:attribute name="clientID" type="xs:string" use="optional"/>
+    </xs:complexType>
+
+    <xs:complexType name="QoeReportType">
+        <xs:sequence>
+            <xs:element name="QoeMetric" type="QoeMetricType" minOccurs="1" maxOccurs="unbounded"/>
+            <xs:element ref="sup:supplementQoEMetric" minOccurs="0" maxOccurs="1"/>
+            <xs:element ref="sv:delimiter"/>
+            <xs:element ref="rtc:QoeMetric" minOccurs="0"/>
+            <xs:element ref="sv:delimiter"/>
+            <xs:element ref="src:QoeMetric" minOccurs="0"/>
+            <xs:element ref="sv:delimiter"/>
+            <xs:element ref="evex:SliceInfo" minOccurs="0" maxOccurs="1"/>
+            <xs:element ref="evex:DNN" minOccurs="0" maxOccurs="1"/>
+            <xs:element ref="evex:Locations" minOccurs="0" maxOccurs="1"/>
+            <xs:element ref="sv:delimiter"/>
+            <xs:any namespace="##other" processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="periodID" type="xs:string" use="required"/>
+        <xs:attribute name="reportTime" type="xs:dateTime" use="required"/>
+        <xs:attribute name="reportPeriod" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="qoeReferenceId" type="xs:hexBinary" use="optional"/>
+        <xs:attribute name="recordingSessionId" type="xs:hexBinary" use="optional"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+    <xs:complexType name="QoeMetricType">
+        <xs:choice>
+            <xs:element name="RepSwitchList" type="RepSwitchListType"/>
+            <xs:element name="AvgThroughput" type="AvgThroughputType" maxOccurs="unbounded"/>
+            <xs:element name="InitialPlayoutDelay" type="xs:unsignedInt"/>
+            <xs:element name="BufferLevel" type="BufferLevelType"/>
+            <xs:element name="PlayList" type="PlayListType"/>
+            <xs:element name="MPDInformation" type="MpdInformationType" maxOccurs="unbounded"/>
+            <xs:element name="PlayoutDelayforMediaStartup" type="xs:unsignedInt"/>
+        </xs:choice>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="RepSwitchListType">
+        <xs:choice>
+            <xs:element name="RepSwitchEvent" type="RepSwitchEventType" maxOccurs="unbounded"/>
+        </xs:choice>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="RepSwitchEventType">
+        <xs:attribute name="to" type="xs:string" use="required"/>
+        <xs:attribute name="mt" type="xs:duration" use="optional"/>
+        <xs:attribute name="t" type="xs:dateTime" use="optional"/>
+        <xs:attribute name="lto" type="xs:unsignedInt" use="optional"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="AvgThroughputType">
+        <xs:attribute name="numBytes" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="activityTime" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="t" type="xs:dateTime" use="required"/>
+        <xs:attribute name="duration" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="accessbearer" type="xs:string" use="optional"/>
+        <xs:attribute name="inactivityType" type="InactivityType" use="optional"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:simpleType name="InactivityType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Pause"/>
+            <xs:enumeration value="BufferControl"/>
+            <xs:enumeration value="Error"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:complexType name="BufferLevelType">
+        <xs:choice>
+            <xs:element name="BufferLevelEntry" type="BufferLevelEntryType" maxOccurs="unbounded"/>
+        </xs:choice>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="BufferLevelEntryType">
+        <xs:attribute name="t" type="xs:dateTime" use="required"/>
+        <xs:attribute name="level" type="xs:unsignedInt" use="required"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="PlayListType">
+        <xs:choice>
+            <xs:element name="Trace" type="PlayListEntryType" maxOccurs="unbounded"/>
+        </xs:choice>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="PlayListEntryType">
+        <xs:choice>
+            <xs:element name="TraceEntry" type="PlayListTraceEntryType" maxOccurs="unbounded"/>
+        </xs:choice>
+        <xs:attribute name="start" type="xs:dateTime" use="required"/>
+        <xs:attribute name="mstart" type="xs:duration" use="required"/>
+        <xs:attribute name="startType" type="StartType" use="required"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="PlayListTraceEntryType">
+        <xs:attribute name="representationId" type="xs:string" use="optional"/>
+        <xs:attribute name="subrepLevel" type="xs:unsignedInt" use="optional"/>
+        <xs:attribute name="start" type="xs:dateTime" use="required"/>
+        <xs:attribute name="sstart" type="xs:duration" use="required"/>
+        <xs:attribute name="duration" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="playbackSpeed" type="xs:double" use="optional"/>
+        <xs:attribute name="stopReason" type="StopReasonType" use="optional"/>
+        <xs:attribute name="stopReasonOther" type="xs:string" use="optional"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:simpleType name="StartType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="NewPlayoutRequest"/>
+            <xs:enumeration value="Resume"/>
+            <xs:enumeration value="OtherUserRequest"/>
+            <xs:enumeration value="StartOfMetricsCollectionPeriod"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="StopReasonType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="RepresentationSwitch"/>
+            <xs:enumeration value="Rebuffering"/>
+            <xs:enumeration value="UserRequest"/>
+            <xs:enumeration value="EndOfPeriod"/>
+            <xs:enumeration value="EndOfContent"/>
+            <xs:enumeration value="EndOfMetricsCollectionPeriod"/>
+            <xs:enumeration value="Failure"/>
+            <xs:enumeration value="Other"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="MpdInformationType">
+        <xs:choice>
+            <xs:element name="Mpdinfo" type="RepresentationType" maxOccurs="unbounded"/>
+        </xs:choice>
+        <xs:attribute name="representationId" type="xs:string" use="required"/>
+        <xs:attribute name="subrepLevel" type="xs:unsignedInt" use="optional"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:complexType name="RepresentationType">
+        <xs:attribute name="codecs" type="xs:string" use="required"/>
+        <xs:attribute name="bandwidth" type="xs:unsignedInt" use="required"/>
+        <xs:attribute name="qualityRanking" type="xs:unsignedInt" use="optional"/>
+        <xs:attribute name="frameRate" type="xs:double" use="optional"/>
+        <xs:attribute name="width" type="xs:unsignedInt" use="optional"/>
+        <xs:attribute name="height" type="xs:unsignedInt" use="optional"/>
+        <xs:attribute name="mimeType" type="xs:string" use="required"/>
+        <xs:anyAttribute processContents="skip"/>
+    </xs:complexType>
+
+    <xs:simpleType name="DoubleVectorType">
+        <xs:list itemType="xs:double"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="StringVectorType">
+        <xs:list itemType="xs:string"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="UnsignedIntVectorType">
+        <xs:list itemType="xs:unsignedInt"/>
+    </xs:simpleType>
+
+</xs:schema>

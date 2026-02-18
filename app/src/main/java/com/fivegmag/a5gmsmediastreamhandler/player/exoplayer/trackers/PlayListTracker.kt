@@ -22,9 +22,9 @@ import org.greenrobot.eventbus.ThreadMode
  * Helper class for tracking PlayList QoE metric per TS 26.247 clause 10.2.7
  * 
  * Tracks playback sessions including:
- * - Start types (NEW, RESUME, SEEK)
+ * - Start types (NewPlayoutRequest, Resume, OtherUserRequest, StartOfMetricsCollectionPeriod)
  * - Trace entries with representation switches, speed changes, rebuffering
- * - Stop reasons (USER_REQUEST, END_OF_CONTENT, REP_SWITCH, REBUFFERING, etc.)
+ * - Stop reasons (UserRequest, EndOfContent, RepresentationSwitch, Rebuffering, etc.)
  */
 @UnstableApi
 class PlayListTracker(
@@ -76,12 +76,12 @@ class PlayListTracker(
         
         // Finalize current trace entry if active
         if (isPlaybackActive && currentPlayListEntry != null) {
-            finalizeCurrentTraceEntry(StopReasonType.USER_REQUEST)
+            finalizeCurrentTraceEntry(StopReasonType.UserRequest)
         }
         
         // Finalize current playlist entry and start new one with SEEK type
         finalizeCurrentPlayListEntry()
-        startNewPlayListEntry(StartType.SEEK, newPositionMs)
+        startNewPlayListEntry(StartType.OtherUserRequest, newPositionMs)
     }
 
     /**
@@ -95,7 +95,7 @@ class PlayListTracker(
         
         // If speed actually changed and we have an active trace, finalize it
         if (speed != currentPlaybackSpeed && isPlaybackActive && currentPlayListEntry != null) {
-            finalizeCurrentTraceEntry(StopReasonType.OTHER, "speed_change")
+            finalizeCurrentTraceEntry(StopReasonType.Other, "speed_change")
             currentPlaybackSpeed = speed
             startNewTraceEntry()
         } else {
@@ -116,7 +116,7 @@ class PlayListTracker(
                     isPlaybackActive = true
                     if (currentPlayListEntry == null) {
                         // New playback session
-                        startNewPlayListEntry(StartType.NEW)
+                        startNewPlayListEntry(StartType.NewPlayoutRequest)
                     } else if (currentTraceEntryStartTime == null) {
                         // Resuming from pause or rebuffering - start new trace entry
                         startNewTraceEntry()
@@ -127,7 +127,7 @@ class PlayListTracker(
                 if (isPlaybackActive && currentTraceEntryStartTime != null) {
                     // Rebuffering/stalling occurred during playback
                     // Per TS 26.247 clause 10.2.7: finalize trace entry with REBUFFERING
-                    finalizeCurrentTraceEntry(StopReasonType.REBUFFERING)
+                    finalizeCurrentTraceEntry(StopReasonType.Rebuffering)
                     // Note: isPlaybackActive remains true - we're still in a playback session
                     // A new trace entry will be started when PLAYING state resumes
                 }
@@ -135,14 +135,14 @@ class PlayListTracker(
             PlayerStates.PAUSED -> {
                 if (isPlaybackActive) {
                     // User paused playback
-                    finalizeCurrentTraceEntry(StopReasonType.USER_REQUEST)
+                    finalizeCurrentTraceEntry(StopReasonType.UserRequest)
                     isPlaybackActive = false
                 }
             }
             PlayerStates.ENDED -> {
                 if (isPlaybackActive) {
                     // Playback ended
-                    finalizeCurrentTraceEntry(StopReasonType.END_OF_CONTENT)
+                    finalizeCurrentTraceEntry(StopReasonType.EndOfContent)
                     finalizeCurrentPlayListEntry()
                     isPlaybackActive = false
                 }
@@ -150,7 +150,7 @@ class PlayListTracker(
             PlayerStates.IDLE -> {
                 if (isPlaybackActive) {
                     // Playback stopped
-                    finalizeCurrentTraceEntry(StopReasonType.OTHER, "stopped")
+                    finalizeCurrentTraceEntry(StopReasonType.Other, "stopped")
                     finalizeCurrentPlayListEntry()
                     isPlaybackActive = false
                 }
@@ -171,7 +171,7 @@ class PlayListTracker(
         
         // If we have an active trace entry, finalize it with REP_SWITCH
         if (isPlaybackActive && currentPlayListEntry != null && currentTraceEntryStartTime != null) {
-            finalizeCurrentTraceEntry(StopReasonType.REP_SWITCH)
+            finalizeCurrentTraceEntry(StopReasonType.RepresentationSwitch)
             currentRepresentationId = newRepresentationId
             startNewTraceEntry()
         } else {
@@ -194,7 +194,7 @@ class PlayListTracker(
         if (currentPlayListEntry != null) {
             val currentTraceEntries = ArrayList<PlayListTraceEntry>()
             currentTraceEntries.addAll(currentPlayListEntry!!.traceEntries)
-            
+
             // If there's an active trace entry, add a snapshot of it
             if (currentTraceEntryStartTime != null && isPlaybackActive) {
                 val currentTimestamp = utils.getCurrentTimestamp()
@@ -298,7 +298,7 @@ class PlayListTracker(
             representationId = currentRepresentationId,
             playbackSpeed = if (currentPlaybackSpeed != 1.0) currentPlaybackSpeed else null,
             stopReason = stopReason,
-            stopReasonOther = if (stopReason == StopReasonType.OTHER) stopReasonOther else null
+            stopReasonOther = if (stopReason == StopReasonType.Other) stopReasonOther else null
         )
         
         currentPlayListEntry!!.traceEntries.add(traceEntry)

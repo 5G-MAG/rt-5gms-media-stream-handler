@@ -7,7 +7,7 @@ import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.AvgThroughput
-import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.AvgThroughputList
+
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.InactivityType
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -23,7 +23,7 @@ class ThroughputTracker(
     private val utils: Utils = Utils()
 ) {
     // Average throughput list for reporting
-    private val avgThroughputList: AvgThroughputList = AvgThroughputList(ArrayList())
+    private val avgThroughputList: ArrayList<AvgThroughput> = ArrayList()
 
     // Average throughput tracking per TS 26.247 clause 10.2.4
     private var measurementIntervalStartTime: String? = null
@@ -150,14 +150,14 @@ class ThroughputTracker(
     fun addCurrentEntry() {
         val entry = createAvgThroughputEntry()
         if (entry != null) {
-            avgThroughputList.entries.add(entry)
+            avgThroughputList.add(entry)
         }
     }
 
     /**
      * Get the average throughput list for reporting
      */
-    fun getAvgThroughputList(): AvgThroughputList {
+    fun getAvgThroughputList(): ArrayList<AvgThroughput> {
         return avgThroughputList
     }
 
@@ -185,7 +185,7 @@ class ThroughputTracker(
             numBytes = totalBytesInInterval,
             activityTime = activityTime,
             duration = duration,
-            accessbearer = null,  // Access bearer info not available from ExoPlayer
+            accessBearer = null,  // Access bearer info not available from ExoPlayer
             inactivityType = getConsistentInactivityType()
         )
 
@@ -202,7 +202,7 @@ class ThroughputTracker(
      * Reset all state including the throughput list
      */
     fun reset() {
-        avgThroughputList.entries.clear()
+        avgThroughputList.clear()
         resetIntervalTracking()
     }
 
