@@ -56,7 +56,7 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
 
         val cmcdConfigurationFactory = object : CmcdConfiguration.Factory {
             override fun createCmcdConfiguration(mediaItem: MediaItem): CmcdConfiguration {
-                val cmcdRequestConfig = object : CmcdConfiguration.RequestConfig {
+                val cmcdConfig = object : CmcdConfiguration.RequestConfig {
                     override fun isKeyAllowed(key: String): Boolean {
                         //return key == "br" || key == "bl"
                         return true
@@ -75,8 +75,8 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
                 val sessionId = UUID.randomUUID().toString()
                 val contentId = UUID.randomUUID().toString()
 
-                //return CmcdConfiguration(sessionId, contentId, cmcdRequestConfig, MODE_QUERY_PARAMETER)
-                return CmcdConfiguration(sessionId, contentId, cmcdRequestConfig, MODE_REQUEST_HEADER)
+                return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_QUERY_PARAMETER)
+                //return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_REQUEST_HEADER)
             }
         }
 

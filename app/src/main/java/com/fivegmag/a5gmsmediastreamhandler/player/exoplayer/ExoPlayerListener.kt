@@ -65,7 +65,7 @@ class ExoPlayerListener(
         mediaLoadData: MediaLoadData
     ) {
         EventBus.getDefault().post(LoadStartedEvent(eventTime, loadEventInfo, mediaLoadData))
-        //Log.d(TAG, "dsl SegmentURL: " + loadEventInfo.uri);
+        Log.d(TAG, "dsl SegmentURL: " + loadEventInfo.uri);
 
         // 打印 HTTP 请求头
         if (loadEventInfo.dataSpec.httpRequestHeaders.isNotEmpty()) {
