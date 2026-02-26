@@ -17,7 +17,6 @@ import android.os.*
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
@@ -30,7 +29,6 @@ import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.service.IncomingMessageHandler
 import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
-import java.util.*
 
 @UnstableApi
 class MediaSessionHandlerAdapter() {

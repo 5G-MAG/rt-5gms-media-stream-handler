@@ -14,7 +14,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.dash.manifest.DashManifest
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_QUERY_PARAMETER
-import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_REQUEST_HEADER
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
@@ -22,12 +21,10 @@ import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.helpers.UserAgentTokens
-import com.google.common.collect.ImmutableListMultimap
 import java.util.UUID
 
 @UnstableApi
-class ExoPlayerAdapter() : IExoPlayerAdapter {
-
+class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private var activeMediaItem: MediaItem? = null
@@ -58,14 +55,8 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
             override fun createCmcdConfiguration(mediaItem: MediaItem): CmcdConfiguration {
                 val cmcdConfig = object : CmcdConfiguration.RequestConfig {
                     override fun isKeyAllowed(key: String): Boolean {
-                        //return key == "br" || key == "bl"
                         return true
                     }
-
-                    /*override fun getCustomData(): ImmutableListMultimap<@CmcdConfiguration.HeaderKey String, String> {
-                        return ImmutableListMultimap.of(
-                            CmcdConfiguration.KEY_CMCD_OBJECT, "key1=stringValue")
-                    }*/
 
                     override fun getRequestedMaximumThroughputKbps(throughputKbps: Int): Int {
                         return 5 * throughputKbps
@@ -76,7 +67,6 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
                 val contentId = UUID.randomUUID().toString()
 
                 return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_QUERY_PARAMETER)
-                //return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_REQUEST_HEADER)
             }
         }
 
