@@ -65,19 +65,6 @@ class ExoPlayerListener(
         mediaLoadData: MediaLoadData
     ) {
         EventBus.getDefault().post(LoadStartedEvent(eventTime, loadEventInfo, mediaLoadData))
-        Log.d(TAG, "dsl SegmentURL: " + loadEventInfo.uri);
-
-        // 打印 HTTP 请求头
-        if (loadEventInfo.dataSpec.httpRequestHeaders.isNotEmpty()) {
-          Log.d(TAG, "dsl cmcd Request Headers: " + loadEventInfo.dataSpec.httpRequestHeaders)
-        }
-
-        // 打印 HTTP 查询参数
-        val queryParameters = loadEventInfo.uri.query
-        if (!queryParameters.isNullOrEmpty()) {
-          Log.d(TAG, "dsl cmcd Query Parameters: " + queryParameters)
-        }
-
     }
 
     override fun onLoadCompleted(
