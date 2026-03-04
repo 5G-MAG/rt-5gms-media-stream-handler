@@ -12,8 +12,7 @@ android {
         minSdk 29
         targetSdk 34
         versionCode 1
-        versionName "1.2.1"
-
+        versionName "1.3.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -37,7 +36,7 @@ publishing {
         release(MavenPublication) {
             groupId = 'com.fivegmag'
             artifactId = 'a5gmsmediastreamhandler'
-            version = '1.2.1'
+            version = '1.3.0'
             afterEvaluate {
                 from components.release
             }
