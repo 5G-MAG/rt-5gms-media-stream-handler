@@ -86,6 +86,10 @@ object PlaybackSessionSimulator {
         bus.post(DownstreamFormatChangedEvent(fakeEventTime(), loadData))
     }
 
+    fun simulateBytesTransferred(bytesTransferred: Int) {
+        bus.post(BytesTransferredEvent(bytesTransferred))
+    }
+
     // --- Higher-level Logical Simulation Methods ---
 
     fun simulateManifestLoad(
@@ -96,6 +100,7 @@ object PlaybackSessionSimulator {
         loadId: Long = 1L
     ) {
         simulateLoadStarted(uri, elapsedRealtimeMs - durationMs, C.DATA_TYPE_MANIFEST, loadId)
+        simulateBytesTransferred(bytesLoaded.toInt())
         simulateLoadCompleted(uri, elapsedRealtimeMs, durationMs, bytesLoaded, C.DATA_TYPE_MANIFEST, loadId)
     }
 
@@ -107,6 +112,7 @@ object PlaybackSessionSimulator {
         loadId: Long = 2L
     ) {
         simulateLoadStarted(uri, elapsedRealtimeMs - durationMs, C.DATA_TYPE_MEDIA, loadId)
+        simulateBytesTransferred(bytesLoaded.toInt())
         simulateLoadCompleted(uri, elapsedRealtimeMs, durationMs, bytesLoaded, C.DATA_TYPE_MEDIA, loadId)
     }
 

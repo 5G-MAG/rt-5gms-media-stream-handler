@@ -6,12 +6,16 @@ import androidx.annotation.RequiresApi
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.TransferListener
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.ui.PlayerView
 import androidx.media3.common.C
+import com.fivegmag.a5gmscommonlibrary.eventbus.BytesTransferredEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstMediaSegmentRequestedEvent
@@ -28,7 +32,7 @@ import org.greenrobot.eventbus.EventBus
 class ExoPlayerListener(
     private val playerInstance: ExoPlayer,
     private val playerView: PlayerView,
-) : AnalyticsListener {
+) : AnalyticsListener, TransferListener {
 
     companion object {
         const val TAG = "5GMS-ExoPlayerListener"
@@ -116,10 +120,12 @@ class ExoPlayerListener(
     }
 
     /**
-     * Check if the data type is a media segment (video/audio data or initialization segment)
+     * Check if the data type is a media segment (video/audio data).
+     * Excludes initialization segments (C.DATA_TYPE_MEDIA_INITIALIZATION) to strictly
+     * comply with TS 26.247 which requires the "first media Segment (or sub-segment)".
      */
     private fun isMediaSegment(dataType: Int): Boolean {
-        return dataType == C.DATA_TYPE_MEDIA || dataType == C.DATA_TYPE_MEDIA_INITIALIZATION
+        return dataType == C.DATA_TYPE_MEDIA
     }
     
     /**
@@ -198,4 +204,23 @@ class ExoPlayerListener(
         )
     }
 
+    // --- TransferListener implementation for incremental byte counting ---
+
+    override fun onTransferInitializing(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean) {
+        // No-op: activity time is tracked via LoadStartedEvent/LoadCompletedEvent
+    }
+
+    override fun onTransferStart(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean) {
+        // No-op: activity time is tracked via LoadStartedEvent/LoadCompletedEvent
+    }
+
+    override fun onBytesTransferred(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean, bytesTransferred: Int) {
+        if (isNetwork) {
+            EventBus.getDefault().post(BytesTransferredEvent(bytesTransferred))
+        }
+    }
+
+    override fun onTransferEnd(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean) {
+        // No-op: activity time is tracked via LoadStartedEvent/LoadCompletedEvent
+    }
 }

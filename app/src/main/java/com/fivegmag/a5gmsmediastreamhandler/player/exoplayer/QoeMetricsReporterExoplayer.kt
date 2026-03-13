@@ -36,7 +36,6 @@ import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.PlayListTr
 
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.RepresentationSwitchTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.MpdInformationTracker
-import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.HttpListTracker
 import com.fivegmag.a5gmsmediastreamhandler.player.IQoeMetricsReporter
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -53,7 +52,6 @@ class QoeMetricsReporterExoplayer(
     private val representationSwitchTracker: RepresentationSwitchTracker =
         RepresentationSwitchTracker(exoPlayerAdapter, utils)
     private val mpdInformationTracker: MpdInformationTracker = MpdInformationTracker()
-    private val httpListTracker: HttpListTracker = HttpListTracker(utils)
     private var lastQoeMetricsRequest: QoeMetricsRequest? = null
 
     // Initial playout delay tracking per TS 26.247 clause 10.2.5
@@ -97,7 +95,6 @@ class QoeMetricsReporterExoplayer(
         bufferLevelTracker.initialize()
         representationSwitchTracker.initialize()
         mpdInformationTracker.initialize()
-        httpListTracker.initialize()
         bufferLevelTracker.configure(lastQoeMetricsRequest)
         setLastQoeMetricsRequest(lastQoeMetricsRequest)
     }
@@ -132,15 +129,6 @@ class QoeMetricsReporterExoplayer(
                 }
             }
 
-            if (shouldReportMetric(Metrics.HTTP_LIST, qoeMetricsRequest.metrics)) {
-                val httpList = httpListTracker.getHttpList()
-                if (httpList.entries.size > 0) {
-                    qoeMetricsReport.httpList = arrayListOf(httpList)
-                }
-            }
-
-
-
             if (shouldReportMetric(Metrics.MPD_INFORMATION, qoeMetricsRequest.metrics)) {
                 val mpdInformation = mpdInformationTracker.getMpdInformation()
                 if (mpdInformation.size > 0) {
@@ -163,7 +151,6 @@ class QoeMetricsReporterExoplayer(
             }
 
             if (shouldReportMetric(Metrics.DEVICE_INFORMATION, qoeMetricsRequest.metrics)) {
-                deviceInformationTracker.addCurrentEntry()
                 val deviceInformation = deviceInformationTracker.getDeviceInformation()
                 if (deviceInformation.entries.size > 0) {
                     val supplementQoeMetric = com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.SupplementQoeMetric(deviceInformation)
@@ -237,7 +224,6 @@ class QoeMetricsReporterExoplayer(
         bufferLevelTracker.unregister()
         representationSwitchTracker.unregister()
         mpdInformationTracker.unregister()
-        httpListTracker.unregister()
         lastQoeMetricsRequest = null
     }
 
@@ -250,8 +236,8 @@ class QoeMetricsReporterExoplayer(
         deviceInformationTracker.reset()
         throughputTracker.reset()
         playListTracker.reset()
-        httpListTracker.reset()
-        // Note: initialPlayoutDelayTracker and playoutDelayForMediaStartupTracker are NOT reset here as they are one-time measurements per session
+        initialPlayoutDelayTracker.reset()
+        playoutDelayForMediaStartupTracker.reset()
     }
 
 }

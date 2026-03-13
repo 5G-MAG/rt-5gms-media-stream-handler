@@ -1,6 +1,6 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
-import androidx.media3.exoplayer.source.LoadEventInfo
+import com.fivegmag.a5gmscommonlibrary.eventbus.BytesTransferredEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
@@ -69,12 +69,21 @@ class ThroughputTracker(
     }
 
     /**
-     * Update throughput tracking metrics when a load completes
+     * Update activity time tracking when a load completes
      * Per TS 26.247 clause 10.2.4
      */
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onLoadCompletedEvent(loadCompletedEvent: LoadCompletedEvent) {
-        onLoadCompleted(loadCompletedEvent.loadEventInfo)
+        onLoadCompleted()
+    }
+
+    /**
+     * Incrementally count bytes as they arrive over the network
+     * Per TS 26.247 clause 10.2.4: numBytes is the total bytes downloaded in the interval
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onBytesTransferredEvent(bytesTransferredEvent: BytesTransferredEvent) {
+        totalBytesInInterval += bytesTransferredEvent.bytesTransferred
     }
 
     /**
@@ -96,13 +105,11 @@ class ThroughputTracker(
     }
 
     /**
-     * Update throughput tracking metrics when a load completes
-     * Per TS 26.247 clause 10.2.4
+     * Update activity time when a load completes
+     * Per TS 26.247 clause 10.2.4: activity time is accumulated when the last active request completes
+     * Byte counting is handled separately by onBytesTransferredEvent
      */
-    private fun onLoadCompleted(loadEventInfo: LoadEventInfo) {
-        // Add bytes from this completed request
-        totalBytesInInterval += loadEventInfo.bytesLoaded
-
+    private fun onLoadCompleted() {
         // Update activity time when last active request completes
         activeRequestCount--
         if (activeRequestCount <= 0) {
@@ -189,8 +196,10 @@ class ThroughputTracker(
             inactivityType = getConsistentInactivityType()
         )
 
-        // Reset interval tracking for next interval after creating the entry
-        resetIntervalTracking()
+        // Reset interval tracking for next interval after creating the entry.
+        // We preserve active requests so they continue being tracked in the next interval.
+        resetIntervalTracking(clearActiveRequests = false)
+        
         // Start new measurement interval immediately
         measurementIntervalStartTime = utils.getCurrentXsDateTime()
         measurementIntervalStartTimestamp = currentTimestamp
@@ -208,14 +217,22 @@ class ThroughputTracker(
 
     /**
      * Reset interval tracking variables for next measurement interval
+     * @param clearActiveRequests Whether to clear the active request tracking. True for full resets.
      */
-    private fun resetIntervalTracking() {
+    private fun resetIntervalTracking(clearActiveRequests: Boolean = true) {
         measurementIntervalStartTime = null
         measurementIntervalStartTimestamp = 0L
         totalBytesInInterval = 0L
         totalActivityTimeInInterval = 0L
-        activeRequestCount = 0
-        lastRequestStartTimestamp = 0L
         inactivityTypes.clear()
+        
+        if (clearActiveRequests) {
+            activeRequestCount = 0
+            lastRequestStartTimestamp = 0L
+        } else if (activeRequestCount > 0) {
+            // Keep tracking active requests, but reset their start time to now 
+            // for the new interval so we don't double-count activity time
+            lastRequestStartTimestamp = utils.getCurrentTimestamp()
+        }
     }
 }

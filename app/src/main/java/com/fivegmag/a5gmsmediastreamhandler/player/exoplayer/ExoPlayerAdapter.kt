@@ -44,9 +44,14 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
         val httpDataSourceFactory: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent(modifiedUserAgent)
+
+        // transferListenerRef is captured by the factory lambda and set after playerListener is created.
+        // DataSources are created lazily when media loads, so the listener is guaranteed to be set by then.
+        var transferListenerRef: ExoPlayerListener? = null
         val dataSourceFactory =
             DataSource.Factory {
                 val dataSource = httpDataSourceFactory.createDataSource()
+                transferListenerRef?.let { dataSource.addTransferListener(it) }
                 dataSource
             }
         playerInstance = ExoPlayer.Builder(context)
@@ -62,6 +67,7 @@ class ExoPlayerAdapter() : IExoPlayerAdapter {
         playerListener =
             ExoPlayerListener(playerInstance, playerView)
         playerInstance.addAnalyticsListener(playerListener)
+        transferListenerRef = playerListener
     }
 
     override fun attach(url: String, contentType: String) {

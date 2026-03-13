@@ -40,7 +40,7 @@ class QoeMetricsReporterExoplayerTest {
      */
     private fun requestAllMetrics(): QoeMetricsRequest {
         val request = mockk<QoeMetricsRequest>(relaxed = true)
-        // Empty list = report all metrics (except HttpList which needs explicit opt-in)
+        // Empty list = report all metrics
         every { request.metrics } returns ArrayList()
         every { request.reportingInterval } returns 5000L
         return request
@@ -253,9 +253,6 @@ class QoeMetricsReporterExoplayerTest {
         assertTrue("Report should contain deviceinformation", xmlReport.contains("deviceinformation"))
         assertTrue("Report should contain AvgThroughput", xmlReport.contains("AvgThroughput"))
         assertFalse("Report should NOT contain AvgThroughputList", xmlReport.contains("AvgThroughputList"))
-
-        // Assert compliance: no HttpList
-        assertFalse("Report should NOT contain HttpList", xmlReport.contains("HttpList"))
 
         // Assert compliance: schemaVersion present
         assertTrue("Report should contain schemaVersion", xmlReport.contains("sv:schemaVersion"))

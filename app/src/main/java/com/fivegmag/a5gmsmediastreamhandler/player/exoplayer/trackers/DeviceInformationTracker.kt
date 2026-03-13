@@ -34,6 +34,7 @@ class DeviceInformationTracker(
      */
     fun initialize() {
         EventBus.getDefault().register(this)
+        addCurrentEntry()
     }
 
     /**
@@ -106,5 +107,6 @@ class DeviceInformationTracker(
      */
     fun reset() {
         deviceInformation.entries.clear()
+        addCurrentEntry()
     }
 }

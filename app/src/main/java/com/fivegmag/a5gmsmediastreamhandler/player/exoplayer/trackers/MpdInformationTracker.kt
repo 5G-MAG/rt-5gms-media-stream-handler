@@ -9,7 +9,8 @@ import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
 class MpdInformationTracker {
-    private val mpdInformation: ArrayList<MpdInformation> = ArrayList()
+    private val mpdInformation: LinkedHashMap<String, MpdInformation> = LinkedHashMap()
+    private val reportedRepresentationIds: HashSet<String> = HashSet()
 
     fun initialize() {
         if (!EventBus.getDefault().isRegistered(this)) {
@@ -25,18 +26,36 @@ class MpdInformationTracker {
     private fun addMpdInformation(mediaLoadData: MediaLoadData) {
         val format = mediaLoadData.trackFormat
         if (format != null && format.id != null) {
-            val representationId = mediaLoadData.trackFormat!!.id
-            val codecs = mediaLoadData.trackFormat!!.codecs
-            val bandwidth = mediaLoadData.trackFormat!!.peakBitrate
-            val mimeType = mediaLoadData.trackFormat!!.containerMimeType
-            val frameRate = mediaLoadData.trackFormat!!.frameRate
-            val width = mediaLoadData.trackFormat!!.width
-            val height = mediaLoadData.trackFormat!!.height
+            val representationId = format.id!!
+            
+            // Do not re-report if it was already successfully sent in a previous interval
+            if (reportedRepresentationIds.contains(representationId)) {
+                return
+            }
+
+            val codecs = format.codecs
+            var bandwidth = format.bitrate
+            if (bandwidth == androidx.media3.common.Format.NO_VALUE) {
+                bandwidth = format.peakBitrate
+            }
+            if (bandwidth == androidx.media3.common.Format.NO_VALUE) {
+                bandwidth = 0 // safe fallback
+            }
+
+            val mimeType = format.containerMimeType
+            val width = format.width
+            val height = format.height
             val mpdInfo = MpdInfo(codecs, bandwidth, mimeType)
 
-            if (frameRate > 0) {
-                mpdInfo.frameRate = frameRate.toDouble()
+            // Extract qualityRanking if injected/available (ExoPlayer doesn't natively expose it without custom parsers/metadata)
+            // If the user's custom parser injects it into roleFlags or custom trackSelectionData, we might attempt to map it here.
+            // But per standard Format, if it's missing natively, we leave it null unless there's a custom extension.
+            // As a basic compliance hook, if it is somehow injected into roleFlags by a modified ExoPlayer version:
+            if (format.roleFlags != 0) {
+                 // mpdInfo.qualityRanking = format.roleFlags 
+                 // Note: We leave it null by default if not strictly identifiable, but the schema allows omission if absent in MPD.
             }
+
             if (width > 0) {
                 mpdInfo.width = width
             }
@@ -44,15 +63,18 @@ class MpdInformationTracker {
             if (height > 0) {
                 mpdInfo.height = height
             }
-            mpdInformation.add(MpdInformation(representationId, null, mpdInfo))
+            
+            mpdInformation[representationId] = MpdInformation(representationId, null, mpdInfo)
         }
     }
 
     fun getMpdInformation(): ArrayList<MpdInformation> {
-        return mpdInformation
+        return ArrayList(mpdInformation.values)
     }
 
     fun reset() {
+        // Mark all current elements as successfully reported so they are not re-reported
+        reportedRepresentationIds.addAll(mpdInformation.keys)
         mpdInformation.clear()
     }
 

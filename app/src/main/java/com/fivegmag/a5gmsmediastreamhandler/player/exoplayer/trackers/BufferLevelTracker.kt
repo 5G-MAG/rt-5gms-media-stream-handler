@@ -2,17 +2,11 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
 import android.os.Handler
 import android.os.Looper
-import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
-import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
-import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.BufferLevel
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.BufferLevelEntry
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
-import org.greenrobot.eventbus.EventBus
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.ThreadMode
 
 class BufferLevelTracker(
     private val exoPlayerAdapter: IExoPlayerAdapter,
@@ -23,9 +17,8 @@ class BufferLevelTracker(
     private var samplingRunnable: Runnable? = null
 
     fun initialize() {
-        if (!EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().register(this)
-        }
+        // No EventBus registration needed as this tracker is strictly periodic 
+        // per TS 26.247 / ISO/IEC 23009-1 (BufferLevel(n))
     }
 
     fun configure(qoeMetricsRequest: QoeMetricsRequest?) {
@@ -44,17 +37,7 @@ class BufferLevelTracker(
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onPlaybackStateChangedEvent(playbackStateChangedEvent: PlaybackStateChangedEvent) {
-        if (playbackStateChangedEvent.playbackState == PlayerStates.BUFFERING) {
-            addBufferLevelEntry()
-        }
-    }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onLoadCompletedEvent(loadCompletedEvent: LoadCompletedEvent) {
-        addBufferLevelEntry()
-    }
 
     private fun addBufferLevelEntry() {
         val level: Int = exoPlayerAdapter.getBufferLength().toInt()
@@ -73,13 +56,10 @@ class BufferLevelTracker(
 
     fun reset() {
         bufferLevel.entries.clear()
-        stopSampling()
+        // stopSampling()
     }
 
     fun unregister() {
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this)
-        }
         stopSampling()
     }
 
