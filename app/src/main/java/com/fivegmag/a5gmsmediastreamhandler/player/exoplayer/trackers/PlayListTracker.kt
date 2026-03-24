@@ -85,7 +85,7 @@ class PlayListTracker(
         
         // Finalize current playlist entry and start new one with SEEK type
         finalizeCurrentPlayListEntry()
-        startNewPlayListEntry(StartType.OtherUserRequest, newPositionMs)
+        startNewPlayListEntry(StartType.NewPlayoutRequest, newPositionMs)
     }
 
     /**
@@ -99,9 +99,10 @@ class PlayListTracker(
         
         // If speed actually changed and we have an active trace, finalize it
         if (speed != currentPlaybackSpeed && isPlaybackActive && currentPlayListEntry != null) {
-            finalizeAllTraceEntries(StopReasonType.Other, "speed_change")
+            finalizeAllTraceEntries(StopReasonType.UserRequest)
+            finalizeCurrentPlayListEntry()
             currentPlaybackSpeed = speed
-            startAllTraceEntries()
+            startNewPlayListEntry(StartType.OtherUserRequest)
         } else {
             currentPlaybackSpeed = speed
         }
@@ -225,7 +226,7 @@ class PlayListTracker(
                                 duration = duration,
                                 representationId = trackState.representationId,
                                 playbackSpeed = if (currentPlaybackSpeed != 1.0) currentPlaybackSpeed else null,
-                                stopReason = null,  // Still in progress
+                                stopReason = StopReasonType.EndOfMetricsCollectionPeriod,  // Forced cut off by end of interval
                                 stopReasonOther = null
                             )
                             currentTraceEntries.add(traceEntrySnapshot)

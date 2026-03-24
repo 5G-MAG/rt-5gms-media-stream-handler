@@ -17,8 +17,8 @@ class RepresentationSwitchTracker(
     private val utils: Utils = Utils()
 ) {
     private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(ArrayList())
-    private var currentRepresentationId: String? = null
-    private val pendingSwitches = mutableMapOf<String, RepresentationSwitch>()
+    private val currentRepresentationIds = mutableMapOf<Int, String>()
+    private val pendingSwitches = mutableMapOf<Int, MutableMap<String, RepresentationSwitch>>()
 
     fun initialize() {
         if (!EventBus.getDefault().isRegistered(this)) {
@@ -29,25 +29,34 @@ class RepresentationSwitchTracker(
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onLoadStartedEvent(loadStartedEvent: LoadStartedEvent) {
         val formatId = loadStartedEvent.mediaLoadData.trackFormat?.id ?: return
+        val trackType = loadStartedEvent.mediaLoadData.trackType
         
-        if (formatId != currentRepresentationId && !pendingSwitches.containsKey(formatId)) {
+        val currentRepresentationId = currentRepresentationIds[trackType]
+        val trackPendingSwitches = pendingSwitches.getOrPut(trackType) { mutableMapOf() }
+
+        if (formatId != currentRepresentationId && !trackPendingSwitches.containsKey(formatId)) {
             val t: String = utils.getCurrentXsDateTime()
             val startTimeMs = loadStartedEvent.mediaLoadData.mediaStartTimeMs
             val mt: String? = if (startTimeMs != C.TIME_UNSET) {
                 utils.millisecondsToISO8601(startTimeMs)
             } else {
-                null
+                val currentPosition = exoPlayerAdapter.getCurrentPosition()
+                utils.millisecondsToISO8601(if (currentPosition < 0) 0L else currentPosition)
             }
-            pendingSwitches[formatId] = RepresentationSwitch(t, mt, formatId)
+            trackPendingSwitches[formatId] = RepresentationSwitch(t, mt, formatId)
         }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onDownstreamFormatChangedEvent(downstreamFormatChangedEvent: DownstreamFormatChangedEvent) {
         val formatId = downstreamFormatChangedEvent.mediaLoadData.trackFormat?.id ?: return
+        val trackType = downstreamFormatChangedEvent.mediaLoadData.trackType
         
+        val currentRepresentationId = currentRepresentationIds[trackType]
+        val trackPendingSwitches = pendingSwitches.getOrPut(trackType) { mutableMapOf() }
+
         if (formatId != currentRepresentationId) {
-            val pendingSwitch = pendingSwitches.remove(formatId)
+            val pendingSwitch = trackPendingSwitches.remove(formatId)
             if (pendingSwitch != null) {
                 representationSwitchList.entries.add(pendingSwitch)
             } else {
@@ -56,12 +65,13 @@ class RepresentationSwitchTracker(
                 val mt: String? = if (startTimeMs != C.TIME_UNSET) {
                     utils.millisecondsToISO8601(startTimeMs)
                 } else {
-                    null
+                    val currentPosition = exoPlayerAdapter.getCurrentPosition()
+                    utils.millisecondsToISO8601(if (currentPosition < 0) 0L else currentPosition)
                 }
                 representationSwitchList.entries.add(RepresentationSwitch(t, mt, formatId))
             }
-            currentRepresentationId = formatId
-            pendingSwitches.clear()
+            currentRepresentationIds[trackType] = formatId
+            trackPendingSwitches.clear()
         }
     }
 
@@ -71,7 +81,7 @@ class RepresentationSwitchTracker(
 
     fun reset() {
         representationSwitchList.entries.clear()
-        currentRepresentationId = null
+        currentRepresentationIds.clear()
         pendingSwitches.clear()
     }
 

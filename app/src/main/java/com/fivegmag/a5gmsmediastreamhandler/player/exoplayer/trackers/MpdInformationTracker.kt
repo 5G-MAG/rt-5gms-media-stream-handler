@@ -48,7 +48,6 @@ class MpdInformationTracker {
             val mpdInfo = MpdInfo(codecs, bandwidth, mimeType)
 
             // Extract qualityRanking if injected/available (ExoPlayer doesn't natively expose it without custom parsers/metadata)
-            // If the user's custom parser injects it into roleFlags or custom trackSelectionData, we might attempt to map it here.
             // But per standard Format, if it's missing natively, we leave it null unless there's a custom extension.
             // As a basic compliance hook, if it is somehow injected into roleFlags by a modified ExoPlayer version:
             if (format.roleFlags != 0) {

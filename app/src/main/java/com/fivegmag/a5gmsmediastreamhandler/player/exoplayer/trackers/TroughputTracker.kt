@@ -110,10 +110,14 @@ class ThroughputTracker(
      * Byte counting is handled separately by onBytesTransferredEvent
      */
     private fun onLoadCompleted() {
-        // Update activity time when last active request completes
-        activeRequestCount--
         if (activeRequestCount <= 0) {
             activeRequestCount = 0
+            return
+        }
+
+        // Update activity time when last active request completes
+        activeRequestCount--
+        if (activeRequestCount == 0) {
             val currentTimestamp = utils.getCurrentTimestamp()
             totalActivityTimeInInterval += (currentTimestamp - lastRequestStartTimestamp)
 
