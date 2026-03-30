@@ -29,7 +29,6 @@ import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.service.IncomingMessageHandler
 import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
-import java.util.*
 
 @UnstableApi
 class MediaSessionHandlerAdapter() {
@@ -130,11 +129,13 @@ class MediaSessionHandlerAdapter() {
             val subscriptionManager: SubscriptionManager =
                 context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
 
-            val subscriptionInfoList: List<SubscriptionInfo> =
+            val subscriptionInfoList: MutableList<SubscriptionInfo>? =
                 subscriptionManager.activeSubscriptionInfoList
-            for (subscriptionInfo in subscriptionInfoList) {
-                strMsisdn =
-                    subscriptionManager.getPhoneNumber(getActiveSIMIdx(subscriptionInfoList))
+            if (subscriptionInfoList != null) {
+                for (subscriptionInfo in subscriptionInfoList) {
+                    strMsisdn =
+                        subscriptionManager.getPhoneNumber(getActiveSIMIdx(subscriptionInfoList))
+                }
             }
         }
 
