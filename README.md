@@ -56,6 +56,26 @@ The repository names ETSI TS 126.501 and TS 26.512 but no version of either.
 Clause-by-clause coverage, and what is still absent, is recorded on the project page rather than
 here: <https://www.5g-mag.com/reference-tools/5gms/>
 
+## Install dependencies
+
+The Media Stream Handler needs the
+[Common Android Library](https://github.com/5G-MAG/rt-5gms-common-android-library) to build. It is
+declared as a Maven dependency in the `build.gradle` of the `app` module:
+
+````
+dependencies {
+    implementation 'com.fivegmag:a5gmscommonlibrary:1.3.0'
+}
+````
+
+The version number (`1.3.0` in the example above) might differ, depending on the version of the
+Media Stream Handler.
+
+Install the library by following the installation guide in its README, and publish it to the local
+Maven repository:
+
+* [Common Android Library](https://github.com/5G-MAG/rt-5gms-common-android-library#publish-to-local-maven-repository)
+
 ## Downloading
 
 Release versions are on the [releases](https://github.com/5G-MAG/rt-5gms-media-stream-handler/releases)
