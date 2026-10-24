@@ -16,6 +16,7 @@ class IncomingMessageHandler() {
     private lateinit var consumptionReportingController: IConsumptionReportingController
     private lateinit var qoeMetricsReportingController: IQoEMetricsReportingController
     private lateinit var sessionController: ISessionController
+    var onMediaDeliverySessionStarted: ((String) -> Unit)? = null
 
     @UnstableApi
     private val incomingMessenger = Messenger(IncomingHandler())
@@ -48,6 +49,7 @@ class IncomingMessageHandler() {
             consumptionReportingController.handleTriggerPlayback(playbackRequest)
             qoeMetricsReportingController.handleTriggerPlayback(playbackRequest)
             sessionController.handleTriggerPlayback(playbackRequest)
+            onMediaDeliverySessionStarted?.invoke(playbackRequest.mediaDeliverySessionId)
         }
     }
 

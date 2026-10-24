@@ -129,7 +129,8 @@ class ConsumptionReporterExoplayer(
     @UnstableApi
     override fun getConsumptionReport(
         reportingClientId: String,
-        consumptionRequest: ConsumptionRequest
+        consumptionRequest: ConsumptionRequest,
+        mediaDeliverySessionId: String?
     ): String {
         val mediaPlayerEntry = exoPlayerAdapter.getCurrentManifestUri()
         // We need to add the duration of the consumption reporting units that are not yet finished
@@ -147,7 +148,8 @@ class ConsumptionReporterExoplayer(
         val consumptionReport = ConsumptionReport(
             mediaPlayerEntry,
             reportingClientId,
-            consumptionReportingUnitList
+            consumptionReportingUnitList,
+            mediaDeliverySessionId
         )
         val objectMapper: ObjectMapper = jacksonObjectMapper()
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)

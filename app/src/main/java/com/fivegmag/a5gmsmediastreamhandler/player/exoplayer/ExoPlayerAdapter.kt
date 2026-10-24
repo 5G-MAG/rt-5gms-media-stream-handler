@@ -14,7 +14,7 @@ import androidx.media3.exoplayer.upstream.CmcdConfiguration
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.dash.manifest.DashManifest
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_QUERY_PARAMETER
+import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_REQUEST_HEADER
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
@@ -29,6 +29,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var context: Context
+    private var mediaDeliverySessionId: String? = null
     private var activeMediaItem: MediaItem? = null
     private var activeManifestUrl: String = ""
     private lateinit var playerListener: ExoPlayerListener
@@ -54,6 +55,10 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         val dataSourceFactory =
             DataSource.Factory {
                 val dataSource = httpDataSourceFactory.createDataSource()
+                // Include the session even for manifest requests, where Media3 may omit CMCD.
+                mediaDeliverySessionId?.let {
+                    dataSource.setRequestProperty("CMCD-Session", "sid=\"$it\"")
+                }
                 transferListenerRef?.let { dataSource.addTransferListener(it) }
                 dataSource
             }
@@ -70,10 +75,10 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                     }
                 }
 
-                val sessionId = UUID.randomUUID().toString()
+                val sessionId = requireNotNull(mediaDeliverySessionId) { "Media Session Handler must assign a session ID before playback" }
                 val contentId = UUID.randomUUID().toString()
 
-                return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_QUERY_PARAMETER)
+                return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_REQUEST_HEADER)
             }
         }
 
@@ -95,6 +100,11 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             ExoPlayerListener(playerInstance, playerView)
         playerInstance.addAnalyticsListener(playerListener)
         transferListenerRef = playerListener
+    }
+
+    override fun setMediaDeliverySessionId(mediaDeliverySessionId: String) {
+        UUID.fromString(mediaDeliverySessionId)
+        this.mediaDeliverySessionId = mediaDeliverySessionId
     }
 
     override fun attach(url: String, contentType: String) {

@@ -34,6 +34,7 @@ class ConsumptionReportingController(
         const val TAG = "5GMS-ConsumptionReportingController"
     }
 
+    private var mediaDeliverySessionId: String? = null
     lateinit var reportingClientId: String
     private val activeConsumptionReporter = mutableListOf<ConsumptionReporter>()
     private var lastConsumptionRequest: ConsumptionRequest? =
@@ -67,7 +68,8 @@ class ConsumptionReportingController(
         for (consumptionReporter in activeConsumptionReporter) {
             val consumptionReport = consumptionReporter.getConsumptionReport(
                 reportingClientId,
-                lastConsumptionRequest!!
+                lastConsumptionRequest!!,
+                mediaDeliverySessionId
             )
             sendConsumptionReport(consumptionReport)
             consumptionReporter.resetState()
@@ -86,6 +88,7 @@ class ConsumptionReportingController(
     @UnstableApi
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
         resetState()
+        mediaDeliverySessionId = playbackRequest.mediaDeliverySessionId
         setDefaultExoplayerConsumptionReporter()
         setLastConsumptionRequest(
             playbackRequest.consumptionRequest
@@ -136,6 +139,7 @@ class ConsumptionReportingController(
     }
 
     override fun resetState() {
+        mediaDeliverySessionId = null
         lastConsumptionRequest = null
         for (reporter in activeConsumptionReporter) {
             reporter.reset()
