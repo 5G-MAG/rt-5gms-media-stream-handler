@@ -18,7 +18,8 @@ abstract class ConsumptionReporter {
 
     abstract fun getConsumptionReport(
         reportingClientId: String,
-        consumptionRequest: ConsumptionRequest
+        consumptionRequest: ConsumptionRequest,
+        mediaDeliverySessionId: String? = null
     ): String
 
     abstract fun resetState()
