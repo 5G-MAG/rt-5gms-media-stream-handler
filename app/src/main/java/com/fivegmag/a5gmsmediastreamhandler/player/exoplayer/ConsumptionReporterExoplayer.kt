@@ -168,14 +168,11 @@ class ConsumptionReporterExoplayer(
     }
 
     private fun getClientEndpointAddress(serverEndpointAddress: EndpointAddress?): EndpointAddress {
-        val ipv4Address = utils.getIpAddress(4)
-        val ipv6Address = utils.getIpAddress(6)
-        var portNumber = 80
-        if (serverEndpointAddress != null) {
-            portNumber = serverEndpointAddress.portNumber
-        }
+        // the table of TS 26.510 7.3.3.11 has no IP address property (SD-019): the textual address goes in domainName
+        val address = utils.getIpAddress(4) ?: utils.getIpAddress(6) ?: "unknown"
+        val portNumbers = serverEndpointAddress?.portNumbers ?: listOf(80)
 
-        return EndpointAddress(null, ipv4Address, ipv6Address, portNumber)
+        return EndpointAddress(address, portNumbers)
     }
 
     private fun cleanConsumptionReportingList() {

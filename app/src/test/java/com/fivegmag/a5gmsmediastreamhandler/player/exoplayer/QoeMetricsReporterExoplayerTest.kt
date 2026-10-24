@@ -5,6 +5,7 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import io.mockk.every
 import io.mockk.mockk
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Before
@@ -176,8 +177,9 @@ class QoeMetricsReporterExoplayerTest {
     assertTrue("PlayList should contain OtherUserRequest trace", xmlReport.contains("startType=\"OtherUserRequest\""))
     assertTrue("Seek target should be 30s", xmlReport.contains("mstart=\"P0Y0DT0H0M30S\""))
 
-        // Assert Speed Change
-        assertTrue("Should have stopReasonOther='speed_change'", xmlReport.contains("stopReasonOther=\"speed_change\""))
+        // Assert Speed Change: the trace before it stops for UserRequest, the next trace carries the new speed (the XSD of TS 26.247
+        // clause 10.2.7 has the playbackSpeed attribute; it defines no stop reason for a speed change)
+        assertFalse("A speed change is not reported as an Other stop reason", xmlReport.contains("stopReasonOther="))
         assertTrue("Should have playbackSpeed='1.5'", xmlReport.contains("playbackSpeed=\"1.5\""))
         
         // Assert Representation ID
@@ -221,6 +223,26 @@ class QoeMetricsReporterExoplayerTest {
         assertFalse("AFTER reset: RepSwitchList should NOT be present", reportAfter.contains("RepSwitchList"))
     }
 
+
+    @Test
+    fun termWithPathBelowKey_selectsOnlyThatMetric() {
+        // TS 26.512 V19.3.0 clause E.2.1 example 1: the term names a member of the metric, the metric is reported
+        val request = requestSpecificMetrics(Metrics.AVG_THROUGHPUT + "/numbytes")
+        reporter.initialize(request)
+
+        PlaybackSessionSimulator.simulateFullPlaybackSession()
+
+        val xmlReport = reporter.getQoeMetricsReport(request, "client-1", "session-1")
+        assertTrue("Report should contain AvgThroughput", xmlReport.contains("AvgThroughput"))
+        assertFalse("Report should NOT contain BufferLevel", xmlReport.contains("BufferLevel"))
+    }
+
+    @Test
+    fun metricKeysAreTheKeyNamesOfTs26247() {
+        // TS 26.512 V19.3.0 clause E.2.1: the term identifiers are the key names of TS 26.247 clause 10.2
+        assertEquals("urn:3GPP:ns:PSS:DASH:QM10#DeviceInformationList", Metrics.DEVICE_INFORMATION)
+        assertEquals("urn:3GPP:ns:PSS:DASH:QM10#PlayoutDelayforMediaStartup", Metrics.PLAYOUT_DELAY_FOR_MEDIA_STARTUP)
+    }
 
     @Test
     fun fullSession_reportContainsAllMetrics() {

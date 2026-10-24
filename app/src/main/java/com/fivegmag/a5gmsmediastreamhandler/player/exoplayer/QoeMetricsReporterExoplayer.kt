@@ -200,7 +200,15 @@ class QoeMetricsReporterExoplayer(
 
 
     private fun shouldReportMetric(metric: String, metricsList: ArrayList<String>?): Boolean {
-        return metricsList.isNullOrEmpty() || metricsList.contains(metric)
+        return metricsList.isNullOrEmpty() || metricsList.any { termSelectsMetric(it, metric) }
+    }
+
+    // TS 26.512 V19.3.0 clause E.2.1: a term may carry a path below the metric key (AvgThroughput/numbytes), and pruning the
+    // path selects everything below the key, so the first path element decides whether the metric is reported
+    private fun termSelectsMetric(term: String, metric: String): Boolean {
+        val namespace = metric.substringBefore('#') + "#"
+        return term.startsWith(namespace) &&
+                term.substring(namespace.length).substringBefore('/') == metric.substring(namespace.length)
     }
 
 
