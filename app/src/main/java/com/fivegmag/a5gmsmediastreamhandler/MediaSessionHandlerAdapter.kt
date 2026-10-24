@@ -43,6 +43,9 @@ class MediaSessionHandlerAdapter() {
     private lateinit var sessionController: SessionController
     private lateinit var outgoingMessageHandler: OutgoingMessageHandler
     private lateinit var incomingMessageHandler: IncomingMessageHandler
+    /** Called with the UUID assigned by the Media Session Handler when playback starts. */
+    var onMediaDeliverySessionStarted: ((String) -> Unit)? = null
+
     private val utils = Utils()
     private val exoPlayerAdapter = ExoPlayerAdapter()
 
@@ -62,6 +65,9 @@ class MediaSessionHandlerAdapter() {
 
         outgoingMessageHandler = OutgoingMessageHandler()
         incomingMessageHandler = IncomingMessageHandler()
+        incomingMessageHandler.onMediaDeliverySessionStarted = { sessionId ->
+            onMediaDeliverySessionStarted?.invoke(sessionId)
+        }
 
         val reportingClientId = generateReportingClientId()
 
