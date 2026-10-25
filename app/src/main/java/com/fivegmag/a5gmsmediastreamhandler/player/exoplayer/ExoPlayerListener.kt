@@ -26,12 +26,14 @@ import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.SeekEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.VideoSizeChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
+import com.fivegmag.a5gmsmediastreamhandler.controller.ManifestProcessedEvent
 import org.greenrobot.eventbus.EventBus
 
 @UnstableApi
 class ExoPlayerListener(
     private val playerInstance: ExoPlayer,
     private val playerView: PlayerView,
+    private val eventBus: org.greenrobot.eventbus.EventBus,
 ) : AnalyticsListener, TransferListener {
 
     companion object {
@@ -59,7 +61,7 @@ class ExoPlayerListener(
                     lastVideoHeight = newHeight
                     val displayMetrics = playerView.context.resources.displayMetrics
                     Log.d(TAG, "Video size changed: ${newWidth}x${newHeight}")
-                    EventBus.getDefault().post(
+                    eventBus.post(
                         VideoSizeChangedEvent(
                             videoWidth = newWidth,
                             videoHeight = newHeight,
@@ -72,6 +74,22 @@ class ExoPlayerListener(
         }
     }
 
+    private var manifestNotified = false
+
+    // Step 10 of TS 26.501 V19.4.0 clause 5.2.3: the Media Player has the MPD and tells the Media Session Handler about it
+    @OptIn(UnstableApi::class)
+    override fun onTimelineChanged(eventTime: AnalyticsListener.EventTime, reason: Int) {
+        val manifest = playerInstance.currentManifest as? androidx.media3.exoplayer.dash.manifest.DashManifest ?: return
+        if (manifestNotified) return
+        manifestNotified = true
+        eventBus.post(ManifestProcessedEvent(
+            manifest.dynamic,
+            manifest.durationMs.takeIf { it != C.TIME_UNSET },
+            manifest.minBufferTimeMs.takeIf { it != C.TIME_UNSET },
+            manifest.periodCount
+        ))
+    }
+
     override fun onPlaybackStateChanged(
         eventTime: AnalyticsListener.EventTime,
         playbackState: Int
@@ -80,7 +98,7 @@ class ExoPlayerListener(
 
         playerView.keepScreenOn = !(state == PlayerStates.IDLE || state == PlayerStates.ENDED)
         Log.d(TAG, "Playback state changed to $state")
-        EventBus.getDefault().post(PlaybackStateChangedEvent(eventTime, state))
+        eventBus.post(PlaybackStateChangedEvent(eventTime, state))
     }
 
     override fun onIsPlayingChanged(eventTime: AnalyticsListener.EventTime, isPlaying: Boolean) {
@@ -91,7 +109,7 @@ class ExoPlayerListener(
             state = PlayerStates.PAUSED
         }
         if (state != null) {
-            EventBus.getDefault().post(PlaybackStateChangedEvent(eventTime, state))
+            eventBus.post(PlaybackStateChangedEvent(eventTime, state))
         }
     }
 
@@ -100,7 +118,7 @@ class ExoPlayerListener(
         eventTime: AnalyticsListener.EventTime,
         mediaLoadData: MediaLoadData
     ) {
-        EventBus.getDefault().post(DownstreamFormatChangedEvent(eventTime, mediaLoadData))
+        eventBus.post(DownstreamFormatChangedEvent(eventTime, mediaLoadData))
     }
 
     override fun onLoadStarted(
@@ -108,14 +126,14 @@ class ExoPlayerListener(
         loadEventInfo: LoadEventInfo,
         mediaLoadData: MediaLoadData
     ) {
-        EventBus.getDefault().post(LoadStartedEvent(eventTime, loadEventInfo, mediaLoadData))
+        eventBus.post(LoadStartedEvent(eventTime, loadEventInfo, mediaLoadData))
 
         // Fire FirstMediaSegmentRequestedEvent on first media segment load
         // Per TS 26.247: Initial playout delay starts from fetch of first media segment
         if (!firstMediaSegmentRequested && isMediaSegment(mediaLoadData.dataType)) {
             firstMediaSegmentRequested = true
             Log.d(TAG, "First media segment requested at realtimeMs: ${eventTime.realtimeMs}")
-            EventBus.getDefault().post(FirstMediaSegmentRequestedEvent(eventTime.realtimeMs))
+            eventBus.post(FirstMediaSegmentRequestedEvent(eventTime.realtimeMs))
         }
     }
 
@@ -140,7 +158,7 @@ class ExoPlayerListener(
         if (!firstFrameRendered) {
             firstFrameRendered = true
             Log.d(TAG, "First frame rendered at realtimeMs: ${eventTime.realtimeMs}")
-            EventBus.getDefault().post(FirstFrameRenderedEvent(eventTime.realtimeMs))
+            eventBus.post(FirstFrameRenderedEvent(eventTime.realtimeMs))
         }
     }
 
@@ -157,7 +175,7 @@ class ExoPlayerListener(
         loadEventInfo: LoadEventInfo,
         mediaLoadData: MediaLoadData
     ) {
-        EventBus.getDefault().post(LoadCompletedEvent(eventTime, loadEventInfo, mediaLoadData))
+        eventBus.post(LoadCompletedEvent(eventTime, loadEventInfo, mediaLoadData))
     }
 
     override fun onPlayerError(eventTime: AnalyticsListener.EventTime, error: PlaybackException) {
@@ -177,7 +195,7 @@ class ExoPlayerListener(
         // Only track user-initiated seeks
         if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
             Log.d(TAG, "Seek detected: ${oldPosition.positionMs}ms -> ${newPosition.positionMs}ms")
-            EventBus.getDefault().post(
+            eventBus.post(
                 SeekEvent(
                     eventTime = eventTime,
                     oldPositionMs = oldPosition.positionMs,
@@ -196,7 +214,7 @@ class ExoPlayerListener(
         playbackParameters: androidx.media3.common.PlaybackParameters
     ) {
         Log.d(TAG, "Playback speed changed to: ${playbackParameters.speed}")
-        EventBus.getDefault().post(
+        eventBus.post(
             PlaybackSpeedChangedEvent(
                 eventTime = eventTime,
                 playbackSpeed = playbackParameters.speed
@@ -216,7 +234,7 @@ class ExoPlayerListener(
 
     override fun onBytesTransferred(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean, bytesTransferred: Int) {
         if (isNetwork) {
-            EventBus.getDefault().post(BytesTransferredEvent(bytesTransferred))
+            eventBus.post(BytesTransferredEvent(bytesTransferred))
         }
     }
 

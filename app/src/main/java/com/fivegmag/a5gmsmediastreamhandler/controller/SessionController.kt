@@ -27,12 +27,12 @@ class SessionController(
 
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
         override fun onCellInfo(cellInfoList: MutableList<CellInfo>) {
-            EventBus.getDefault().post(CellInfoUpdatedEvent(cellInfoList))
+            exoPlayerAdapter.eventBus.post(CellInfoUpdatedEvent(cellInfoList))
         }
     }
 
     override fun initialize() {
-        EventBus.getDefault().register(this)
+        exoPlayerAdapter.eventBus.register(this)
         requestCellInfoUpdates()
     }
 
@@ -40,7 +40,14 @@ class SessionController(
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
         // Fire PlaybackStartTriggerEvent for Playout Delay for Media Start-up metric (TS 26.247 clause 10.2.9)
         // This marks the instant when the DASH player receives the playback-start trigger
-        EventBus.getDefault().post(PlaybackStartTriggerEvent(android.os.SystemClock.elapsedRealtime()))
+        exoPlayerAdapter.eventBus.post(PlaybackStartTriggerEvent(android.os.SystemClock.elapsedRealtime()))
+
+        // CMCD is reported only for the classes that the provisioned metrics schemes name
+        exoPlayerAdapter.configureCmcd(
+            playbackRequest.qoeMetricsRequests.mapNotNull { it.scheme },
+            playbackRequest.mediaDeliverySessionIdentifier,
+            playbackRequest.contentIdentifier
+        )
 
         if (playbackRequest.entryPoints.size > 0) {
             val dashEntryPoints: List<EntryPoint> =
@@ -74,6 +81,11 @@ class SessionController(
     @UnstableApi
     override fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
         outgoingMessageHandler.updatePlaybackState(event.playbackState)
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    override fun onManifestProcessedEvent(event: ManifestProcessedEvent) {
+        outgoingMessageHandler.notifyManifest(event)
     }
 
     override fun resetState() {

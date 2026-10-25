@@ -86,6 +86,15 @@ class QoeMetricsReporterExoplayer(
     // HttpList handling moved to HttpListTracker
 
     override fun initialize(lastQoeMetricsRequest: QoeMetricsRequest) {
+        // the trackers listen on the event bus of the instance that owns the player
+        val bus = exoPlayerAdapter.eventBus
+        initialPlayoutDelayTracker.eventBus = bus
+        playoutDelayForMediaStartupTracker.eventBus = bus
+        deviceInformationTracker.eventBus = bus
+        throughputTracker.eventBus = bus
+        playListTracker.eventBus = bus
+        representationSwitchTracker.eventBus = bus
+        mpdInformationTracker.eventBus = bus
         // EventBus.getDefault().register(this) // No longer needed as we moved all event handling to trackers
         initialPlayoutDelayTracker.initialize()
         playoutDelayForMediaStartupTracker.initialize()

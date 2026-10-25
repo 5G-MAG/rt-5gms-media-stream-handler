@@ -6,11 +6,15 @@ import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
 import android.util.Log
+import com.fivegmag.a5gmsmediastreamhandler.controller.ManifestProcessedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerBundleKeys
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
 
 class OutgoingMessageHandler {
+
+    /** The identifier of this instance: the Media Session Handler keeps one media delivery session context per application and instance */
+    private val instanceId: String = java.util.UUID.randomUUID().toString()
 
     private var boundToMediaSessionHandler = false
     private var nativeIncomingHandler: Messenger? = null
@@ -132,11 +136,25 @@ class OutgoingMessageHandler {
         sendMessageByTypeAndBundle(SessionHandlerMessageTypes.STATUS_MESSAGE, bundle)
     }
 
+    fun notifyManifest(event: ManifestProcessedEvent) {
+        if (!canSendMessage()) {
+            return
+        }
+        val bundle = Bundle()
+        bundle.putBoolean(SessionHandlerBundleKeys.MPD_DYNAMIC, event.dynamic)
+        // absent properties of the MPD (a live presentation has no duration) are not put in the bundle
+        event.durationMs?.let { bundle.putLong(SessionHandlerBundleKeys.MPD_DURATION_MS, it) }
+        event.minBufferTimeMs?.let { bundle.putLong(SessionHandlerBundleKeys.MPD_MIN_BUFFER_TIME_MS, it) }
+        bundle.putInt(SessionHandlerBundleKeys.MPD_PERIOD_COUNT, event.periodCount)
+        sendMessageByTypeAndBundle(SessionHandlerMessageTypes.MANIFEST_NOTIFICATION, bundle)
+    }
+
     fun sendMessageByTypeAndBundle(messageType: Int, bundle: Bundle) {
         if (!canSendMessage()) {
             return
         }
         val msg = getMessage(messageType)
+        bundle.putString(SessionHandlerBundleKeys.CLIENT_INSTANCE_ID, instanceId)
         msg.data = bundle
         sendMessage(msg)
     }
@@ -151,6 +169,9 @@ class OutgoingMessageHandler {
             messageType
         )
         msg.replyTo = nativeIncomingHandler
+        val bundle = Bundle()
+        bundle.putString(SessionHandlerBundleKeys.CLIENT_INSTANCE_ID, instanceId)
+        msg.data = bundle
 
         return msg
     }

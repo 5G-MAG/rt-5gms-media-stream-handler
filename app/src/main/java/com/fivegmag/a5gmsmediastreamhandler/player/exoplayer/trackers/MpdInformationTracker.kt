@@ -9,12 +9,15 @@ import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
 class MpdInformationTracker {
+    /** The event bus of the Media Stream Handler instance that owns the player (set by the reporter before use) */
+    var eventBus: org.greenrobot.eventbus.EventBus = org.greenrobot.eventbus.EventBus.getDefault()
+
     private val mpdInformation: LinkedHashMap<String, MpdInformation> = LinkedHashMap()
     private val reportedRepresentationIds: HashSet<String> = HashSet()
 
     fun initialize() {
-        if (!EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().register(this)
+        if (!eventBus.isRegistered(this)) {
+            eventBus.register(this)
         }
     }
 
@@ -78,8 +81,8 @@ class MpdInformationTracker {
     }
 
     fun unregister() {
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this)
+        if (eventBus.isRegistered(this)) {
+            eventBus.unregister(this)
         }
     }
 }

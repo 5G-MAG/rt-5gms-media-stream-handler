@@ -30,6 +30,9 @@ import org.greenrobot.eventbus.ThreadMode
 class PlayListTracker(
     private val exoPlayerAdapter: IExoPlayerAdapter
 ) {
+    /** The event bus of the Media Stream Handler instance that owns the player (set by the reporter before use) */
+    var eventBus: org.greenrobot.eventbus.EventBus = org.greenrobot.eventbus.EventBus.getDefault()
+
     private val utils: Utils = Utils()
     
     // PlayList tracking state
@@ -54,8 +57,8 @@ class PlayListTracker(
      * Initialize event subscriptions
      */
     fun initialize() {
-        if (!EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().register(this)
+        if (!eventBus.isRegistered(this)) {
+            eventBus.register(this)
         }
     }
 
@@ -63,8 +66,8 @@ class PlayListTracker(
      * Unregister from EventBus
      */
     fun unregister() {
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this)
+        if (eventBus.isRegistered(this)) {
+            eventBus.unregister(this)
         }
     }
 

@@ -142,7 +142,7 @@ class MediaSessionHandlerAdapter() {
                 val changed = current != null && current != network
                 current = network
                 if (changed) {
-                    org.greenrobot.eventbus.EventBus.getDefault().post(
+                    exoPlayerAdapter.eventBus.post(
                         com.fivegmag.a5gmsmediastreamhandler.controller.AccessNetworkChangedEvent()
                     )
                 }

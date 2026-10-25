@@ -22,6 +22,9 @@ class DeviceInformationTracker(
     private val exoPlayerAdapter: IExoPlayerAdapter,
     private val utils: Utils = Utils()
 ) {
+    /** The event bus of the Media Stream Handler instance that owns the player (set by the reporter before use) */
+    var eventBus: org.greenrobot.eventbus.EventBus = org.greenrobot.eventbus.EventBus.getDefault()
+
     private val deviceInformation: DeviceInformation = DeviceInformation(ArrayList())
 
     companion object {
@@ -33,7 +36,7 @@ class DeviceInformationTracker(
      * Initialize the tracker by registering with EventBus
      */
     fun initialize() {
-        EventBus.getDefault().register(this)
+        eventBus.register(this)
         addCurrentEntry()
     }
 
@@ -41,8 +44,8 @@ class DeviceInformationTracker(
      * Unregister from EventBus when no longer needed
      */
     fun unregister() {
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this)
+        if (eventBus.isRegistered(this)) {
+            eventBus.unregister(this)
         }
     }
 

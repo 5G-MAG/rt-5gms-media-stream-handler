@@ -16,13 +16,16 @@ class RepresentationSwitchTracker(
     private val exoPlayerAdapter: IExoPlayerAdapter,
     private val utils: Utils = Utils()
 ) {
+    /** The event bus of the Media Stream Handler instance that owns the player (set by the reporter before use) */
+    var eventBus: org.greenrobot.eventbus.EventBus = org.greenrobot.eventbus.EventBus.getDefault()
+
     private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(ArrayList())
     private val currentRepresentationIds = mutableMapOf<Int, String>()
     private val pendingSwitches = mutableMapOf<Int, MutableMap<String, RepresentationSwitch>>()
 
     fun initialize() {
-        if (!EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().register(this)
+        if (!eventBus.isRegistered(this)) {
+            eventBus.register(this)
         }
     }
 
@@ -86,8 +89,8 @@ class RepresentationSwitchTracker(
     }
 
     fun unregister() {
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this)
+        if (eventBus.isRegistered(this)) {
+            eventBus.unregister(this)
         }
     }
 }

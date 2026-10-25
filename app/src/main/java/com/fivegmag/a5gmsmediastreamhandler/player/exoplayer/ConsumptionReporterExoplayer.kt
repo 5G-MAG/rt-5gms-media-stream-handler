@@ -40,7 +40,7 @@ class ConsumptionReporterExoplayer(
     private var serverEndpointAddressesPerMediaType = mutableMapOf<String, EndpointAddress>()
     private var activeLocations: ArrayList<TypedLocation> = ArrayList()
     override fun initialize() {
-        EventBus.getDefault().register(this)
+        exoPlayerAdapter.eventBus.register(this)
     }
 
 

@@ -19,6 +19,11 @@ class ReproduceQoeReportComplianceTest {
     private lateinit var reporter: QoeMetricsReporterExoplayer
     private val mockExoPlayerAdapter = mockk<IExoPlayerAdapter>(relaxed = true)
 
+    // the tests post the player events on the default bus: the adapter hands out that bus
+    init {
+        io.mockk.every { mockExoPlayerAdapter.eventBus } returns org.greenrobot.eventbus.EventBus.getDefault()
+    }
+
     @Before
     fun setUp() {
         every { mockExoPlayerAdapter.getCurrentPeriodId() } returns "Period1"

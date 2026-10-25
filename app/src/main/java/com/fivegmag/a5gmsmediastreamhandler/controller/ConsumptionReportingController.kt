@@ -41,7 +41,7 @@ class ConsumptionReportingController(
 
 
     override fun initialize() {
-        EventBus.getDefault().register(this)
+        exoPlayerAdapter.eventBus.register(this)
     }
 
     // whether media has been played since the last report of the end of consumption

@@ -17,6 +17,9 @@ import org.greenrobot.eventbus.ThreadMode
  * This metric is only logged at the time point when the media start-up happens.
  */
 class PlayoutDelayForMediaStartupTracker {
+    /** The event bus of the Media Stream Handler instance that owns the player (set by the reporter before use) */
+    var eventBus: org.greenrobot.eventbus.EventBus = org.greenrobot.eventbus.EventBus.getDefault()
+
 
     companion object {
         const val TAG = "5GMS-PlayoutDelayForMediaStartupTracker"
@@ -32,15 +35,15 @@ class PlayoutDelayForMediaStartupTracker {
      * Initialize the tracker by registering with EventBus
      */
     fun initialize() {
-        EventBus.getDefault().register(this)
+        eventBus.register(this)
     }
 
     /**
      * Unregister from EventBus when no longer needed
      */
     fun unregister() {
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this)
+        if (eventBus.isRegistered(this)) {
+            eventBus.unregister(this)
         }
     }
 

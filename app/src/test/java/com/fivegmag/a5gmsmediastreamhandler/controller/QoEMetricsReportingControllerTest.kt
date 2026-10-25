@@ -18,6 +18,11 @@ class QoEMetricsReportingControllerTest {
 
     private lateinit var controller: QoEMetricsReportingController
     private val mockExoPlayerAdapter: IExoPlayerAdapter = mockk(relaxed = true)
+
+    // the tests post the player events on the default bus: the adapter hands out that bus
+    init {
+        io.mockk.every { mockExoPlayerAdapter.eventBus } returns org.greenrobot.eventbus.EventBus.getDefault()
+    }
     private val mockOutgoingMessageHandler: OutgoingMessageHandler = mockk(relaxed = true)
 
     @Before

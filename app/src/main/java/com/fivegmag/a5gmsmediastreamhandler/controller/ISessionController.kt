@@ -11,4 +11,7 @@ interface ISessionController : IController {
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent)
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onManifestProcessedEvent(event: ManifestProcessedEvent)
 }

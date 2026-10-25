@@ -14,6 +14,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.dash.manifest.DashManifest
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_QUERY_PARAMETER
+import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_REQUEST_HEADER
+import com.fivegmag.a5gmscommonlibrary.helpers.CmcdSchemes
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
@@ -25,6 +27,7 @@ import java.util.UUID
 
 @UnstableApi
 class ExoPlayerAdapter: IExoPlayerAdapter {
+    override val eventBus: org.greenrobot.eventbus.EventBus = org.greenrobot.eventbus.EventBus.builder().build()
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var context: Context
@@ -32,6 +35,28 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
+
+    // the CMCD keys that the provisioned schemes allow, the sid and cid of the media delivery session and the transmission mode
+    @Volatile private var cmcdAllowedKeys: Set<String> = emptySet()
+    @Volatile private var cmcdSessionId: String? = null
+    @Volatile private var cmcdContentId: String? = null
+    @Volatile private var cmcdUseQueryParameters = false
+
+    override fun configureCmcd(schemes: Collection<String>, sessionId: String?, contentId: String?) {
+        val keys = HashSet<String>()
+        for (scheme in schemes) {
+            CmcdSchemes.KEYS[scheme]?.let { keys.addAll(it) }
+        }
+        // a player that reports CMCD supports at least the sid key (clause 10.5.1)
+        if (keys.isNotEmpty()) keys.add("sid")
+        cmcdAllowedKeys = keys
+        cmcdSessionId = sessionId
+        cmcdContentId = contentId
+    }
+
+    override fun setCmcdUseQueryParameters(useQueryParameters: Boolean) {
+        cmcdUseQueryParameters = useQueryParameters
+    }
 
 
     override fun initialize(
@@ -61,7 +86,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             override fun createCmcdConfiguration(mediaItem: MediaItem): CmcdConfiguration {
                 val cmcdConfig = object : CmcdConfiguration.RequestConfig {
                     override fun isKeyAllowed(key: String): Boolean {
-                        return true
+                        if (key == "cid" && cmcdContentId == null) return false
+                        return cmcdAllowedKeys.contains(key)
                     }
 
                     override fun getRequestedMaximumThroughputKbps(throughputKbps: Int): Int {
@@ -69,10 +95,11 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                     }
                 }
 
-                val sessionId = UUID.randomUUID().toString()
-                val contentId = UUID.randomUUID().toString()
+                // the media delivery session identifier is the CMCD sid (clause 10.5.1); the Media Session Handler gives it before playback
+                val sessionId = cmcdSessionId ?: UUID.randomUUID().toString()
+                val mode = if (cmcdUseQueryParameters) MODE_QUERY_PARAMETER else MODE_REQUEST_HEADER
 
-                return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_QUERY_PARAMETER)
+                return CmcdConfiguration(sessionId, cmcdContentId, cmcdConfig, mode)
             }
         }
 
@@ -91,7 +118,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         playerView = exoPlayerView
         playerView.player = playerInstance
         playerListener =
-            ExoPlayerListener(playerInstance, playerView)
+            ExoPlayerListener(playerInstance, playerView, eventBus)
         playerInstance.addAnalyticsListener(playerListener)
         transferListenerRef = playerListener
     }

@@ -38,7 +38,7 @@ class QoEMetricsReportingController(
     private var lastQoeMetricsRequestsById = mutableMapOf<String, QoeMetricsRequest>()
 
     override fun initialize() {
-        EventBus.getDefault().register(this)
+        exoPlayerAdapter.eventBus.register(this)
         registerExoplayerQoeMetricsReporter()
     }
 
