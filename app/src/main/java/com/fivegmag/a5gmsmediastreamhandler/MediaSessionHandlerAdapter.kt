@@ -13,6 +13,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.*
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
@@ -26,6 +28,7 @@ import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingContr
 import com.fivegmag.a5gmsmediastreamhandler.controller.QoEMetricsReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.SessionController
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
+import com.fivegmag.a5gmsmediastreamhandler.service.GeneralSessionListener
 import com.fivegmag.a5gmsmediastreamhandler.service.IncomingMessageHandler
 import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
@@ -88,9 +91,69 @@ class MediaSessionHandlerAdapter() {
             sessionController
         )
 
+        registerAccessNetworkCallback()
+
         messengerService = MessengerService(this.context)
         messengerService.initialize(incomingMessageHandler, outgoingMessageHandler)
         messengerService.bind(onConnectionToMediaSessionHandlerEstablished)
+    }
+
+    /** Where the answers and notification events of the general client API (TS 26.510 V19.2.0 clause 11.2) are delivered */
+    var generalSessionListener: GeneralSessionListener?
+        get() = incomingMessageHandler.generalSessionListener
+        set(value) {
+            incomingMessageHandler.generalSessionListener = value
+        }
+
+    /** createMediaDeliverySession(), table 11.2.2.1-1: the media delivery session identifier is returned to the GeneralSessionListener */
+    fun createMediaDeliverySession(
+        serviceId: String,
+        contentId: String? = null,
+        entryPoint: String? = null,
+        domainNames: List<String>? = null,
+        accessToken: String? = null
+    ) = outgoingMessageHandler.createMediaDeliverySession(serviceId, contentId, entryPoint, domainNames, accessToken)
+
+    /** destroyMediaDeliverySession(), table 11.2.2.2-1 */
+    fun destroyMediaDeliverySession(mediaDeliverySessionIdentifier: String) =
+        outgoingMessageHandler.destroyMediaDeliverySession(mediaDeliverySessionIdentifier)
+
+    /** The general status of table 11.2.3-1, returned to the GeneralSessionListener */
+    fun getSessionStatus(mediaDeliverySessionIdentifier: String) =
+        outgoingMessageHandler.getSessionStatus(mediaDeliverySessionIdentifier)
+
+    /** The status of Consumption Reporting (table 11.5.2-1), returned to the GeneralSessionListener */
+    fun getConsumptionReportingStatus(mediaDeliverySessionIdentifier: String) =
+        outgoingMessageHandler.getConsumptionReportingStatus(mediaDeliverySessionIdentifier)
+
+    /** The status of Metrics Reporting (table 11.6.2-1), returned to the GeneralSessionListener */
+    fun getMetricsReportingStatus(mediaDeliverySessionIdentifier: String) =
+        outgoingMessageHandler.getMetricsReportingStatus(mediaDeliverySessionIdentifier)
+
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+
+    /** An event when the default network of the UE changes (the access network of the media delivery session) */
+    private fun registerAccessNetworkCallback() {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            private var current: Network? = null
+
+            override fun onAvailable(network: Network) {
+                val changed = current != null && current != network
+                current = network
+                if (changed) {
+                    org.greenrobot.eventbus.EventBus.getDefault().post(
+                        com.fivegmag.a5gmsmediastreamhandler.controller.AccessNetworkChangedEvent()
+                    )
+                }
+            }
+        }
+        try {
+            connectivityManager.registerDefaultNetworkCallback(callback)
+            networkCallback = callback
+        } catch (_: SecurityException) {
+            // without the permission an access network change is not seen
+        }
     }
 
     /**
@@ -170,6 +233,10 @@ class MediaSessionHandlerAdapter() {
      *
      */
     fun reset() {
+        networkCallback?.let {
+            (context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager)?.unregisterNetworkCallback(it)
+        }
+        networkCallback = null
         messengerService.reset()
     }
 

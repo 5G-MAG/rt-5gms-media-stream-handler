@@ -5,7 +5,9 @@ import android.os.Handler
 import android.os.Message
 import android.os.Messenger
 import androidx.media3.common.util.UnstableApi
+import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerBundleKeys
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
+import com.fivegmag.a5gmscommonlibrary.models.StreamingAccess
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.controller.IConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.IQoEMetricsReportingController
@@ -16,6 +18,8 @@ class IncomingMessageHandler() {
     private lateinit var consumptionReportingController: IConsumptionReportingController
     private lateinit var qoeMetricsReportingController: IQoEMetricsReportingController
     private lateinit var sessionController: ISessionController
+
+    var generalSessionListener: GeneralSessionListener? = null
 
     @UnstableApi
     private val incomingMessenger = Messenger(IncomingHandler())
@@ -33,6 +37,36 @@ class IncomingMessageHandler() {
                 )
 
                 SessionHandlerMessageTypes.GET_QOE_METRICS_REPORT -> handleGetQoeMetricsReport(msg)
+
+                SessionHandlerMessageTypes.CREATE_MEDIA_DELIVERY_SESSION_REPLY -> generalSessionListener?.onMediaDeliverySessionCreated(
+                    msg.data.getString(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER),
+                    msg.data.getString(SessionHandlerBundleKeys.SESSION_HANDLING_STATE)
+                )
+
+                SessionHandlerMessageTypes.GET_SESSION_STATUS_REPLY -> generalSessionListener?.onSessionStatus(
+                    msg.data.getString(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER),
+                    msg.data.getString(SessionHandlerBundleKeys.CONTENT_IDENTIFIER),
+                    msg.data.getString(SessionHandlerBundleKeys.SESSION_HANDLING_STATE)
+                )
+
+                SessionHandlerMessageTypes.GET_CONSUMPTION_REPORTING_STATUS_REPLY -> generalSessionListener?.onConsumptionReportingStatus(
+                    msg.data.getString(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER),
+                    msg.data.getString(SessionHandlerBundleKeys.CONSUMPTION_REPORT)
+                )
+
+                SessionHandlerMessageTypes.GET_METRICS_REPORTING_STATUS_REPLY -> generalSessionListener?.onMetricsReportingStatus(
+                    msg.data.getString(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER),
+                    msg.data.getString(SessionHandlerBundleKeys.PROVISIONING_SESSION_ID),
+                    msg.data.getString(SessionHandlerBundleKeys.METRICS_REPORTING_CONFIGURATION_ID),
+                    msg.data.getString(SessionHandlerBundleKeys.SCHEME),
+                    msg.data.getString(SessionHandlerBundleKeys.METRICS_REPORT)
+                )
+
+                SessionHandlerMessageTypes.NOTIFICATION_EVENT -> {
+                    msg.data.classLoader = StreamingAccess::class.java.classLoader
+                    val event = msg.data.getString(SessionHandlerBundleKeys.EVENT)
+                    if (event != null) generalSessionListener?.onNotification(event, msg.data)
+                }
 
                 else -> super.handleMessage(msg)
             }

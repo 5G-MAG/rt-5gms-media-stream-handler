@@ -122,10 +122,18 @@ class QoEMetricsReportingController(
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     override fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
-        if (event.playbackState == PlayerStates.ENDED) {
-            triggerQoeMetricsReports()
+        when (event.playbackState) {
+            PlayerStates.READY, PlayerStates.PLAYING, PlayerStates.BUFFERING -> played = true
+            // the media delivery session ends when the media ends and when the player is stopped: the final report is sent then
+            PlayerStates.ENDED, PlayerStates.IDLE -> if (played || event.playbackState == PlayerStates.ENDED) {
+                played = false
+                triggerQoeMetricsReports()
+            }
         }
     }
+
+    // whether media has been played since the last final report
+    private var played = false
 
     private fun getQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest?): String {
         if (qoeMetricsRequest == null) {

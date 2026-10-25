@@ -127,6 +127,25 @@ class ConsumptionReporterExoplayer(
     }
 
     @UnstableApi
+    override fun onAccessNetworkChanged() {
+        val now = utils.formatDateToOpenAPIFormat(Date())
+        val started = ArrayList<ConsumptionReportingUnit>()
+        for (unit in consumptionReportingUnitList) {
+            if (unit.finished) continue
+            // the unit on the old access network ends and a new one starts on the new one
+            unit.duration = utils.calculateTimestampDifferenceInSeconds(unit.startTime, now).toInt()
+            unit.finished = true
+            val next = ConsumptionReportingUnit(unit.mediaConsumed, null, null, now, 0, null)
+            next.mimeType = unit.mimeType
+            next.locations = activeLocations
+            next.serverEndpointAddress = getServerEndpointAddress(unit.mimeType)
+            next.clientEndpointAddress = getClientEndpointAddress(next.serverEndpointAddress)
+            started.add(next)
+        }
+        consumptionReportingUnitList.addAll(started)
+    }
+
+    @UnstableApi
     override fun getConsumptionReport(
         reportingClientId: String,
         consumptionRequest: ConsumptionRequest

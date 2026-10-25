@@ -23,6 +23,9 @@ abstract class ConsumptionReporter {
 
     abstract fun resetState()
 
+    /** The access network changed: the units that are being consumed end and new ones begin on the new access network */
+    abstract fun onAccessNetworkChanged()
+
     abstract fun reset()
 
     fun createTypedLocationByCellInfo(cellInfo: CellInfo): TypedLocation? {

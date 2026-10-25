@@ -44,12 +44,35 @@ class ConsumptionReportingController(
         EventBus.getDefault().register(this)
     }
 
+    // whether media has been played since the last report of the end of consumption
+    private var played = false
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     override fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
-        if (event.playbackState == PlayerStates.ENDED) {
-            triggerConsumptionReport()
+        when (event.playbackState) {
+            PlayerStates.READY, PlayerStates.PLAYING, PlayerStates.BUFFERING -> played = true
+            // consumption stops when the media ends and when the player is stopped: the final report is sent then
+            PlayerStates.ENDED, PlayerStates.IDLE -> if (played || event.playbackState == PlayerStates.ENDED) {
+                played = false
+                triggerConsumptionReport()
+            }
         }
+    }
+
+    /**
+     * An access network change ends the units on the old access network and starts new ones; if the report carries the access
+     * (accessReporting), a report is sent at once (TS 26.510 V19.2.0 clause 5.3.6.1)
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onAccessNetworkChangedEvent(event: AccessNetworkChangedEvent) {
+        if (lastConsumptionRequest?.accessReporting != true) {
+            return
+        }
+        for (consumptionReporter in activeConsumptionReporter) {
+            consumptionReporter.onAccessNetworkChanged()
+        }
+        triggerConsumptionReport()
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
