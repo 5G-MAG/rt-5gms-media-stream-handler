@@ -22,13 +22,18 @@ import android.telephony.TelephonyManager
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
+import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.*
 import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.QoEMetricsReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.SessionController
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
+import com.fivegmag.a5gmsmediastreamhandler.service.DynamicPolicyListener
+import com.fivegmag.a5gmsmediastreamhandler.service.DynamicPolicyPayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.GeneralSessionListener
+import com.fivegmag.a5gmsmediastreamhandler.service.NetworkAssistanceListener
+import com.fivegmag.a5gmsmediastreamhandler.service.NetworkAssistancePayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.IncomingMessageHandler
 import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
@@ -105,6 +110,58 @@ class MediaSessionHandlerAdapter() {
             incomingMessageHandler.generalSessionListener = value
         }
 
+    /** Where the answers of the Dynamic Policy client API (TS 26.510 V19.2.0 clause 11.3) are delivered; its events arrive at the generalSessionListener */
+    var dynamicPolicyListener: DynamicPolicyListener?
+        get() = incomingMessageHandler.dynamicPolicyListener
+        set(value) {
+            incomingMessageHandler.dynamicPolicyListener = value
+        }
+
+    /** Where the answers of the Network Assistance client API (clause 11.4) are delivered; its events arrive at the generalSessionListener */
+    var networkAssistanceListener: NetworkAssistanceListener?
+        get() = incomingMessageHandler.networkAssistanceListener
+        set(value) {
+            incomingMessageHandler.networkAssistanceListener = value
+        }
+
+    /** The Service Operation Points of a media delivery session (the policy template bindings of the Service Access Information), to the DynamicPolicyListener */
+    fun getServiceOperationPoints(mediaDeliverySessionIdentifier: String) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.GET_SERVICE_OPERATION_POINTS, DynamicPolicyPayloads.serviceOperationPointsRequest(mediaDeliverySessionIdentifier)
+    )
+
+    /** getBDTInfo(), table 11.3.1.1-1; the return value (table 11.3.1.1-2) goes to the DynamicPolicyListener */
+    fun getBDTInfo(sessionId: String, serviceOperationPointReference: String) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.GET_BDT_INFO, DynamicPolicyPayloads.bdtInfoRequest(sessionId, serviceOperationPointReference)
+    )
+
+    /**
+     * activatePolicy(), table 11.3.1.2-1; the return value (table 11.3.1.2-2) goes to the DynamicPolicyListener. A Policy Template that is
+     * QoS-related needs componentReference and the target bit rates, which are not parameters of the method (see the Media Session Handler).
+     */
+    fun activatePolicy(
+        sessionId: String,
+        serviceOperationPointReference: String,
+        estimatedTransferVolume: Long? = null,
+        componentReference: String? = null,
+        targetDownlinkBitRate: String? = null,
+        targetUplinkBitRate: String? = null
+    ) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.ACTIVATE_POLICY,
+        DynamicPolicyPayloads.activatePolicyRequest(
+            sessionId, serviceOperationPointReference, estimatedTransferVolume, componentReference, targetDownlinkBitRate, targetUplinkBitRate
+        )
+    )
+
+    /** deactivatePolicy(), table 11.3.1.3-1; the return value goes to the DynamicPolicyListener */
+    fun deactivatePolicy(sessionId: String) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.DEACTIVATE_POLICY, DynamicPolicyPayloads.sessionRequest(sessionId)
+    )
+
+    /** The status currentDynamicPolicies of table 11.3.2-1, to the DynamicPolicyListener */
+    fun getDynamicPolicyStatus(sessionId: String) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.GET_DYNAMIC_POLICY_STATUS, DynamicPolicyPayloads.sessionRequest(sessionId)
+    )
+
     /** createMediaDeliverySession(), table 11.2.2.1-1: the media delivery session identifier is returned to the GeneralSessionListener */
     fun createMediaDeliverySession(
         serviceId: String,
@@ -121,6 +178,16 @@ class MediaSessionHandlerAdapter() {
     /** The general status of table 11.2.3-1, returned to the GeneralSessionListener */
     fun getSessionStatus(mediaDeliverySessionIdentifier: String) =
         outgoingMessageHandler.getSessionStatus(mediaDeliverySessionIdentifier)
+
+    /** requestBitRateRecommendation(), table 11.4.1.1-1; the return value (table 11.4.1.1-2) goes to the NetworkAssistanceListener */
+    fun requestBitRateRecommendation(sessionId: String, componentReference: String) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.REQUEST_BIT_RATE_RECOMMENDATION, NetworkAssistancePayloads.request(sessionId, componentReference)
+    )
+
+    /** requestDeliveryBoost(), table 11.4.1.2-1; the return value (table 11.4.1.2-2) goes to the NetworkAssistanceListener */
+    fun requestDeliveryBoost(sessionId: String, componentReference: String) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.REQUEST_DELIVERY_BOOST, NetworkAssistancePayloads.request(sessionId, componentReference)
+    )
 
     /** The status of Consumption Reporting (table 11.5.2-1), returned to the GeneralSessionListener */
     fun getConsumptionReportingStatus(mediaDeliverySessionIdentifier: String) =

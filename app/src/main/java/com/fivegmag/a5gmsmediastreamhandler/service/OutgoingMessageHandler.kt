@@ -118,6 +118,14 @@ class OutgoingMessageHandler {
         sendMessageByTypeAndBundle(SessionHandlerMessageTypes.GET_METRICS_REPORTING_STATUS, bundle)
     }
 
+    /** A method of the Dynamic Policy or Network Assistance client API: the message of the type with the payload; the answer arrives at the listener */
+    fun sendClientApiRequest(messageType: Int, payload: Map<String, Any?>) {
+        if (!canSendMessage()) {
+            return
+        }
+        sendMessageByTypeAndBundle(messageType, payload.toBundle())
+    }
+
     fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
         if (!canSendMessage()) {
             return

@@ -20,6 +20,8 @@ class IncomingMessageHandler() {
     private lateinit var sessionController: ISessionController
 
     var generalSessionListener: GeneralSessionListener? = null
+    var dynamicPolicyListener: DynamicPolicyListener? = null
+    var networkAssistanceListener: NetworkAssistanceListener? = null
 
     @UnstableApi
     private val incomingMessenger = Messenger(IncomingHandler())
@@ -61,6 +63,32 @@ class IncomingMessageHandler() {
                     msg.data.getString(SessionHandlerBundleKeys.SCHEME),
                     msg.data.getString(SessionHandlerBundleKeys.METRICS_REPORT)
                 )
+
+                SessionHandlerMessageTypes.GET_SERVICE_OPERATION_POINTS_REPLY -> BundleReader(msg.data).let {
+                    dynamicPolicyListener?.onServiceOperationPoints(it.string(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER), DynamicPolicyPayloads.readServiceOperationPoints(it))
+                }
+
+                SessionHandlerMessageTypes.GET_BDT_INFO_REPLY -> dynamicPolicyListener?.onBdtInfo(DynamicPolicyPayloads.readBdtInfo(BundleReader(msg.data)))
+
+                SessionHandlerMessageTypes.ACTIVATE_POLICY_REPLY -> dynamicPolicyListener?.onPolicyActivation(DynamicPolicyPayloads.readActivation(BundleReader(msg.data)))
+
+                SessionHandlerMessageTypes.DEACTIVATE_POLICY_REPLY -> BundleReader(msg.data).let {
+                    dynamicPolicyListener?.onPolicyDeactivation(
+                        it.string(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER),
+                        it.bool(SessionHandlerBundleKeys.SUCCEEDED),
+                        it.string(SessionHandlerBundleKeys.ERROR_REASON)
+                    )
+                }
+
+                SessionHandlerMessageTypes.GET_DYNAMIC_POLICY_STATUS_REPLY -> BundleReader(msg.data).let {
+                    dynamicPolicyListener?.onDynamicPolicyStatus(it.string(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER), DynamicPolicyPayloads.readStatus(it))
+                }
+
+                SessionHandlerMessageTypes.REQUEST_BIT_RATE_RECOMMENDATION_REPLY ->
+                    networkAssistanceListener?.onBitRateRecommendation(NetworkAssistancePayloads.readRecommendation(BundleReader(msg.data)))
+
+                SessionHandlerMessageTypes.REQUEST_DELIVERY_BOOST_REPLY ->
+                    networkAssistanceListener?.onDeliveryBoost(NetworkAssistancePayloads.readBoost(BundleReader(msg.data)))
 
                 SessionHandlerMessageTypes.NOTIFICATION_EVENT -> {
                     msg.data.classLoader = StreamingAccess::class.java.classLoader
