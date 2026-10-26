@@ -100,4 +100,28 @@ class QoEMetricsReportingControllerTest {
 
         assertEquals("streaming-1", QoEMetricsReportingController.getRecordingSessionId(playbackRequest))
     }
+
+    @Test
+    fun handleGetQoeMetricsReport_createsTheReporterOfAConfigurationThatCameAfterThePlaybackRequest() {
+        val qoeMetricsRequest = mockk<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>(relaxed = true)
+        io.mockk.every { qoeMetricsRequest.scheme } returns "urn:3GPP:ns:PSS:DASH:QM10"
+        io.mockk.every { qoeMetricsRequest.metricsReportingConfigurationId } returns "late-config"
+        io.mockk.every { qoeMetricsRequest.metrics } returns ArrayList()
+        val playbackRequest = mockk<com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest>(relaxed = true)
+        io.mockk.every { playbackRequest.mediaStreamingSessionIdentifier } returns "session-1"
+        io.mockk.every { playbackRequest.qoeMetricsRequests } returns arrayListOf()
+        controller.initialize()
+        controller.handleTriggerPlayback(playbackRequest)
+
+        val message = android.os.Message.obtain()
+        message.data = android.os.Bundle().apply { putParcelable("qoeMetricsRequest", qoeMetricsRequest) }
+        controller.handleGetQoeMetricsReport(message)
+
+        io.mockk.verify(exactly = 1) {
+            mockOutgoingMessageHandler.sendMessageByTypeAndBundle(
+                eq(com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes.REPORT_QOE_METRICS),
+                any()
+            )
+        }
+    }
 }

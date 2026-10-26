@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.os.Build
 import android.telephony.CellInfo
 import androidx.annotation.RequiresApi
+import androidx.media3.common.C
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.source.MediaLoadData
@@ -15,6 +16,7 @@ import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReporting
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionRequest
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.EndpointAddress
@@ -39,6 +41,9 @@ class ConsumptionReporterExoplayer(
     private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
     private var serverEndpointAddressesPerMediaType = mutableMapOf<String, EndpointAddress>()
     private var activeLocations: ArrayList<TypedLocation> = ArrayList()
+
+    // the URL of the manifest after HTTP redirects, from the load that fetched it (LoadEventInfo.uri)
+    private var manifestUriAfterRedirects: String? = null
     override fun initialize() {
         exoPlayerAdapter.eventBus.register(this)
     }
@@ -49,6 +54,14 @@ class ConsumptionReporterExoplayer(
     @UnstableApi
     fun onDownstreamFormatChangedEvent(event: DownstreamFormatChangedEvent) {
         addConsumptionReportingUnit(event.mediaLoadData)
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    @UnstableApi
+    fun onLoadCompletedEvent(event: LoadCompletedEvent) {
+        if (event.mediaLoadData.dataType == C.DATA_TYPE_MANIFEST) {
+            manifestUriAfterRedirects = event.loadEventInfo.uri.toString()
+        }
     }
 
     @SuppressLint("Range")
@@ -150,7 +163,8 @@ class ConsumptionReporterExoplayer(
         reportingClientId: String,
         consumptionRequest: ConsumptionRequest
     ): String {
-        val mediaPlayerEntry = exoPlayerAdapter.getCurrentManifestUri()
+        // the Media Player Entry is the URL retrieved at M4d after following any HTTP redirects (TS 26.512 V19.3.0 clause 11.3.3.1)
+        val mediaPlayerEntry = manifestUriAfterRedirects ?: exoPlayerAdapter.getCurrentManifestUri()
         // We need to add the duration of the consumption reporting units that are not yet finished
         for (consumptionReportingUnit in consumptionReportingUnitList) {
             if (!consumptionReportingUnit.finished) {
@@ -214,6 +228,7 @@ class ConsumptionReporterExoplayer(
     override fun reset() {
         resetState()
         consumptionReportingUnitList.clear()
+        manifestUriAfterRedirects = null
     }
 
 }

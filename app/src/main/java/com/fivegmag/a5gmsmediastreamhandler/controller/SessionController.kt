@@ -25,6 +25,14 @@ class SessionController(
     private val outgoingMessageHandler: OutgoingMessageHandler
 ) : ISessionController {
 
+    companion object {
+        // TS 26.512 V19.3.0 clause 4.7.2.1: one of the Media Entry Points is selected by its MIME media type; DASH is preferred, HLS is the
+        // other type that the player handles. The Media Session Handler has already left out the entry points of unsupported profiles.
+        fun selectEntryPoint(entryPoints: List<EntryPoint>): EntryPoint? =
+            entryPoints.firstOrNull { it.contentType == ContentTypes.DASH }
+                ?: entryPoints.firstOrNull { it.contentType == ContentTypes.HLS }
+    }
+
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
         override fun onCellInfo(cellInfoList: MutableList<CellInfo>) {
             exoPlayerAdapter.eventBus.post(CellInfoUpdatedEvent(cellInfoList))
@@ -49,16 +57,11 @@ class SessionController(
             playbackRequest.contentIdentifier
         )
 
-        if (playbackRequest.entryPoints.size > 0) {
-            val dashEntryPoints: List<EntryPoint> =
-                playbackRequest.entryPoints.filter { entryPoint -> entryPoint.contentType == ContentTypes.DASH }
-
-            if (dashEntryPoints.isNotEmpty()) {
-                val mpdUrl = dashEntryPoints[0].locator
-                exoPlayerAdapter.attach(mpdUrl, ContentTypes.DASH)
-                exoPlayerAdapter.preload()
-                exoPlayerAdapter.play()
-            }
+        val entryPoint = selectEntryPoint(playbackRequest.entryPoints)
+        if (entryPoint != null) {
+            exoPlayerAdapter.attach(entryPoint.locator, entryPoint.contentType!!)
+            exoPlayerAdapter.preload()
+            exoPlayerAdapter.play()
         }
     }
 

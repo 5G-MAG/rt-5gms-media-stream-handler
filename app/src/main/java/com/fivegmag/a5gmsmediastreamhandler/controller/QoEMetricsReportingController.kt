@@ -203,6 +203,8 @@ class QoEMetricsReportingController(
         )
 
         if (qoeMetricsRequest != null) {
+            // a configuration that the Media Session Handler activated after the playback request has no reporter yet
+            initializeQoeMetricsReporterForConfigurationId(qoeMetricsRequest)
             triggerSingleQoeMetricsReport(qoeMetricsRequest)
             setLastQoeMetricsRequestForConfigurationId(qoeMetricsRequest)
         }

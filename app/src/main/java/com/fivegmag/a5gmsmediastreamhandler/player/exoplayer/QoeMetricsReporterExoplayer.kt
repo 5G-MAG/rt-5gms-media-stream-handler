@@ -133,6 +133,9 @@ class QoeMetricsReporterExoplayer(
                 initialPlayoutDelayTracker.getInitialPlayoutDelay()?.let {
                     if ("InitialPlayoutDelay" in monitor.metrics()) crossings += monitor.sample("InitialPlayoutDelay", it.toDouble())
                 }
+                playoutDelayForMediaStartupTracker.getPlayoutDelayForMediaStartup()?.let {
+                    if ("PlayoutDelayforMediaStartup" in monitor.metrics()) crossings += monitor.sample("PlayoutDelayforMediaStartup", it.toDouble())
+                }
                 for (crossing in crossings)
                     bus.post(MetricThresholdCrossedEvent(request.metricsReportingConfigurationId, crossing))
                 thresholdHandler.postDelayed(this, period)

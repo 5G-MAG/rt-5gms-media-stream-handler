@@ -237,7 +237,13 @@ class MediaSessionHandlerAdapter() {
         strGpsi = if (strMsisdn != "") {
             strMsisdn
         } else {
-            utils.generateUUID()
+            // a random identifier is kept, so that it is stable (TS 26.510 V19.2.0 clause 5.3.6.2)
+            val preferences = context.getSharedPreferences("5gms-media-stream-handler", Context.MODE_PRIVATE)
+            ReportingClientIdStore(
+                { preferences.getString("reportingClientId", null) },
+                { preferences.edit().putString("reportingClientId", it).apply() },
+                { utils.generateUUID() }
+            ).get()
         }
 
         return strGpsi
