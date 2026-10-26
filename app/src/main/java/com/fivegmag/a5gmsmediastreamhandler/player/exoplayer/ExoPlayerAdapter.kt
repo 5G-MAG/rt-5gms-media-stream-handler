@@ -36,6 +36,19 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
+    companion object {
+        // the keys of the provisioned schemes, plus sid: every M4d request cites the media delivery session identifier
+        // in the CMCD-Session header (TS 26.512 clauses 10.1A and 6.2.3.6), also when no CMCD scheme is provisioned
+        fun getCmcdAllowedKeys(schemes: Collection<String>, sessionId: String?): Set<String> {
+            val keys = HashSet<String>()
+            for (scheme in schemes) {
+                CmcdSchemes.KEYS[scheme]?.let { keys.addAll(it) }
+            }
+            if (keys.isNotEmpty() || sessionId != null) keys.add("sid")
+            return keys
+        }
+    }
+
     // the CMCD keys that the provisioned schemes allow, the sid and cid of the media delivery session and the transmission mode
     @Volatile private var cmcdAllowedKeys: Set<String> = emptySet()
     @Volatile private var cmcdSessionId: String? = null
@@ -43,13 +56,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     @Volatile private var cmcdUseQueryParameters = false
 
     override fun configureCmcd(schemes: Collection<String>, sessionId: String?, contentId: String?) {
-        val keys = HashSet<String>()
-        for (scheme in schemes) {
-            CmcdSchemes.KEYS[scheme]?.let { keys.addAll(it) }
-        }
-        // a player that reports CMCD supports at least the sid key (clause 10.5.1)
-        if (keys.isNotEmpty()) keys.add("sid")
-        cmcdAllowedKeys = keys
+        cmcdAllowedKeys = getCmcdAllowedKeys(schemes, sessionId)
         cmcdSessionId = sessionId
         cmcdContentId = contentId
     }

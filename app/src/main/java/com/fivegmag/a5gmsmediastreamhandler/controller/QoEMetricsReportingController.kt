@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
+import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerBundleKeys
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsResponse
@@ -28,6 +29,12 @@ class QoEMetricsReportingController(
 
     companion object {
         const val TAG = "5GMS-QoEMetricsReportingController"
+
+        // QoEReport@recordingSessionId is the media delivery session identifier (TS 26.512 clause 11.4.3.2)
+        fun getRecordingSessionId(playbackRequest: PlaybackRequest): String {
+            return playbackRequest.mediaDeliverySessionIdentifier
+                ?: playbackRequest.mediaStreamingSessionIdentifier
+        }
     }
 
     lateinit var reportingClientId: String
@@ -49,7 +56,7 @@ class QoEMetricsReportingController(
 
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
         resetState()
-        recordingSessionId = playbackRequest.mediaStreamingSessionIdentifier
+        recordingSessionId = getRecordingSessionId(playbackRequest)
         setLastQoeMetricsRequests(
             playbackRequest.qoeMetricsRequests
         )
@@ -130,6 +137,17 @@ class QoEMetricsReportingController(
                 triggerQoeMetricsReports()
             }
         }
+    }
+
+    // A metric crossed a threshold: tell the Media Session Handler, which asks for the report (TS 26.510 V19.2.0 clause 5.2.11.1)
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onMetricThresholdCrossedEvent(event: MetricThresholdCrossedEvent) {
+        val bundle = Bundle()
+        bundle.putString(SessionHandlerBundleKeys.METRICS_REPORTING_CONFIGURATION_ID, event.metricsReportingConfigurationId)
+        bundle.putString(SessionHandlerBundleKeys.THRESHOLD_METRIC, event.crossing.metric)
+        bundle.putDouble(SessionHandlerBundleKeys.THRESHOLD_VALUE, event.crossing.value)
+        bundle.putBoolean(SessionHandlerBundleKeys.THRESHOLD_POSITIVE, event.crossing.positive)
+        outgoingMessageHandler.sendMessageByTypeAndBundle(SessionHandlerMessageTypes.METRIC_THRESHOLD_CROSSED, bundle)
     }
 
     // whether media has been played since the last final report

@@ -4,6 +4,7 @@ import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
 import io.mockk.mockk
 import org.greenrobot.eventbus.EventBus
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -80,5 +81,23 @@ class QoEMetricsReportingControllerTest {
                 any()
             )
         }
+    }
+
+    @Test
+    fun recordingSessionId_isTheMediaDeliverySessionIdentifier() {
+        val playbackRequest = mockk<com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest>(relaxed = true)
+        io.mockk.every { playbackRequest.mediaDeliverySessionIdentifier } returns "delivery-1"
+        io.mockk.every { playbackRequest.mediaStreamingSessionIdentifier } returns "streaming-1"
+
+        assertEquals("delivery-1", QoEMetricsReportingController.getRecordingSessionId(playbackRequest))
+    }
+
+    @Test
+    fun recordingSessionId_fallsBackToTheStreamingSessionIdentifier() {
+        val playbackRequest = mockk<com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest>(relaxed = true)
+        io.mockk.every { playbackRequest.mediaDeliverySessionIdentifier } returns null
+        io.mockk.every { playbackRequest.mediaStreamingSessionIdentifier } returns "streaming-1"
+
+        assertEquals("streaming-1", QoEMetricsReportingController.getRecordingSessionId(playbackRequest))
     }
 }

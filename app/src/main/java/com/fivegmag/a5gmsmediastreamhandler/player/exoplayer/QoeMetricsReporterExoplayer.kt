@@ -25,6 +25,9 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.ReceptionReport
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.Delimiter
+import com.fivegmag.a5gmsmediastreamhandler.controller.MetricThresholdCrossedEvent
+import com.fivegmag.a5gmsmediastreamhandler.controller.ThresholdCrossing
+import com.fivegmag.a5gmsmediastreamhandler.controller.ThresholdMonitor
 
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitchList
 
@@ -53,6 +56,13 @@ class QoeMetricsReporterExoplayer(
         RepresentationSwitchTracker(exoPlayerAdapter, utils)
     private val mpdInformationTracker: MpdInformationTracker = MpdInformationTracker()
     private var lastQoeMetricsRequest: QoeMetricsRequest? = null
+
+    // The crossing thresholds of the configuration (TS 26.510 V19.2.0 clause 5.2.11.1): the values that have a single number are sampled
+    // every samplingPeriod, BufferLevel (the level in ms) and InitialPlayoutDelay (in ms); other metrics are lists or text and have no value to
+    // compare (DEFECTS K9: the text does not say which value is compared, this is the reading)
+    private var thresholdMonitor: ThresholdMonitor? = null
+    private val thresholdHandler = Handler(Looper.getMainLooper())
+    private var thresholdSampler: Runnable? = null
 
     // Initial playout delay tracking per TS 26.247 clause 10.2.5
     private val initialPlayoutDelayTracker: InitialPlayoutDelayTracker = InitialPlayoutDelayTracker()
@@ -106,6 +116,36 @@ class QoeMetricsReporterExoplayer(
         mpdInformationTracker.initialize()
         bufferLevelTracker.configure(lastQoeMetricsRequest)
         setLastQoeMetricsRequest(lastQoeMetricsRequest)
+        startThresholdSampling(lastQoeMetricsRequest, bus)
+    }
+
+    private fun startThresholdSampling(request: QoeMetricsRequest, bus: EventBus) {
+        stopThresholdSampling()
+        val monitor = ThresholdMonitor(request.positiveCrossingThresholds, request.negativeCrossingThresholds)
+        if (monitor.isEmpty() || request.samplingPeriod <= 0) return
+        thresholdMonitor = monitor
+        val period = request.samplingPeriod * 1000L
+        val sampler = object : Runnable {
+            override fun run() {
+                val crossings = ArrayList<ThresholdCrossing>()
+                if (Metrics.BUFFER_LEVEL.substringAfter('#') in monitor.metrics())
+                    crossings += monitor.sample(Metrics.BUFFER_LEVEL.substringAfter('#'), exoPlayerAdapter.getBufferLength().toDouble())
+                initialPlayoutDelayTracker.getInitialPlayoutDelay()?.let {
+                    if ("InitialPlayoutDelay" in monitor.metrics()) crossings += monitor.sample("InitialPlayoutDelay", it.toDouble())
+                }
+                for (crossing in crossings)
+                    bus.post(MetricThresholdCrossedEvent(request.metricsReportingConfigurationId, crossing))
+                thresholdHandler.postDelayed(this, period)
+            }
+        }
+        thresholdSampler = sampler
+        thresholdHandler.postDelayed(sampler, period)
+    }
+
+    private fun stopThresholdSampling() {
+        thresholdSampler?.let { thresholdHandler.removeCallbacks(it) }
+        thresholdSampler = null
+        thresholdMonitor = null
     }
 
     @SuppressLint("Range")
@@ -238,6 +278,7 @@ class QoeMetricsReporterExoplayer(
         throughputTracker.unregister()
         playListTracker.unregister()
 
+        stopThresholdSampling()
         bufferLevelTracker.unregister()
         representationSwitchTracker.unregister()
         mpdInformationTracker.unregister()
