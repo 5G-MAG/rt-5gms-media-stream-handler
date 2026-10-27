@@ -8,6 +8,9 @@ import org.greenrobot.eventbus.ThreadMode
 
 interface ISessionController : IController {
 
+    /** The Media Session Handler says whether the UE is inside the locationFilter of a CMCD metrics reporting configuration */
+    fun handleCmcdLocationUpdate(configurationId: String, located: Boolean)
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent)

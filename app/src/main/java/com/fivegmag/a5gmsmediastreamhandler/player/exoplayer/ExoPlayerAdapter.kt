@@ -16,6 +16,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_QUERY_PARAMETER
 import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_REQUEST_HEADER
 import com.fivegmag.a5gmscommonlibrary.helpers.CmcdSchemes
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
@@ -37,15 +38,64 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
     companion object {
+        // the transmission mode of CMCD: HTTP request headers by default, the URL query when asked (TS 26.512 V19.3.0 clause 4.9.2)
+        fun getCmcdMode(useQueryParameters: Boolean): Int =
+            if (useQueryParameters) MODE_QUERY_PARAMETER else MODE_REQUEST_HEADER
+
         // the keys of the provisioned schemes, plus sid: every M4d request cites the media delivery session identifier
         // in the CMCD-Session header (TS 26.512 clauses 10.1A and 6.2.3.6), also when no CMCD scheme is provisioned
-        fun getCmcdAllowedKeys(schemes: Collection<String>, sessionId: String?): Set<String> {
+        fun getCmcdAllowedKeys(
+            schemes: Collection<String>,
+            sessionId: String?,
+            metricsByScheme: Map<String, List<String>> = emptyMap()
+        ): Set<String> {
             val keys = HashSet<String>()
             for (scheme in schemes) {
-                CmcdSchemes.KEYS[scheme]?.let { keys.addAll(it) }
+                val classKeys = CmcdSchemes.KEYS[scheme] ?: continue
+                keys.addAll(selectCmcdKeys(scheme, classKeys, metricsByScheme[scheme]))
             }
             if (keys.isNotEmpty() || sessionId != null) keys.add("sid")
             return keys
+        }
+
+        /** The CMCD keys of one configuration and the part of the session (ms from its start) in which they are reported */
+        data class CmcdRule(val configurationId: String, val keys: Set<String>, val startMs: Long, val endMs: Long?, val locationFiltered: Boolean)
+
+        fun getCmcdRules(requests: List<QoeMetricsRequest>): List<CmcdRule> =
+            requests.mapNotNull { request ->
+                val scheme = request.scheme ?: return@mapNotNull null
+                val classKeys = CmcdSchemes.KEYS[scheme] ?: return@mapNotNull null
+                val startMs = (request.reportingStartOffset ?: 0L).coerceAtLeast(0L) * 1000L
+                CmcdRule(
+                    request.metricsReportingConfigurationId,
+                    selectCmcdKeys(scheme, classKeys, request.metrics),
+                    startMs,
+                    request.reportingDuration?.coerceAtLeast(0L)?.let { startMs + it * 1000L },
+                    request.locationFiltered
+                )
+            }
+
+        // a key other than sid is sent only while a configuration that names it has its reporting window open and, if it has a locationFilter,
+        // the UE is inside it (not before the Media Session Handler has said so); no rules, no restriction
+        fun isCmcdKeyInWindow(rules: List<CmcdRule>, key: String, elapsedMs: Long, located: (String) -> Boolean = { true }): Boolean =
+            key == "sid" || rules.isEmpty() ||
+                rules.any {
+                    key in it.keys && elapsedMs >= it.startMs && (it.endMs == null || elapsedMs <= it.endMs) &&
+                        (!it.locationFiltered || located(it.configurationId))
+                }
+
+        // TS 26.512 V19.3.0 clause E.2.5: a term is #<class> or #<class>/<key>, the class being the one of the scheme; no term selects the
+        // whole class (clause E.2.1: the terminal path elements are pruned to select all below a common branch)
+        private fun selectCmcdKeys(scheme: String, classKeys: Set<String>, terms: List<String>?): Set<String> {
+            if (terms.isNullOrEmpty()) return classKeys
+            val cmcdClass = scheme.substringAfterLast(':')
+            val selected = HashSet<String>()
+            for (term in terms) {
+                val path = term.substringAfter('#', "")
+                if (path == cmcdClass) selected.addAll(classKeys)
+                else if (path.startsWith("$cmcdClass/") && path.substringAfter('/') in classKeys) selected.add(path.substringAfter('/'))
+            }
+            return selected
         }
     }
 
@@ -54,11 +104,24 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     @Volatile private var cmcdSessionId: String? = null
     @Volatile private var cmcdContentId: String? = null
     @Volatile private var cmcdUseQueryParameters = false
+    @Volatile private var cmcdRules: List<CmcdRule> = emptyList()
+    @Volatile private var cmcdStartMs = 0L
+    private val cmcdLocated = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
 
-    override fun configureCmcd(schemes: Collection<String>, sessionId: String?, contentId: String?) {
-        cmcdAllowedKeys = getCmcdAllowedKeys(schemes, sessionId)
+    override fun configureCmcd(schemes: Collection<String>, sessionId: String?, contentId: String?, metricsByScheme: Map<String, List<String>>) {
+        cmcdAllowedKeys = getCmcdAllowedKeys(schemes, sessionId, metricsByScheme)
         cmcdSessionId = sessionId
         cmcdContentId = contentId
+    }
+
+    override fun configureCmcdReportingWindows(requests: List<QoeMetricsRequest>) {
+        cmcdRules = getCmcdRules(requests)
+        cmcdLocated.clear()
+        cmcdStartMs = android.os.SystemClock.elapsedRealtime()
+    }
+
+    override fun setCmcdLocated(configurationId: String, located: Boolean) {
+        cmcdLocated[configurationId] = located
     }
 
     override fun setCmcdUseQueryParameters(useQueryParameters: Boolean) {
@@ -94,7 +157,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                 val cmcdConfig = object : CmcdConfiguration.RequestConfig {
                     override fun isKeyAllowed(key: String): Boolean {
                         if (key == "cid" && cmcdContentId == null) return false
-                        return cmcdAllowedKeys.contains(key)
+                        return cmcdAllowedKeys.contains(key) &&
+                            isCmcdKeyInWindow(cmcdRules, key, android.os.SystemClock.elapsedRealtime() - cmcdStartMs) { cmcdLocated[it] == true }
                     }
 
                     override fun getRequestedMaximumThroughputKbps(throughputKbps: Int): Int {
@@ -104,7 +168,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
 
                 // the media delivery session identifier is the CMCD sid (clause 10.5.1); the Media Session Handler gives it before playback
                 val sessionId = cmcdSessionId ?: UUID.randomUUID().toString()
-                val mode = if (cmcdUseQueryParameters) MODE_QUERY_PARAMETER else MODE_REQUEST_HEADER
+                val mode = getCmcdMode(cmcdUseQueryParameters)
 
                 return CmcdConfiguration(sessionId, cmcdContentId, cmcdConfig, mode)
             }

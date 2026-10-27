@@ -32,6 +32,11 @@ class IncomingMessageHandler() {
             when (msg.what) {
                 SessionHandlerMessageTypes.TRIGGER_PLAYBACK -> handleTriggerPlayback(msg)
 
+                SessionHandlerMessageTypes.CMCD_LOCATION_UPDATE -> sessionController.handleCmcdLocationUpdate(
+                    msg.data.getString(SessionHandlerBundleKeys.METRICS_REPORTING_CONFIGURATION_ID) ?: "",
+                    msg.data.getBoolean(SessionHandlerBundleKeys.LOCATED)
+                )
+
                 SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReport(msg)
 
                 SessionHandlerMessageTypes.UPDATE_PLAYBACK_CONSUMPTION_REPORTING_CONFIGURATION -> handleUpdatePlaybackConsumptionReportingConfiguration(

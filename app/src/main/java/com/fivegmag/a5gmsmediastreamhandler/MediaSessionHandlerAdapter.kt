@@ -162,6 +162,12 @@ class MediaSessionHandlerAdapter() {
         SessionHandlerMessageTypes.GET_DYNAMIC_POLICY_STATUS, DynamicPolicyPayloads.sessionRequest(sessionId)
     )
 
+    /**
+     * How the Media Player reports CMCD to the Media AS at M4d: in HTTP request headers (the default, TS 26.512 V19.3.0 clause 4.9.2) or in
+     * the query of the request URL. Takes effect for the next playback.
+     */
+    fun setCmcdUseQueryParameters(useQueryParameters: Boolean) = exoPlayerAdapter.setCmcdUseQueryParameters(useQueryParameters)
+
     /** createMediaDeliverySession(), table 11.2.2.1-1: the media delivery session identifier is returned to the GeneralSessionListener */
     fun createMediaDeliverySession(
         serviceId: String,

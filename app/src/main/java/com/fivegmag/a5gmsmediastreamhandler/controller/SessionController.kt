@@ -3,7 +3,9 @@ package com.fivegmag.a5gmsmediastreamhandler.controller
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.telephony.CellInfo
+import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
@@ -31,6 +33,12 @@ class SessionController(
         fun selectEntryPoint(entryPoints: List<EntryPoint>): EntryPoint? =
             entryPoints.firstOrNull { it.contentType == ContentTypes.DASH }
                 ?: entryPoints.firstOrNull { it.contentType == ContentTypes.HLS }
+
+        // the metrics terms of each scheme; a configuration without terms selects the whole class, so the scheme then has no restriction
+        fun cmcdTermsByScheme(playbackRequest: PlaybackRequest): Map<String, List<String>> =
+            playbackRequest.qoeMetricsRequests.filter { it.scheme != null }.groupBy { it.scheme!! }.mapValues { (_, requests) ->
+                if (requests.any { it.metrics.isNullOrEmpty() }) emptyList() else requests.flatMap { it.metrics ?: emptyList() }
+            }
     }
 
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
@@ -39,13 +47,22 @@ class SessionController(
         }
     }
 
+    private var cellInfoListener: Any? = null
+
     override fun initialize() {
         exoPlayerAdapter.eventBus.register(this)
         requestCellInfoUpdates()
+        listenToCellInfoChanges()
+    }
+
+    override fun handleCmcdLocationUpdate(configurationId: String, located: Boolean) {
+        exoPlayerAdapter.setCmcdLocated(configurationId, located)
     }
 
     @UnstableApi
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
+        // the controllers that report the location are registered by now: ask again, the answer of initialize() may have come before them
+        requestCellInfoUpdates()
         // Fire PlaybackStartTriggerEvent for Playout Delay for Media Start-up metric (TS 26.247 clause 10.2.9)
         // This marks the instant when the DASH player receives the playback-start trigger
         exoPlayerAdapter.eventBus.post(PlaybackStartTriggerEvent(android.os.SystemClock.elapsedRealtime()))
@@ -54,8 +71,10 @@ class SessionController(
         exoPlayerAdapter.configureCmcd(
             playbackRequest.qoeMetricsRequests.mapNotNull { it.scheme },
             playbackRequest.mediaDeliverySessionIdentifier,
-            playbackRequest.contentIdentifier
+            playbackRequest.contentIdentifier,
+            cmcdTermsByScheme(playbackRequest)
         )
+        exoPlayerAdapter.configureCmcdReportingWindows(playbackRequest.qoeMetricsRequests)
 
         val entryPoint = selectEntryPoint(playbackRequest.entryPoints)
         if (entryPoint != null) {
@@ -63,6 +82,20 @@ class SessionController(
             exoPlayerAdapter.preload()
             exoPlayerAdapter.play()
         }
+    }
+
+    /** The cell information changes during a media delivery session (a location change, clause 5.3.6.1 of TS 26.510): one event per change, from Android 12 */
+    private fun listenToCellInfoChanges() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || cellInfoListener != null) return
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
+        val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        val callback = object : TelephonyCallback(), TelephonyCallback.CellInfoListener {
+            override fun onCellInfoChanged(cellInfo: MutableList<CellInfo>) {
+                exoPlayerAdapter.eventBus.post(CellInfoUpdatedEvent(cellInfo))
+            }
+        }
+        telephonyManager.registerTelephonyCallback(context.mainExecutor, callback)
+        cellInfoListener = callback
     }
 
     private fun requestCellInfoUpdates() {

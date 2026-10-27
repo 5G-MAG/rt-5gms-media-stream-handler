@@ -21,8 +21,22 @@ interface IExoPlayerAdapter {
      * configurations are reported, with the media delivery session identifier as sid; none without such a scheme. The default
      * transmission mode is HTTP request headers (clause 7.8, the Media Session Handler); the application may use query parameters.
      */
-    fun configureCmcd(schemes: Collection<String>, sessionId: String?, contentId: String?)
+    fun configureCmcd(
+        schemes: Collection<String>,
+        sessionId: String?,
+        contentId: String?,
+        metricsByScheme: Map<String, List<String>> = emptyMap()
+    )
     fun setCmcdUseQueryParameters(useQueryParameters: Boolean)
+
+    /**
+     * The part of the media delivery session for which each provisioned CMCD configuration reports (TS 26.510 V19.2.0 table 8.7.3.1-1:
+     * reportingStartOffset and reportingDuration), counted from this call. The sid is sent in every request regardless.
+     */
+    /** Whether the UE is inside the locationFilter of a CMCD configuration; the keys of such a configuration are sent only while it is */
+    fun setCmcdLocated(configurationId: String, located: Boolean)
+
+    fun configureCmcdReportingWindows(requests: List<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>)
     fun hasActiveMediaItem() : Boolean
     fun getCurrentManifestUri(): String
     fun getCurrentManifestUrl(): String
