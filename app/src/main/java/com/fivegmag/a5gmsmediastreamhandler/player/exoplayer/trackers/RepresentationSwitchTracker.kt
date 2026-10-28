@@ -1,6 +1,7 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
@@ -12,6 +13,7 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
+@UnstableApi
 class RepresentationSwitchTracker(
     private val exoPlayerAdapter: IExoPlayerAdapter,
     private val utils: Utils = Utils()
