@@ -1,6 +1,6 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
-import androidx.media3.common.util.Log
+import android.util.Log
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstMediaSegmentRequestedEvent
 import org.greenrobot.eventbus.EventBus

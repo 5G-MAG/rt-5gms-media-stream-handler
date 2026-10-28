@@ -1,6 +1,6 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
-import androidx.media3.common.util.Log
+import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.eventbus.VideoSizeChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
@@ -62,7 +62,7 @@ class DeviceInformationTracker(
      */
     private fun createDeviceInformationEntry(): DeviceInformationEntry {
         val start = utils.getCurrentXsDateTime()
-        val mstart = utils.millisecondsToISO8601(exoPlayerAdapter.getCurrentPosition()) ?: "PT0S"
+        val mstart = utils.millisecondsToISO8601(exoPlayerAdapter.getCurrentPosition())
         val videoWidth = exoPlayerAdapter.getVideoWidth()
         val videoHeight = exoPlayerAdapter.getVideoHeight()
         val screenWidth = exoPlayerAdapter.getScreenWidth()
