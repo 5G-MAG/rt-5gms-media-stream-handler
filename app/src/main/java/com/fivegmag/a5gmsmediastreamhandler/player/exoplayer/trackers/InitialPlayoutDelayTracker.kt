@@ -1,8 +1,12 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
-import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.util.Log
+import androidx.media3.common.util.UnstableApi
+
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstMediaSegmentRequestedEvent
+
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -14,10 +18,11 @@ import org.greenrobot.eventbus.ThreadMode
  * of the first media Segment (or sub-segment) and the time at which media is 
  * retrieved from the client buffer (first frame rendered).
  */
+@OptIn(markerClass = [UnstableApi::class])
 class InitialPlayoutDelayTracker {
 
     companion object {
-        const val TAG = "5GMS-InitialPlayoutDelayTracker"
+        const val TAG = "5GMS-InitialDelay"
     }
 
     /** Elapsed real-time when the first media segment fetch started */

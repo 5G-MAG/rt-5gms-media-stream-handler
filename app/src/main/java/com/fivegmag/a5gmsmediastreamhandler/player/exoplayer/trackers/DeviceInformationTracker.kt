@@ -1,12 +1,14 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
-import android.util.Log
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
+
 import com.fivegmag.a5gmscommonlibrary.eventbus.VideoSizeChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.DeviceInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.DeviceInformationEntry
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
+
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -25,7 +27,7 @@ class DeviceInformationTracker(
     private val deviceInformation: DeviceInformation = DeviceInformation(ArrayList())
 
     companion object {
-        const val TAG = "5GMS-DeviceInformationTracker"
+        const val TAG = "5GMS-DeviceInfoTracker"
         const val UNKNOWN_FIELD_OF_VIEW = 0.0  // Set to 0 when unknown per TS 26.247
     }
 
