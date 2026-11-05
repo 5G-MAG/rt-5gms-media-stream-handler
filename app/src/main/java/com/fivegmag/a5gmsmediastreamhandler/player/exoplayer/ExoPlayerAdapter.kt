@@ -29,7 +29,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var playerView: PlayerView
     private lateinit var context: Context
     private var activeMediaItem: MediaItem? = null
-    private lateinit var activeManifestUrl: String
+    private var activeManifestUrl: String = ""
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
@@ -150,16 +150,29 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         playerInstance.pause()
     }
 
+    /**
+     * Seeks to the given position in the current media item.
+     *
+     * @param time Position in milliseconds
+     */
     override fun seek(time: Long) {
-        TODO("Not yet implemented")
+        playerInstance.seekTo(time)
     }
 
     override fun stop() {
         playerInstance.stop()
     }
 
+    /**
+     * Stops playback and removes the active media item. The player instance is kept and can be
+     * reused with [attach]. Use [destroy] to release it.
+     */
     override fun reset() {
-        TODO("Not yet implemented")
+        playerInstance.stop()
+        playerInstance.clearMediaItems()
+        activeMediaItem = null
+        activeManifestUrl = ""
+        playerListener.newPlaybackSession()
     }
 
     override fun destroy() {
