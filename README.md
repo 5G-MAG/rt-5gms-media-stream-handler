@@ -99,6 +99,34 @@ To generate the `aar` bundles, run this command from the repository root:
 The `aar` bundles are written to `app/build/outputs/aar/`. A project can include one by specifying
 the path to the bundle.
 
+## Testing
+
+To run the unit tests, run this command from the repository root:
+
+````
+./gradlew :app:testDebugUnitTest
+````
+
+### Coverage report
+
+Test coverage is measured with [Kover](https://github.com/Kotlin/kotlinx-kover). To run the unit
+tests and generate an HTML coverage report, run:
+
+````
+./gradlew :app:koverHtmlReportDebug
+````
+
+The report is written to `app/build/reports/kover/htmlDebug/index.html`. Other coverage tasks:
+
+| Task | Purpose |
+|---|---|
+| `./gradlew :app:koverXmlReportDebug` | Writes an XML report to `app/build/reports/kover/reportDebug.xml` |
+| `./gradlew :app:koverLogDebug` | Prints the overall coverage to the console |
+| `./gradlew :app:koverVerifyDebug` | Fails if line coverage is below the minimum set in `app/build.gradle` |
+
+The CI workflow runs the same verification on every pull request, uploads the HTML report as the
+`coverage-report` artifact and posts a coverage summary as a comment on the pull request.
+
 ## Installing
 
 The preferred way to include the Media Stream Handler is from a local or remote Maven repository.
