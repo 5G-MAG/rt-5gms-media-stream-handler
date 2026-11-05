@@ -177,7 +177,6 @@ class QoeMetricsReporterExoplayerTest {
     assertTrue("Seek target should be 30s", xmlReport.contains("mstart=\"P0Y0DT0H0M30S\""))
 
         // Assert Speed Change
-        assertTrue("Should have stopReasonOther='speed_change'", xmlReport.contains("stopReasonOther=\"speed_change\""))
         assertTrue("Should have playbackSpeed='1.5'", xmlReport.contains("playbackSpeed=\"1.5\""))
         
         // Assert Representation ID

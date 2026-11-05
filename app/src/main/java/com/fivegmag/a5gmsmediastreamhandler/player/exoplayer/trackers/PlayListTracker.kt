@@ -222,7 +222,7 @@ class PlayListTracker(
                         if (duration > 0) {
                             val traceEntrySnapshot = PlayListTraceEntry(
                                 start = trackState.startTime!!,
-                                sstart = utils.millisecondsToISO8601(trackState.mediaStartMs) ?: "PT0S",
+                                sstart = utils.millisecondsToISO8601(trackState.mediaStartMs),
                                 duration = duration,
                                 representationId = trackState.representationId,
                                 playbackSpeed = if (currentPlaybackSpeed != 1.0) currentPlaybackSpeed else null,
@@ -267,7 +267,7 @@ class PlayListTracker(
      */
     private fun startNewPlayListEntry(startType: StartType, mediaPositionMs: Long = exoPlayerAdapter.getCurrentPosition()) {
         val start = utils.getCurrentXsDateTime()
-        val mstart = utils.millisecondsToISO8601(mediaPositionMs) ?: "PT0S"
+        val mstart = utils.millisecondsToISO8601(mediaPositionMs)
         
         currentPlayListEntry = PlayListEntry(
             start = start,
@@ -325,7 +325,7 @@ class PlayListTracker(
         
         val traceEntry = PlayListTraceEntry(
             start = trackState.startTime!!,
-            sstart = utils.millisecondsToISO8601(trackState.mediaStartMs) ?: "PT0S",
+            sstart = utils.millisecondsToISO8601(trackState.mediaStartMs),
             duration = duration,
             representationId = trackState.representationId,
             playbackSpeed = if (currentPlaybackSpeed != 1.0) currentPlaybackSpeed else null,

@@ -1,6 +1,8 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
+import androidx.annotation.OptIn
 import androidx.media3.common.util.Log
+import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStartTriggerEvent
 import org.greenrobot.eventbus.EventBus
@@ -16,10 +18,11 @@ import org.greenrobot.eventbus.ThreadMode
  * 
  * This metric is only logged at the time point when the media start-up happens.
  */
+@OptIn(markerClass = [UnstableApi::class])
 class PlayoutDelayForMediaStartupTracker {
 
     companion object {
-        const val TAG = "5GMS-PlayoutDelayForMediaStartupTracker"
+        const val TAG = "5GMS-StartupDelay"
     }
 
     /** Elapsed real-time when the playback start was triggered */
