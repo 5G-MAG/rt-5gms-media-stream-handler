@@ -3,6 +3,7 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
@@ -29,7 +30,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var playerView: PlayerView
     private lateinit var context: Context
     private var activeMediaItem: MediaItem? = null
-    private lateinit var activeManifestUrl: String
+    private var activeManifestUrl: String = ""
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
@@ -150,16 +151,32 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         playerInstance.pause()
     }
 
+    /**
+     * Seeks to the given position in the current media item.
+     *
+     * @param time Position in milliseconds
+     */
     override fun seek(time: Long) {
-        TODO("Not yet implemented")
+        playerInstance.seekTo(time)
     }
 
     override fun stop() {
         playerInstance.stop()
     }
 
+    /**
+     * Stops playback, removes the active media item and restores the default playback state, so
+     * the next media item only starts after [play] and at normal speed. The player instance is
+     * kept and can be reused with [attach]. Use [destroy] to release it.
+     */
     override fun reset() {
-        TODO("Not yet implemented")
+        playerInstance.stop()
+        playerInstance.clearMediaItems()
+        playerInstance.playWhenReady = false
+        playerInstance.playbackParameters = PlaybackParameters.DEFAULT
+        activeMediaItem = null
+        activeManifestUrl = ""
+        playerListener.newPlaybackSession()
     }
 
     override fun destroy() {
