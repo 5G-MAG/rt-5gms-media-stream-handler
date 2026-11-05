@@ -3,6 +3,7 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.util.Util
@@ -164,12 +165,15 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     }
 
     /**
-     * Stops playback and removes the active media item. The player instance is kept and can be
-     * reused with [attach]. Use [destroy] to release it.
+     * Stops playback, removes the active media item and restores the default playback state, so
+     * the next media item only starts after [play] and at normal speed. The player instance is
+     * kept and can be reused with [attach]. Use [destroy] to release it.
      */
     override fun reset() {
         playerInstance.stop()
         playerInstance.clearMediaItems()
+        playerInstance.playWhenReady = false
+        playerInstance.playbackParameters = PlaybackParameters.DEFAULT
         activeMediaItem = null
         activeManifestUrl = ""
         playerListener.newPlaybackSession()

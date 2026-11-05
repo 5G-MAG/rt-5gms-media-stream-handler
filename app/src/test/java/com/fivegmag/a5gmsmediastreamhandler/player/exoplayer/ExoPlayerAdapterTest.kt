@@ -1,5 +1,6 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
@@ -68,6 +69,29 @@ class ExoPlayerAdapterTest {
         assertTrue(adapter.hasActiveMediaItem())
         assertEquals("https://example.com/second.mpd", adapter.getCurrentManifestUri())
         assertEquals(1, adapter.getPlayerInstance().mediaItemCount)
+    }
+
+    @Test
+    fun reset_nextMediaItemDoesNotStartPlayingWithoutPlay() {
+        adapter.attach("https://example.com/first.mpd", ContentTypes.DASH)
+        adapter.preload()
+        adapter.play()
+
+        adapter.reset()
+        adapter.attach("https://example.com/second.mpd", ContentTypes.DASH)
+        adapter.preload()
+
+        assertFalse(adapter.getPlayerInstance().playWhenReady)
+    }
+
+    @Test
+    fun reset_restoresDefaultPlaybackSpeed() {
+        adapter.attach("https://example.com/first.mpd", ContentTypes.DASH)
+        adapter.getPlayerInstance().playbackParameters = PlaybackParameters(1.5f)
+
+        adapter.reset()
+
+        assertEquals(PlaybackParameters.DEFAULT, adapter.getPlayerInstance().playbackParameters)
     }
 
     @Test
