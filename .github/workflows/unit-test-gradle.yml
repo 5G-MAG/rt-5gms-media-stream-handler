@@ -35,12 +35,11 @@ jobs:
         run: ./gradlew publishToMavenLocal
       - name: Checkout main repo
         uses: actions/checkout@v3
-      - name: Build with Gradle
+      - name: Build with Gradle and verify coverage
         uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
         with:
-          arguments: build
-      - name: Generate coverage report and verify minimum
-        run: ./gradlew :app:koverXmlReportDebug :app:koverHtmlReportDebug :app:koverVerifyDebug
+          # --continue writes the coverage reports even when a check such as the coverage minimum fails.
+          arguments: build :app:koverXmlReportDebug :app:koverHtmlReportDebug :app:koverVerifyDebug --continue
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -48,6 +47,8 @@ jobs:
           name: coverage-report
           path: app/build/reports/kover/
       - name: Comment coverage on PR
+        # Also comment when the build failed, for example below the coverage minimum.
+        if: always() && hashFiles('app/build/reports/kover/reportDebug.xml') != ''
         # Pull requests from forks get a read-only token, so this step may fail there.
         continue-on-error: true
         uses: madrapps/jacoco-report@50d3aff4548aa991e6753342d9ba291084e63848 # v1.7.2
