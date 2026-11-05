@@ -56,3 +56,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           title: Code coverage
           update-comment: true
+          # The action reports instruction coverage, slightly below the line coverage checked by Kover.
+          min-coverage-overall: 43
