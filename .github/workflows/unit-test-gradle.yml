@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   build:
@@ -37,4 +38,20 @@ jobs:
       - name: Build with Gradle
         uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
         with:
-          arguments: build
+          arguments: build      - name: Generate coverage report and verify minimum
+        run: ./gradlew :app:koverXmlReportDebug :app:koverHtmlReportDebug :app:koverVerifyDebug
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: app/build/reports/kover/
+      - name: Comment coverage on PR
+        # Pull requests from forks get a read-only token, so this step may fail there.
+        continue-on-error: true
+        uses: madrapps/jacoco-report@50d3aff4548aa991e6753342d9ba291084e63848 # v1.7.2
+        with:
+          paths: ${{ github.workspace }}/app/build/reports/kover/reportDebug.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: Code coverage
+          update-comment: true
