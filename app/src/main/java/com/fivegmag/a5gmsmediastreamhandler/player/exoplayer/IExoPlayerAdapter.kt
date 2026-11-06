@@ -11,8 +11,7 @@ interface IExoPlayerAdapter {
         context: Context
     )
 
-    fun attach(url: String, contentType: String = "")
-    fun setMediaDeliverySessionId(mediaDeliverySessionId: String)
+    fun attach(url: String, contentType: String = "", mediaDeliverySessionId: String)
     fun hasActiveMediaItem() : Boolean
     fun getCurrentManifestUri(): String
     fun getCurrentManifestUrl(): String

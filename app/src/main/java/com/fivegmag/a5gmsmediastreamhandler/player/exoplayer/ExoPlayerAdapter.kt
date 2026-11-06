@@ -28,7 +28,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var context: Context
-    private var mediaDeliverySessionId: String? = null
+    private lateinit var mediaDeliverySessionId: String
     private var activeMediaItem: MediaItem? = null
     private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
@@ -71,10 +71,9 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                     }
                 }
 
-                val sessionId = mediaDeliverySessionId ?: UUID.randomUUID().toString()
                 val contentId = UUID.randomUUID().toString()
 
-                return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_REQUEST_HEADER)
+                return CmcdConfiguration(mediaDeliverySessionId, contentId, cmcdConfig, MODE_REQUEST_HEADER)
             }
         }
 
@@ -99,22 +98,18 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     }
 
     private fun addMediaDeliverySessionHeader(dataSource: HttpDataSource) {
-        val sessionId = mediaDeliverySessionId ?: return
         /*
             Sends the media delivery session UUID in the CMCD-Session header
             TS 26.512 Rel-18, 10.1A
             TS 26.512 Rel-18, 6.2.3.6
         */
-        val formattedSid = "sid=\"$sessionId\""
+        val formattedSid = "sid=\"$mediaDeliverySessionId\""
         dataSource.setRequestProperty("CMCD-Session", formattedSid)
     }
 
-    override fun setMediaDeliverySessionId(mediaDeliverySessionId: String) {
-        UUID.fromString(mediaDeliverySessionId)
+    override fun attach(url: String, contentType: String, mediaDeliverySessionId: String) {
         this.mediaDeliverySessionId = mediaDeliverySessionId
-    }
 
-    override fun attach(url: String, contentType: String) {
         // Reset listener state for new presentation
         playerListener.newPlaybackSession()
         

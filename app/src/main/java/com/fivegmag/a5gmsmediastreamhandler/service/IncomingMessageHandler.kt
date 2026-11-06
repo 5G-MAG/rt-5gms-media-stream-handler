@@ -4,12 +4,14 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Message
 import android.os.Messenger
+import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.controller.IConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.IQoEMetricsReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.ISessionController
+import java.util.UUID
 
 class IncomingMessageHandler() {
 
@@ -46,6 +48,13 @@ class IncomingMessageHandler() {
         bundle.classLoader = PlaybackRequest::class.java.classLoader
         val playbackRequest: PlaybackRequest? = bundle.getParcelable("playbackRequest")
         if (playbackRequest != null) {
+            // Validate once at the boundary, before any controller changes session state.
+            try {
+                UUID.fromString(playbackRequest.mediaDeliverySessionId)
+            } catch (_: IllegalArgumentException) {
+                Log.e("5GMS-IncomingMsg", "Playback rejected: missing or invalid media delivery session UUID")
+                return
+            }
             consumptionReportingController.handleTriggerPlayback(playbackRequest)
             qoeMetricsReportingController.handleTriggerPlayback(playbackRequest)
             sessionController.handleTriggerPlayback(playbackRequest)

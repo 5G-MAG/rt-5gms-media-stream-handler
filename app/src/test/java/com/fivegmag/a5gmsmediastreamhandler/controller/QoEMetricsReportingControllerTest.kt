@@ -35,7 +35,7 @@ class QoEMetricsReportingControllerTest {
         io.mockk.every { qoeMetricsRequest.metricsReportingConfigurationId } returns "config-1"
 
         val playbackRequest = mockk<com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest>(relaxed = true)
-        io.mockk.every { playbackRequest.mediaStreamingSessionIdentifier } returns "550e8400-e29b-41d4-a716-446655440000"
+        io.mockk.every { playbackRequest.mediaDeliverySessionId } returns "550e8400-e29b-41d4-a716-446655440000"
         io.mockk.every { playbackRequest.qoeMetricsRequests } returns arrayListOf(qoeMetricsRequest)
 
         // When
@@ -59,7 +59,7 @@ class QoEMetricsReportingControllerTest {
         io.mockk.every { qoeMetricsRequest.reportingInterval } returns 1000L
 
         val playbackRequest = mockk<com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest>(relaxed = true)
-        io.mockk.every { playbackRequest.mediaStreamingSessionIdentifier } returns "550e8400-e29b-41d4-a716-446655440000"
+        io.mockk.every { playbackRequest.mediaDeliverySessionId } returns "550e8400-e29b-41d4-a716-446655440000"
         io.mockk.every { playbackRequest.qoeMetricsRequests } returns arrayListOf(qoeMetricsRequest)
 
         controller.initialize()
