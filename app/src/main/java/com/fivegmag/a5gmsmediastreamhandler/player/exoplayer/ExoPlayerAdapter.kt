@@ -74,7 +74,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                     }
                 }
 
-                val sessionId = requireNotNull(mediaDeliverySessionId) { "Media Session Handler must assign a session ID before playback" }
+                val sessionId = mediaDeliverySessionId ?: UUID.randomUUID().toString()
                 val contentId = UUID.randomUUID().toString()
 
                 return CmcdConfiguration(sessionId, contentId, cmcdConfig, MODE_REQUEST_HEADER)
