@@ -48,8 +48,11 @@ class SessionController(
 
             if (dashEntryPoints.isNotEmpty()) {
                 val mpdUrl = dashEntryPoints[0].locator
-                exoPlayerAdapter.setMediaDeliverySessionId(playbackRequest.mediaDeliverySessionId)
-                exoPlayerAdapter.attach(mpdUrl, ContentTypes.DASH)
+                exoPlayerAdapter.attach(
+                    url = mpdUrl,
+                    contentType = ContentTypes.DASH,
+                    mediaDeliverySessionId = playbackRequest.mediaDeliverySessionId
+                )
                 exoPlayerAdapter.preload()
                 exoPlayerAdapter.play()
             }
