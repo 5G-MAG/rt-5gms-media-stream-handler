@@ -19,6 +19,8 @@ import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor
+import kotlin.text.replace
+import java.util.UUID
 
 @UnstableApi
 class QoEMetricsReportingController(
@@ -49,13 +51,23 @@ class QoEMetricsReportingController(
 
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {
         resetState()
-        recordingSessionId = playbackRequest.mediaStreamingSessionIdentifier
+        recordingSessionId = formatAsHexBinary(playbackRequest.mediaStreamingSessionIdentifier)
         setLastQoeMetricsRequests(
             playbackRequest.qoeMetricsRequests
         )
         initializeQoeMetricsReporter(playbackRequest.qoeMetricsRequests)
     }
 
+    private fun formatAsHexBinary(uuid: String): String {
+        /*
+            Converts a standard UUID string into the xs:hexBinary format by removing hyphens.
+            - 3GPP TS 26.512 Clause 11.4.3
+            - 3GPP TS 26.247 Clause 10.6.2
+            - def(hexBinary) The set recognized by hexBinary is the same as that recognized by the regular expression '([0-9a-fA-F]{2})*'.
+         */
+        UUID.fromString(uuid)
+        return uuid.replace("-", "")
+    }
     private fun initializeQoeMetricsReporter(qoeMetricsRequests: ArrayList<QoeMetricsRequest>) {
         for (qoeMetricsRequest in qoeMetricsRequests) {
             initializeQoeMetricsReporterForConfigurationId(qoeMetricsRequest)
