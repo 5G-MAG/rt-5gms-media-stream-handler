@@ -63,11 +63,11 @@ declared as a Maven dependency in the `build.gradle` of the `app` module:
 
 ````
 dependencies {
-    implementation 'com.fivegmag:a5gmscommonlibrary:1.3.0'
+    implementation 'com.fivegmag:a5gmscommonlibrary:1.4.0'
 }
 ````
 
-The version number (`1.3.0` in the example above) might differ, depending on the version of the
+The version number (`1.4.0` in the example above) might differ, depending on the version of the
 Media Stream Handler.
 
 Install the library by following the installation guide in its README, and publish it to the local
@@ -157,13 +157,13 @@ dependencyResolutionManagement {
 
 #### 2. Include the 5GMS Media Stream Handler in your module gradle file
 
-The example uses `1.3.0`, the version this repository publishes (`app/build.gradle`). Replace it
+The example uses `1.4.0`, the version this repository publishes (`app/build.gradle`). Replace it
 with the version you are using.
 
 ````
 dependencies {
     // 5GMAG
-    implementation 'com.fivegmag:a5gmsmediastreamhandler:1.3.0'
+    implementation 'com.fivegmag:a5gmsmediastreamhandler:1.4.0'
 }
 ````
 
