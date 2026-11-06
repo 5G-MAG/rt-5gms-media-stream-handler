@@ -54,10 +54,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         val dataSourceFactory =
             DataSource.Factory {
                 val dataSource = httpDataSourceFactory.createDataSource()
-                // Include the session even for manifest requests, where Media3 may omit CMCD.
-                mediaDeliverySessionId?.let {
-                    dataSource.setRequestProperty("CMCD-Session", "sid=\"$it\"")
-                }
+                addMediaDeliverySessionHeader(dataSource)
                 transferListenerRef?.let { dataSource.addTransferListener(it) }
                 dataSource
             }
@@ -99,6 +96,17 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             ExoPlayerListener(playerInstance, playerView)
         playerInstance.addAnalyticsListener(playerListener)
         transferListenerRef = playerListener
+    }
+
+    private fun addMediaDeliverySessionHeader(dataSource: HttpDataSource) {
+        val sessionId = mediaDeliverySessionId ?: return
+        /*
+            Sends the media delivery session UUID in the CMCD-Session header
+            TS 26.512 Rel-18, 10.1A
+            TS 26.512 Rel-18, 6.2.3.6
+        */
+        val formattedSid = "sid=\"$sessionId\""
+        dataSource.setRequestProperty("CMCD-Session", formattedSid)
     }
 
     override fun setMediaDeliverySessionId(mediaDeliverySessionId: String) {
