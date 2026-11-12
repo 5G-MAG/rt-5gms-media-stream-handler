@@ -50,7 +50,20 @@ interface IExoPlayerAdapter {
     /** Whether the UE is inside the locationFilter of a CMCD configuration; the keys of such a configuration are sent only while it is */
     fun setCmcdLocated(configurationId: String, located: Boolean)
 
+    /**
+     * The client metrics reporting configurations changed during the session (TS 26.510 V19.2.0 clause 5.3.5.1): the keys, the windows and the
+     * locationFilters follow them from the next request on. The media delivery session identifier, the content identifier, the start of the
+     * session and what is known of the location stay.
+     */
+    fun updateCmcdConfiguration(
+        schemes: Collection<String>,
+        metricsByScheme: Map<String, List<String>>,
+        requests: List<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>
+    )
+
     fun configureCmcdReportingWindows(requests: List<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>)
+    /** The content identifier that the 5GMS Client knows for the media being consumed, if any (the one that populates the CMCD cid key) */
+    fun getContentIdentifier(): String?
     fun hasActiveMediaItem() : Boolean
     fun getCurrentManifestUri(): String
     fun getCurrentManifestUrl(): String

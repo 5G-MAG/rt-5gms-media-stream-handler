@@ -20,6 +20,7 @@ import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.models.EndpointAddress
+import com.fivegmag.a5gmscommonlibrary.models.Snssai
 import com.fivegmag.a5gmscommonlibrary.models.TypedLocation
 import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingFilterProvider
 import com.fivegmag.a5gmsmediastreamhandler.player.ConsumptionReporter
@@ -35,12 +36,29 @@ class ConsumptionReporterExoplayer(
 
     companion object {
         const val TAG = "5GMS-ConsumptionReporterExoplayer"
+
+        // TS 26.512 V19.3.0 clause 11.3.3.2: the content identifier (if known) and the Representation@id, in that order, delimited by a single "|"
+        fun mediaConsumed(contentId: String?, representationId: String?): String? =
+            if (representationId == null) null
+            else if (contentId.isNullOrEmpty()) representationId
+            else "$contentId|$representationId"
     }
 
     private val utils: Utils = Utils()
     private val consumptionReportingUnitList: ArrayList<ConsumptionReportingUnit> = ArrayList()
     private var serverEndpointAddressesPerMediaType = mutableMapOf<String, EndpointAddress>()
-    private var activeLocations: ArrayList<TypedLocation> = ArrayList()
+
+    // the serving cells that were known last; each unit keeps its own list of the locations of its period (TS 26.510 V19.2.0 table 9.6.3.2-1)
+    private var knownLocations: List<TypedLocation> = emptyList()
+
+    // the network slice and the Data Network of the media access (table 9.6.3.2-1: sliceInfo and dataNetworkName), if known
+    private var sliceInfo: Snssai? = null
+    private var dataNetworkName: String? = null
+
+    override fun setAccessNetworkIdentity(sliceInfo: Snssai?, dataNetworkName: String?) {
+        this.sliceInfo = sliceInfo
+        this.dataNetworkName = dataNetworkName
+    }
 
     // the URL of the manifest after HTTP redirects, from the load that fetched it (LoadEventInfo.uri)
     private var manifestUriAfterRedirects: String? = null
@@ -85,15 +103,32 @@ class ConsumptionReporterExoplayer(
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     fun onCellInfoUpdated(event: CellInfoUpdatedEvent) {
-        activeLocations.clear()
+        val locations = ArrayList<TypedLocation>()
         for (cellInfo in event.cellInfoList) {
             if (cellInfo.isRegistered && (cellInfo.cellConnectionStatus == CellInfo.CONNECTION_PRIMARY_SERVING || cellInfo.cellConnectionStatus == CellInfo.CONNECTION_SECONDARY_SERVING)) {
                 val location = createTypedLocationByCellInfo(cellInfo)
                 if (location != null) {
-                    activeLocations.add(location)
+                    locations.add(location)
                 }
             }
         }
+        onLocationsUpdated(locations)
+    }
+
+    /**
+     * The serving cells as the platform gives them now. A location that is new is added to the units that are being consumed, after the older
+     * ones (clause 9.6.3.2: a time-ordered list), and a location change is reported (clause 5.3.6.1) when a location was known before.
+     * A change of signal strength alone is no change of location.
+     */
+    internal fun onLocationsUpdated(locations: List<TypedLocation>) {
+        val added = locations.filter { it !in knownLocations }
+        if (locations.isEmpty() || added.isEmpty()) return
+        val changed = knownLocations.isNotEmpty()
+        knownLocations = locations
+        for (unit in consumptionReportingUnitList) {
+            if (!unit.finished) unit.locations?.addAll(added)
+        }
+        if (changed) locationChangeListener?.invoke()
     }
 
     @SuppressLint("Range")
@@ -101,7 +136,7 @@ class ConsumptionReporterExoplayer(
     @UnstableApi
     private fun addConsumptionReportingUnit(mediaLoadData: MediaLoadData) {
         val startTime = utils.formatDateToOpenAPIFormat(Date())
-        val mediaConsumed = mediaLoadData.trackFormat?.id
+        val mediaConsumed = mediaConsumed(exoPlayerAdapter.getContentIdentifier(), mediaLoadData.trackFormat?.id)
         val mimeType = mediaLoadData.trackFormat!!.containerMimeType
         val duration = 0
 
@@ -128,10 +163,12 @@ class ConsumptionReporterExoplayer(
             }
         if (consumptionReportingUnit != null) {
             consumptionReportingUnit.mimeType = mimeType
+            consumptionReportingUnit.sliceInfo = sliceInfo
+            consumptionReportingUnit.dataNetworkName = dataNetworkName
 
             // We add locations and clientEndpointAddress and filter the attributes later in case the corresponding configuration options are set to false
             // If we do not add the information here we can not include it later in case the SAI configuration changes
-            consumptionReportingUnit.locations = activeLocations
+            consumptionReportingUnit.locations = ArrayList(knownLocations)
             consumptionReportingUnit.serverEndpointAddress = getServerEndpointAddress(mimeType)
             consumptionReportingUnit.clientEndpointAddress =
                 getClientEndpointAddress(consumptionReportingUnit.serverEndpointAddress)
@@ -150,7 +187,9 @@ class ConsumptionReporterExoplayer(
             unit.finished = true
             val next = ConsumptionReportingUnit(unit.mediaConsumed, null, null, now, 0, null)
             next.mimeType = unit.mimeType
-            next.locations = activeLocations
+            next.sliceInfo = sliceInfo
+            next.dataNetworkName = dataNetworkName
+            next.locations = ArrayList(knownLocations)
             next.serverEndpointAddress = getServerEndpointAddress(unit.mimeType)
             next.clientEndpointAddress = getClientEndpointAddress(next.serverEndpointAddress)
             started.add(next)
@@ -229,6 +268,7 @@ class ConsumptionReporterExoplayer(
         resetState()
         consumptionReportingUnitList.clear()
         manifestUriAfterRedirects = null
+        locationChangeListener = null
     }
 
 }

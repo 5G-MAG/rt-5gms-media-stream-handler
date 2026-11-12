@@ -9,12 +9,16 @@ import android.telephony.CellInfoLte
 import android.telephony.CellInfoNr
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionRequest
 import com.fivegmag.a5gmscommonlibrary.models.CellIdentifierType
+import com.fivegmag.a5gmscommonlibrary.models.Snssai
 import com.fivegmag.a5gmscommonlibrary.models.TypedLocation
 import java.lang.Exception
 
 abstract class ConsumptionReporter {
 
     abstract fun initialize()
+
+    /** Called when the UE moves to a location that it was not at before (TS 26.510 V19.2.0 clause 5.3.6.1: a trigger of a consumption report) */
+    var locationChangeListener: (() -> Unit)? = null
 
     abstract fun getConsumptionReport(
         reportingClientId: String,
@@ -25,6 +29,9 @@ abstract class ConsumptionReporter {
 
     /** The access network changed: the units that are being consumed end and new ones begin on the new access network */
     abstract fun onAccessNetworkChanged()
+
+    /** The network slice and the Data Network of the media access from now on (the units that start from now on carry them) */
+    abstract fun setAccessNetworkIdentity(sliceInfo: Snssai?, dataNetworkName: String?)
 
     abstract fun reset()
 

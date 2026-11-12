@@ -132,6 +132,11 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         cmcdContentId = contentId
     }
 
+    override fun updateCmcdConfiguration(schemes: Collection<String>, metricsByScheme: Map<String, List<String>>, requests: List<QoeMetricsRequest>) {
+        cmcdAllowedKeys = getCmcdAllowedKeys(schemes, cmcdSessionId, metricsByScheme)
+        cmcdRules = getCmcdRules(requests)
+    }
+
     override fun configureCmcdReportingWindows(requests: List<QoeMetricsRequest>) {
         cmcdRules = getCmcdRules(requests)
         cmcdLocated.clear()
@@ -159,6 +164,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     // the content identifier of the configuration, or else the one that the application (cmcdReporting) or a Media Player Entry declares (clause 10.5.1)
     private fun cmcdEffectiveContentId(): String? =
         cmcdContentId ?: cmcdApplicationReporting?.contentId ?: cmcdEntries.firstNotNullOfOrNull { it.contentId }
+
+    override fun getContentIdentifier(): String? = cmcdEffectiveContentId()
 
     // a key that the client metrics reporting configurations allow now (their classes, reporting windows and locations)
     private fun isCmcdKeyConfigured(key: String): Boolean {

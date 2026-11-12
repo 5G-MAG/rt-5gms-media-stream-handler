@@ -8,6 +8,7 @@ import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerBundleKeys
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.StreamingAccess
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.controller.IConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.IQoEMetricsReportingController
@@ -36,6 +37,8 @@ class IncomingMessageHandler() {
                     msg.data.getString(SessionHandlerBundleKeys.METRICS_REPORTING_CONFIGURATION_ID) ?: "",
                     msg.data.getBoolean(SessionHandlerBundleKeys.LOCATED)
                 )
+
+                SessionHandlerMessageTypes.CMCD_CONFIGURATION_UPDATE -> handleCmcdConfigurationUpdate(msg)
 
                 SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReport(msg)
 
@@ -120,6 +123,14 @@ class IncomingMessageHandler() {
             qoeMetricsReportingController.handleTriggerPlayback(playbackRequest)
             sessionController.handleTriggerPlayback(playbackRequest)
         }
+    }
+
+    /** A client metrics reporting configuration changed (TS 26.510 V19.2.0 clause 5.3.5.1): the CMCD configurations in force now */
+    private fun handleCmcdConfigurationUpdate(msg: Message) {
+        val bundle: Bundle = msg.data
+        bundle.classLoader = QoeMetricsRequest::class.java.classLoader
+        val requests: List<QoeMetricsRequest> = bundle.getParcelableArrayList(SessionHandlerBundleKeys.CMCD_CONFIGURATIONS) ?: return
+        sessionController.handleCmcdConfigurationUpdate(requests)
     }
 
     @UnstableApi

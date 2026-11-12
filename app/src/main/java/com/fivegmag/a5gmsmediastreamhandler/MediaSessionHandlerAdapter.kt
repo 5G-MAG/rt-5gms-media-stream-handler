@@ -228,6 +228,15 @@ class MediaSessionHandlerAdapter() {
 
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
+    /**
+     * The network slice and the Data Network that the media is accessed through, null for what is not known (TS 26.510 V19.2.0 table 9.6.3.2-1).
+     * Android does not tell an application either, so the caller is the one that knows them. Call it again when they change: with access
+     * reporting, a new consumption reporting unit starts then (clause 5.3.6.1).
+     */
+    fun setAccessNetworkIdentity(sliceInfo: Snssai?, dataNetworkName: String?) {
+        exoPlayerAdapter.eventBus.post(com.fivegmag.a5gmsmediastreamhandler.controller.AccessNetworkIdentityEvent(sliceInfo, dataNetworkName))
+    }
+
     /** An event when the default network of the UE changes (the access network of the media delivery session) */
     private fun registerAccessNetworkCallback() {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return

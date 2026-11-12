@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.telephony.CellInfo
+import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import androidx.core.app.ActivityCompat
@@ -61,6 +62,9 @@ class SessionController(
 
     private var cellInfoListener: Any? = null
 
+    // the platform version that decides which listener is used (a test sets another one)
+    internal var sdkInt: Int = Build.VERSION.SDK_INT
+
     override fun initialize() {
         exoPlayerAdapter.eventBus.register(this)
         requestCellInfoUpdates()
@@ -69,6 +73,12 @@ class SessionController(
 
     override fun handleCmcdLocationUpdate(configurationId: String, located: Boolean) {
         exoPlayerAdapter.setCmcdLocated(configurationId, located)
+    }
+
+    override fun handleCmcdConfigurationUpdate(requests: List<QoeMetricsRequest>) {
+        // the session identifier, the content identifier and the start of the session stay: only the configurations change
+        val cmcdRequests = requests + applicationMetricsConfigurations
+        exoPlayerAdapter.updateCmcdConfiguration(cmcdRequests.mapNotNull { it.scheme }, cmcdTermsByScheme(cmcdRequests), cmcdRequests)
     }
 
     @UnstableApi
@@ -100,11 +110,27 @@ class SessionController(
         }
     }
 
-    /** The cell information changes during a media delivery session (a location change, clause 5.3.6.1 of TS 26.510): one event per change, from Android 12 */
+    /**
+     * The cell information changes during a media delivery session (a location change, clause 5.3.6.1 of TS 26.510): one event per change.
+     * TelephonyCallback from Android 12; below it the PhoneStateListener that it replaces (Android 10 and 11, minSdk 29).
+     */
     private fun listenToCellInfoChanges() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || cellInfoListener != null) return
+        if (cellInfoListener != null) return
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
         val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        if (sdkInt < Build.VERSION_CODES.S) {
+            @Suppress("DEPRECATION")
+            val listener = object : PhoneStateListener(context.mainExecutor) {
+                @Deprecated("Deprecated in Java")
+                override fun onCellInfoChanged(cellInfo: MutableList<CellInfo>?) {
+                    if (cellInfo != null) exoPlayerAdapter.eventBus.post(CellInfoUpdatedEvent(cellInfo))
+                }
+            }
+            @Suppress("DEPRECATION")
+            telephonyManager.listen(listener, PhoneStateListener.LISTEN_CELL_INFO)
+            cellInfoListener = listener
+            return
+        }
         val callback = object : TelephonyCallback(), TelephonyCallback.CellInfoListener {
             override fun onCellInfoChanged(cellInfo: MutableList<CellInfo>) {
                 exoPlayerAdapter.eventBus.post(CellInfoUpdatedEvent(cellInfo))
