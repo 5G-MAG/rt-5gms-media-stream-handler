@@ -6,9 +6,10 @@ import com.fivegmag.a5gmscommonlibrary.helpers.ClientDataReportingModes
 import com.fivegmag.a5gmscommonlibrary.session.ClientDataReportingEntry
 
 /**
- * What the Media Player Entry declares for CMCD, applied to one request (TS 26.512 V19.3.0 clause 10.5.1): it restricts the service locations and
- * media object types for which CMCD information is reported, gives its own sid and cid, and an explicit set of keys that is reported in addition to
- * the keys of the client metrics reporting configurations. A request that no entry covers carries the sid only (clause 10.1A).
+ * What the Media Player Entry declares for CMCD, applied to one request (TS 26.512 V19.3.0 clause 10.5.1, ISO/IEC 23009-1:2026 clause K.3.7): it
+ * restricts the service locations and request types (here the CMCD object types of the requests, see ClientDataReportingParser) for which CMCD
+ * information is reported, gives its own sid and cid, and an explicit set of keys that is reported in addition to
+ * the keys of the client metrics reporting configurations. A request that no entry covers gets none of the keys of the entries: only the configured keys and the sid (clause 10.1A).
  * With several entries that cover a request the keys are joined and the first one that has a session or content identifier gives it.
  */
 object CmcdMediaPlayerEntry {
@@ -56,8 +57,8 @@ object CmcdMediaPlayerEntry {
     fun formatData(pairs: List<Pair<String, String?>>): String = pairs.joinToString(",") { (key, value) -> if (value == null) key else "$key=$value" }
 
     /**
-     * The pairs of one request after the entries are applied. A key stays if it is the sid, or, when an entry covers the request, if the
-     * configurations allow it ([configuredAllowed]) or an entry that covers the request names it. The sid and cid of an entry replace those of the
+     * The pairs of one request after the entries are applied. A key stays if it is the sid or the configurations allow it
+     * ([configuredAllowed]), or an entry that covers the request names it. The sid and cid of an entry replace those of the
      * player. [application] is the cmcdReporting setting of the application (clause 13.2.4): it restricts nothing, adds its keys and, being a
      * setting of the application, its content identifier takes precedence over the one of an entry.
      */
@@ -71,9 +72,10 @@ object CmcdMediaPlayerEntry {
         val covering = covering(entries, url, pairs.firstOrNull { it.first == "ot" }?.second)
         val inScope = entries.isEmpty() || covering.isNotEmpty()
         val named = keysOf(covering) + application?.keys.orEmpty()
-        val sessionId = covering.firstNotNullOfOrNull { it.sessionId }
-        val contentId = application?.contentId ?: covering.firstNotNullOfOrNull { it.contentId }
-        return pairs.filter { (key, _) -> key == "sid" || (inScope && (configuredAllowed(key) || key in named)) }.map { (key, value) ->
+        // the identifier of an entry is for the key that its keys name (ISO/IEC 23009-1 table K.8: sessionID if sid, contentID if cid is present in keys)
+        val sessionId = covering.firstOrNull { it.sessionId != null && "sid" in it.keys.orEmpty() }?.sessionId
+        val contentId = application?.contentId ?: covering.firstOrNull { it.contentId != null && "cid" in it.keys.orEmpty() }?.contentId
+        return pairs.filter { (key, _) -> key == "sid" || configuredAllowed(key) || (inScope && key in named) }.map { (key, value) ->
             when {
                 key == "sid" && covering.isNotEmpty() && sessionId != null -> key to quote(sessionId)
                 key == "cid" && contentId != null -> key to quote(contentId)
