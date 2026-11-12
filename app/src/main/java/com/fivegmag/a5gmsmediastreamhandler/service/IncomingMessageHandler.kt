@@ -56,6 +56,10 @@ class IncomingMessageHandler() {
                     msg.data.getString(SessionHandlerBundleKeys.SESSION_HANDLING_STATE)
                 )
 
+                SessionHandlerMessageTypes.LAUNCH_SERVICE_URL_REPLY -> generalSessionListener?.onServiceUrlLaunched(
+                    msg.data.getInt(SessionHandlerBundleKeys.HTTP_RESPONSE_CODE)
+                )
+
                 SessionHandlerMessageTypes.GET_CONSUMPTION_REPORTING_STATUS_REPLY -> generalSessionListener?.onConsumptionReportingStatus(
                     msg.data.getString(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER),
                     msg.data.getString(SessionHandlerBundleKeys.CONSUMPTION_REPORT)

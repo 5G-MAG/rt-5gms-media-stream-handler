@@ -12,8 +12,10 @@ import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStartTriggerEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
+import com.fivegmag.a5gmscommonlibrary.helpers.CmcdSchemes
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
 import com.fivegmag.a5gmscommonlibrary.models.EntryPoint
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
@@ -35,10 +37,20 @@ class SessionController(
                 ?: entryPoints.firstOrNull { it.contentType == ContentTypes.HLS }
 
         // the metrics terms of each scheme; a configuration without terms selects the whole class, so the scheme then has no restriction
-        fun cmcdTermsByScheme(playbackRequest: PlaybackRequest): Map<String, List<String>> =
-            playbackRequest.qoeMetricsRequests.filter { it.scheme != null }.groupBy { it.scheme!! }.mapValues { (_, requests) ->
-                if (requests.any { it.metrics.isNullOrEmpty() }) emptyList() else requests.flatMap { it.metrics ?: emptyList() }
+        fun cmcdTermsByScheme(playbackRequest: PlaybackRequest): Map<String, List<String>> = cmcdTermsByScheme(playbackRequest.qoeMetricsRequests)
+
+        fun cmcdTermsByScheme(requests: List<QoeMetricsRequest>): Map<String, List<String>> =
+            requests.filter { it.scheme != null }.groupBy { it.scheme!! }.mapValues { (_, ofScheme) ->
+                if (ofScheme.any { it.metrics.isNullOrEmpty() }) emptyList() else ofScheme.flatMap { it.metrics ?: emptyList() }
             }
+    }
+
+    // metricsConfiguration[] of the settings API (TS 26.512 V19.3.0 clause 13.2.4), CMCD schemes only: reported together with the configurations of
+    // the playback request (clause 10.5.1: the union)
+    @Volatile private var applicationMetricsConfigurations: List<QoeMetricsRequest> = emptyList()
+
+    fun setApplicationMetricsConfigurations(requests: List<QoeMetricsRequest>) {
+        applicationMetricsConfigurations = requests.filter { CmcdSchemes.KEYS.containsKey(it.scheme) }
     }
 
     private val cellInfoCallback = object : TelephonyManager.CellInfoCallback() {
@@ -67,14 +79,18 @@ class SessionController(
         // This marks the instant when the DASH player receives the playback-start trigger
         exoPlayerAdapter.eventBus.post(PlaybackStartTriggerEvent(android.os.SystemClock.elapsedRealtime()))
 
+        // the mode of the 3GPP Service URL (table 12.4-1) and the client data reporting of the Media Player Entry (clause 10.5.1); the mode
+        // is a setting of this playback, so a later playback without one does not keep it
+        exoPlayerAdapter.configureCmcdMediaPlayerEntry(playbackRequest.clientDataReporting.orEmpty(), playbackRequest.clientDataReportingMode)
         // CMCD is reported only for the classes that the provisioned metrics schemes name
+        val cmcdRequests = playbackRequest.qoeMetricsRequests + applicationMetricsConfigurations
         exoPlayerAdapter.configureCmcd(
-            playbackRequest.qoeMetricsRequests.mapNotNull { it.scheme },
+            cmcdRequests.mapNotNull { it.scheme },
             playbackRequest.mediaDeliverySessionIdentifier,
             playbackRequest.contentIdentifier,
-            cmcdTermsByScheme(playbackRequest)
+            cmcdTermsByScheme(cmcdRequests)
         )
-        exoPlayerAdapter.configureCmcdReportingWindows(playbackRequest.qoeMetricsRequests)
+        exoPlayerAdapter.configureCmcdReportingWindows(cmcdRequests)
 
         val entryPoint = selectEntryPoint(playbackRequest.entryPoints)
         if (entryPoint != null) {

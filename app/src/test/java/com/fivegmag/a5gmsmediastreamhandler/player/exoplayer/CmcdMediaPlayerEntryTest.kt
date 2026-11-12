@@ -1,0 +1,167 @@
+package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
+
+import android.net.Uri
+import androidx.media3.datasource.DataSpec
+import com.fivegmag.a5gmscommonlibrary.session.ClientDataReportingEntry
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+// TS 26.512 V19.3.0 clause 10.5.1 and listing G.5.2.4-1: dist1 and dist2, video segments only, a set of keys, a content identifier
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33])
+class CmcdMediaPlayerEntryTest {
+    private val dist1 = "http://distribution-1.example/"
+    private val dist2 = "http://distribution-2.example/"
+    private val entry1 = ClientDataReportingEntry(
+        arrayListOf(dist1), arrayListOf("v", "av"), null, null, "md:cid:EIDR:1", arrayListOf("br", "bl", "cid", "dl", "mtp", "nor", "ot", "sf", "v")
+    )
+    private val entry2 = ClientDataReportingEntry(arrayListOf(dist2), arrayListOf("v", "av"), null, null, "md:cid:EIDR:1", arrayListOf("br", "bl", "cid", "dl", "mtp", "nor"))
+    private val entries = listOf(entry1, entry2)
+    private val nothingConfigured = { _: String -> false }
+
+    private fun pairs(text: String) = CmcdMediaPlayerEntry.parseData(text)
+
+    private fun apply(text: String, url: String, entries: List<ClientDataReportingEntry> = this.entries, configured: (String) -> Boolean = nothingConfigured) =
+        CmcdMediaPlayerEntry.formatData(CmcdMediaPlayerEntry.apply(pairs(text), entries, url, configured))
+
+    @Test
+    fun dataIsReadAndWrittenAsItIs() {
+        val text = """bl=21300,br=3200,cid="a,b\"c",nor="x%2Fy",su,sid="s""""
+        assertEquals(listOf("bl", "br", "cid", "nor", "su", "sid"), pairs(text).map { it.first })
+        assertEquals("\"a,b\\\"c\"", pairs(text)[2].second)
+        assertNull(pairs(text)[4].second)
+        assertEquals(text, CmcdMediaPlayerEntry.formatData(pairs(text)))
+    }
+
+    @Test
+    fun aRequestOfAServiceLocationAndObjectTypeTheEntryCoversCarriesItsKeys() {
+        // sf is a key of entry 1 and not of entry 2, so it is carried only to dist1; ot is carried because entry 1 names it; v is named too
+        assertEquals("bl=1,br=2,cid=\"md:cid:EIDR:1\",ot=v,sf=d", apply("""bl=1,br=2,cid="x",ot=v,sf=d,su""", dist1 + "seg1.m4s"))
+        assertEquals("bl=1,br=2,cid=\"md:cid:EIDR:1\"", apply("""bl=1,br=2,cid="x",ot=v,sf=d,su""", dist2 + "seg1.m4s"))
+    }
+
+    @Test
+    fun aRequestThatNoEntryCoversCarriesTheSidOnly() {
+        assertEquals("""sid="s"""", apply("""bl=1,ot=m,sid="s"""", dist1 + "manifest.mpd"))
+        assertEquals("""sid="s"""", apply("""bl=1,ot=v,sid="s"""", "http://other.example/seg.m4s"))
+        // no ot: the object type cannot be told, an entry that restricts the object types does not cover it
+        assertEquals("""sid="s"""", apply("""bl=1,sid="s"""", dist1 + "seg.m4s"))
+    }
+
+    @Test
+    fun theKeysOfTheConfigurationsAreKeptWhereAnEntryCoversTheRequest() {
+        assertEquals("bd=1,bl=2,ot=v", apply("bd=1,bl=2,ot=v,pr=1", dist2 + "seg.m4s", configured = { it == "bd" || it == "ot" }))
+    }
+
+    @Test
+    fun anEntryWithoutRestrictionCoversEveryRequest() {
+        val all = listOf(ClientDataReportingEntry(keys = arrayListOf("bl")))
+        assertEquals("bl=1", apply("bl=1,br=2", "http://any.example/m.mpd", all))
+    }
+
+    @Test
+    fun theSessionAndContentIdentifierOfTheEntryReplaceThoseOfThePlayer() {
+        val own = listOf(ClientDataReportingEntry(sessionId = "entry-sid", contentId = "entry-cid", keys = arrayListOf("cid")))
+        assertEquals("""cid="entry-cid",sid="entry-sid"""", apply("""cid="c",sid="s"""", "http://any.example/seg.m4s", own))
+    }
+
+    @Test
+    fun theKeysAndObjectTypesAreWhatThePlayerHasToProduce() {
+        assertEquals(setOf("br", "bl", "cid", "dl", "mtp", "nor", "ot", "sf", "v"), CmcdMediaPlayerEntry.keysOf(entries))
+        assertTrue(CmcdMediaPlayerEntry.needsObjectType(entries))
+        assertFalse(CmcdMediaPlayerEntry.needsObjectType(listOf(ClientDataReportingEntry(keys = arrayListOf("bl")))))
+    }
+
+    @Test
+    fun theModesAreThoseOfTheServiceUrl() {
+        assertEquals(true, CmcdMediaPlayerEntry.usesQueryParameters("cmcd-query"))
+        assertEquals(false, CmcdMediaPlayerEntry.usesQueryParameters("cmcd-headers"))
+        assertNull(CmcdMediaPlayerEntry.usesQueryParameters(null))
+    }
+
+    @Test
+    fun theHeadersOfARequestAreReducedTogether() {
+        val spec = DataSpec.Builder().setUri(dist1 + "seg.m4s").setHttpRequestHeaders(
+            mapOf("CMCD-Object" to "br=1,ot=v", "CMCD-Request" to "bl=2,dl=3,su", "CMCD-Session" to """cid="c",sid="s",sf=d""", "CMCD-Status" to "bs", "Range" to "bytes=0-")
+        ).build()
+        val resolved = CmcdMediaPlayerEntry.resolve(spec, entries, { it == "bs" })
+        assertEquals("br=1,ot=v", resolved.httpRequestHeaders["CMCD-Object"])
+        assertEquals("bl=2,dl=3", resolved.httpRequestHeaders["CMCD-Request"])
+        assertEquals("""cid="md:cid:EIDR:1",sid="s",sf=d""", resolved.httpRequestHeaders["CMCD-Session"])
+        assertEquals("bs", resolved.httpRequestHeaders["CMCD-Status"])
+        assertEquals("bytes=0-", resolved.httpRequestHeaders["Range"])
+    }
+
+    @Test
+    fun aHeaderThatLosesAllItsKeysIsRemoved() {
+        val spec = DataSpec.Builder().setUri(dist1 + "manifest.mpd").setHttpRequestHeaders(
+            mapOf("CMCD-Object" to "ot=m", "CMCD-Request" to "bl=2", "CMCD-Session" to """sid="s"""")
+        ).build()
+        val resolved = CmcdMediaPlayerEntry.resolve(spec, entries, nothingConfigured)
+        assertEquals(mapOf("CMCD-Session" to """sid="s""""), resolved.httpRequestHeaders)
+    }
+
+    @Test
+    fun theQueryOfARequestIsReducedAndTheOtherParametersAreLeftAlone() {
+        val cmcd = Uri.encode("""bl=1,br=2,cid="x",ot=v,sf=d,su,sid="s"""")
+        val spec = DataSpec.Builder().setUri(Uri.parse(dist2 + "seg.m4s?token=a%20b&CMCD=$cmcd&x=1")).build()
+        val resolved = CmcdMediaPlayerEntry.resolve(spec, entries, nothingConfigured)
+        val query = resolved.uri.encodedQuery!!.split('&')
+        assertEquals("token=a%20b", query[0])
+        assertEquals("x=1", query[2])
+        assertEquals("""bl=1,br=2,cid="md:cid:EIDR:1",sid="s"""", Uri.decode(query[1].substringAfter('=')))
+    }
+
+    @Test
+    fun aQueryThatLosesAllItsKeysLosesTheParameter() {
+        val spec = DataSpec.Builder().setUri(Uri.parse(dist1 + "m.mpd?CMCD=" + Uri.encode("bl=1"))).build()
+        val resolved = CmcdMediaPlayerEntry.resolve(spec, entries, nothingConfigured)
+        assertNull(resolved.uri.encodedQuery)
+    }
+
+    @Test
+    fun withoutEntriesTheRequestIsLeftAsItIs() {
+        val spec = DataSpec.Builder().setUri(dist1 + "seg.m4s").setHttpRequestHeaders(mapOf("CMCD-Request" to "bl=2")).build()
+        assertSame(spec, CmcdMediaPlayerEntry.resolve(spec, emptyList(), nothingConfigured))
+    }
+
+    // clause 13.2.4: the cmcdReporting setting of the application adds its keys to the configured ones and restricts nothing
+    @Test
+    fun theKeysOfTheApplicationAreAddedToTheConfiguredKeys() {
+        val application = ClientDataReportingEntry(keys = arrayListOf("mtp"), contentId = "app-cid")
+        val text = """bl=1,cid="c",mtp=2,br=3,sid="s""""
+        val reduced = CmcdMediaPlayerEntry.apply(pairs(text), emptyList(), "http://any.example/seg.m4s", { it == "bl" || it == "cid" }, application)
+        assertEquals("""bl=1,cid="app-cid",mtp=2,sid="s"""", CmcdMediaPlayerEntry.formatData(reduced))
+    }
+
+    // clause 10.5.1: the restriction of the Media Player Entry stays: a request that it does not cover carries the sid only, whatever the application adds
+    @Test
+    fun theApplicationDoesNotLiftTheRestrictionOfTheEntry() {
+        val application = ClientDataReportingEntry(keys = arrayListOf("mtp"))
+        val reduced = CmcdMediaPlayerEntry.apply(pairs("""bl=1,mtp=2,ot=m,sid="s""""), entries, dist1 + "manifest.mpd", { true }, application)
+        assertEquals("""sid="s"""", CmcdMediaPlayerEntry.formatData(reduced))
+    }
+
+    // clause 13.2.4: the setting of the application takes precedence over the content identifier of the entry
+    @Test
+    fun theContentIdentifierOfTheApplicationTakesPrecedenceOverTheEntry() {
+        val application = ClientDataReportingEntry(contentId = "app-cid")
+        val reduced = CmcdMediaPlayerEntry.apply(pairs("""cid="c",ot=v"""), entries, dist1 + "seg.m4s", { it == "cid" }, application)
+        // ot is a key that entry 1 names
+        assertEquals("""cid="app-cid",ot=v""", CmcdMediaPlayerEntry.formatData(reduced))
+    }
+
+    @Test
+    fun theApplicationAloneIsAppliedToTheHeadersOfARequest() {
+        val spec = DataSpec.Builder().setUri("http://any.example/seg.m4s").setHttpRequestHeaders(mapOf("CMCD-Request" to "bl=2,mtp=3,su")).build()
+        val resolved = CmcdMediaPlayerEntry.resolve(spec, emptyList(), nothingConfigured, ClientDataReportingEntry(keys = arrayListOf("mtp")))
+        assertEquals("mtp=3", resolved.httpRequestHeaders["CMCD-Request"])
+    }
+}

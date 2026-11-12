@@ -30,4 +30,12 @@ class CmcdTermsBySchemeTest {
         val terms = SessionController.cmcdTermsByScheme(playback(request(CmcdSchemes.REQUEST, "a"), request(CmcdSchemes.REQUEST)))
         assertEquals(emptyList<String>(), terms[CmcdSchemes.REQUEST])
     }
+
+    // clause 10.5.1: the union of metricsConfiguration[] of the settings API and the configurations of the Service Access Information
+    @Test
+    fun theTermsOfTheSettingsApiAreJoinedWithThoseOfTheServiceAccessInformation() {
+        val terms = SessionController.cmcdTermsByScheme(listOf(request(CmcdSchemes.REQUEST, "a"), request(CmcdSchemes.REQUEST, "b"), request(CmcdSchemes.OBJECT, "c")))
+        assertEquals(listOf("a", "b"), terms[CmcdSchemes.REQUEST])
+        assertEquals(listOf("c"), terms[CmcdSchemes.OBJECT])
+    }
 }

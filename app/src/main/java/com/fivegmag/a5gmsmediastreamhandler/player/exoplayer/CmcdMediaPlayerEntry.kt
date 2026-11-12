@@ -1,0 +1,118 @@
+package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
+
+import android.net.Uri
+import androidx.media3.datasource.DataSpec
+import com.fivegmag.a5gmscommonlibrary.helpers.ClientDataReportingModes
+import com.fivegmag.a5gmscommonlibrary.session.ClientDataReportingEntry
+
+/**
+ * What the Media Player Entry declares for CMCD, applied to one request (TS 26.512 V19.3.0 clause 10.5.1): it restricts the service locations and
+ * media object types for which CMCD information is reported, gives its own sid and cid, and an explicit set of keys that is reported in addition to
+ * the keys of the client metrics reporting configurations. A request that no entry covers carries the sid only (clause 10.1A).
+ * With several entries that cover a request the keys are joined and the first one that has a session or content identifier gives it.
+ */
+object CmcdMediaPlayerEntry {
+    private const val QUERY_PARAMETER = "CMCD"
+    private val HEADERS = listOf("CMCD-Object", "CMCD-Request", "CMCD-Session", "CMCD-Status")
+
+    /** true for the URL query, false for the HTTP request headers, null for a value that is none of the modes */
+    fun usesQueryParameters(mode: String?): Boolean? = when (mode) {
+        ClientDataReportingModes.CMCD_QUERY -> true
+        ClientDataReportingModes.CMCD_HEADERS -> false
+        else -> null
+    }
+
+    /** The explicit keys of all entries: the player has to produce them so that a request that an entry covers can carry them */
+    fun keysOf(entries: List<ClientDataReportingEntry>): Set<String> = entries.flatMap { it.keys.orEmpty() }.toSet()
+
+    /** Whether an entry restricts the media object types: the player then has to produce the ot key to tell them apart */
+    fun needsObjectType(entries: List<ClientDataReportingEntry>): Boolean = entries.any { it.objectTypes != null }
+
+    /** The entries that cover a request for [url] of the CMCD object type [objectType] (null when the request carries none) */
+    fun covering(entries: List<ClientDataReportingEntry>, url: String, objectType: String?): List<ClientDataReportingEntry> = entries.filter { entry ->
+        (entry.serviceLocationUrls == null || entry.serviceLocationUrls!!.any { url.startsWith(it) }) &&
+            (entry.objectTypes == null || (objectType != null && objectType in entry.objectTypes!!))
+    }
+
+    /** The key and the text after "=" (null for a key without value) of CMCD data, in order; commas inside double quotes do not separate */
+    fun parseData(text: String): List<Pair<String, String?>> {
+        val result = ArrayList<Pair<String, String?>>()
+        var start = 0
+        var quoted = false
+        for (i in 0..text.length) {
+            if (i < text.length && text[i] == '"' && (i == 0 || text[i - 1] != '\\')) quoted = !quoted
+            if (i == text.length || (text[i] == ',' && !quoted)) {
+                val item = text.substring(start, i).trim()
+                if (item.isNotEmpty()) {
+                    val equals = item.indexOf('=')
+                    result.add(if (equals < 0) item to null else item.substring(0, equals) to item.substring(equals + 1))
+                }
+                start = i + 1
+            }
+        }
+        return result
+    }
+
+    fun formatData(pairs: List<Pair<String, String?>>): String = pairs.joinToString(",") { (key, value) -> if (value == null) key else "$key=$value" }
+
+    /**
+     * The pairs of one request after the entries are applied. A key stays if it is the sid, or, when an entry covers the request, if the
+     * configurations allow it ([configuredAllowed]) or an entry that covers the request names it. The sid and cid of an entry replace those of the
+     * player. [application] is the cmcdReporting setting of the application (clause 13.2.4): it restricts nothing, adds its keys and, being a
+     * setting of the application, its content identifier takes precedence over the one of an entry.
+     */
+    fun apply(
+        pairs: List<Pair<String, String?>>,
+        entries: List<ClientDataReportingEntry>,
+        url: String,
+        configuredAllowed: (String) -> Boolean,
+        application: ClientDataReportingEntry? = null
+    ): List<Pair<String, String?>> {
+        val covering = covering(entries, url, pairs.firstOrNull { it.first == "ot" }?.second)
+        val inScope = entries.isEmpty() || covering.isNotEmpty()
+        val named = keysOf(covering) + application?.keys.orEmpty()
+        val sessionId = covering.firstNotNullOfOrNull { it.sessionId }
+        val contentId = application?.contentId ?: covering.firstNotNullOfOrNull { it.contentId }
+        return pairs.filter { (key, _) -> key == "sid" || (inScope && (configuredAllowed(key) || key in named)) }.map { (key, value) ->
+            when {
+                key == "sid" && covering.isNotEmpty() && sessionId != null -> key to quote(sessionId)
+                key == "cid" && contentId != null -> key to quote(contentId)
+                else -> key to value
+            }
+        }
+    }
+
+    private fun quote(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+    /** The request with the CMCD data that the player put in its headers or in its URL query reduced as [apply] says; as it is without entries */
+    fun resolve(
+        dataSpec: DataSpec,
+        entries: List<ClientDataReportingEntry>,
+        configuredAllowed: (String) -> Boolean,
+        application: ClientDataReportingEntry? = null
+    ): DataSpec {
+        if (entries.isEmpty() && application == null) return dataSpec
+        val url = dataSpec.uri.toString()
+        val inHeaders = HEADERS.filter { dataSpec.httpRequestHeaders.containsKey(it) }
+        if (inHeaders.isNotEmpty()) {
+            val byHeader = inHeaders.associateWith { parseData(dataSpec.httpRequestHeaders.getValue(it)) }
+            // the entries are applied to the data of all headers together: the ot key of one tells which entries cover the request
+            val applied = apply(byHeader.values.flatten(), entries, url, configuredAllowed, application).associateBy { it.first }
+            val headers = HashMap(dataSpec.httpRequestHeaders)
+            for ((name, pairs) in byHeader) {
+                val reduced = pairs.mapNotNull { applied[it.first] }
+                if (reduced.isEmpty()) headers.remove(name) else headers[name] = formatData(reduced)
+            }
+            return dataSpec.withRequestHeaders(headers)
+        }
+        val query = dataSpec.uri.encodedQuery ?: return dataSpec
+        val parts = query.split('&')
+        val index = parts.indexOfFirst { it.startsWith("$QUERY_PARAMETER=") }
+        if (index < 0) return dataSpec
+        val pairs = parseData(Uri.decode(parts[index].substringAfter('=')))
+        val reduced = apply(pairs, entries, url, configuredAllowed, application)
+        val rebuilt = parts.toMutableList()
+        if (reduced.isEmpty()) rebuilt.removeAt(index) else rebuilt[index] = "$QUERY_PARAMETER=" + Uri.encode(formatData(reduced))
+        return dataSpec.withUri(dataSpec.uri.buildUpon().encodedQuery(rebuilt.joinToString("&").ifEmpty { null }).build())
+    }
+}

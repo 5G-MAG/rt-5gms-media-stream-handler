@@ -9,6 +9,7 @@ import androidx.media3.common.util.Util
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.dash.manifest.DashManifest
@@ -17,6 +18,7 @@ import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_QUERY_PARAMETER
 import androidx.media3.exoplayer.upstream.CmcdConfiguration.MODE_REQUEST_HEADER
 import com.fivegmag.a5gmscommonlibrary.helpers.CmcdSchemes
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
+import com.fivegmag.a5gmscommonlibrary.session.ClientDataReportingEntry
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
@@ -42,8 +44,16 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         fun getCmcdMode(useQueryParameters: Boolean): Int =
             if (useQueryParameters) MODE_QUERY_PARAMETER else MODE_REQUEST_HEADER
 
+        // the transmission mode of one playback (TS 26.512 V19.3.0 clauses 10.5.1 and 12.4): the client-data-reporting-mode of the 3GPP Service URL
+        // takes precedence over the Media Player Entry; so does the setting of the application, which the URL has not overridden; the entry is
+        // honoured only when neither gave a mode
+        fun getCmcdUsesQueryParameters(urlMode: String?, applicationSetting: Boolean?, entries: List<ClientDataReportingEntry>): Boolean =
+            CmcdMediaPlayerEntry.usesQueryParameters(urlMode) ?: applicationSetting
+                ?: entries.firstNotNullOfOrNull { CmcdMediaPlayerEntry.usesQueryParameters(it.mode) } ?: false
+
         // the keys of the provisioned schemes, plus sid: every M4d request cites the media delivery session identifier
-        // in the CMCD-Session header (TS 26.512 clauses 10.1A and 6.2.3.6), also when no CMCD scheme is provisioned
+        // in the CMCD-Session header (TS 26.512 clauses 10.1A and 6.2.3.6), also when no CMCD scheme is provisioned;
+        // plus cid whenever a CMCD report is made (clause 10.5.1: the content identifier is in every report, if available)
         fun getCmcdAllowedKeys(
             schemes: Collection<String>,
             sessionId: String?,
@@ -54,6 +64,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                 val classKeys = CmcdSchemes.KEYS[scheme] ?: continue
                 keys.addAll(selectCmcdKeys(scheme, classKeys, metricsByScheme[scheme]))
             }
+            if (keys.isNotEmpty()) keys.add("cid")
             if (keys.isNotEmpty() || sessionId != null) keys.add("sid")
             return keys
         }
@@ -68,7 +79,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                 val startMs = (request.reportingStartOffset ?: 0L).coerceAtLeast(0L) * 1000L
                 CmcdRule(
                     request.metricsReportingConfigurationId,
-                    selectCmcdKeys(scheme, classKeys, request.metrics),
+                    withContentId(selectCmcdKeys(scheme, classKeys, request.metrics)),
                     startMs,
                     request.reportingDuration?.coerceAtLeast(0L)?.let { startMs + it * 1000L },
                     request.locationFiltered
@@ -83,6 +94,10 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                     key in it.keys && elapsedMs >= it.startMs && (it.endMs == null || elapsedMs <= it.endMs) &&
                         (!it.locationFiltered || located(it.configurationId))
                 }
+
+        // clause 10.5.1: the content identifier is in every CMCD report, whatever class the configuration selects (the player leaves it out
+        // when there is none); a configuration that selects no key makes no report
+        private fun withContentId(keys: Set<String>): Set<String> = if (keys.isEmpty()) keys else keys + "cid"
 
         // TS 26.512 V19.3.0 clause E.2.5: a term is #<class> or #<class>/<key>, the class being the one of the scheme; no term selects the
         // whole class (clause E.2.1: the terminal path elements are pruned to select all below a common branch)
@@ -103,7 +118,10 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     @Volatile private var cmcdAllowedKeys: Set<String> = emptySet()
     @Volatile private var cmcdSessionId: String? = null
     @Volatile private var cmcdContentId: String? = null
-    @Volatile private var cmcdUseQueryParameters = false
+    @Volatile private var cmcdApplicationSetting: Boolean? = null
+    @Volatile private var cmcdUrlMode: String? = null
+    @Volatile private var cmcdEntries: List<ClientDataReportingEntry> = emptyList()
+    @Volatile private var cmcdApplicationReporting: ClientDataReportingEntry? = null
     @Volatile private var cmcdRules: List<CmcdRule> = emptyList()
     @Volatile private var cmcdStartMs = 0L
     private val cmcdLocated = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
@@ -125,7 +143,28 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     }
 
     override fun setCmcdUseQueryParameters(useQueryParameters: Boolean) {
-        cmcdUseQueryParameters = useQueryParameters
+        cmcdApplicationSetting = useQueryParameters
+    }
+
+    override fun configureCmcdMediaPlayerEntry(entries: List<ClientDataReportingEntry>, clientDataReportingMode: String?) {
+        cmcdEntries = entries
+        cmcdUrlMode = clientDataReportingMode
+    }
+
+    override fun setCmcdReporting(keys: List<String>?, contentId: String?, useQueryParameters: Boolean?) {
+        cmcdApplicationReporting = if (keys == null && contentId == null) null else ClientDataReportingEntry(keys = keys?.let { ArrayList(it) }, contentId = contentId)
+        useQueryParameters?.let { cmcdApplicationSetting = it }
+    }
+
+    // the content identifier of the configuration, or else the one that the application (cmcdReporting) or a Media Player Entry declares (clause 10.5.1)
+    private fun cmcdEffectiveContentId(): String? =
+        cmcdContentId ?: cmcdApplicationReporting?.contentId ?: cmcdEntries.firstNotNullOfOrNull { it.contentId }
+
+    // a key that the client metrics reporting configurations allow now (their classes, reporting windows and locations)
+    private fun isCmcdKeyConfigured(key: String): Boolean {
+        if (key == "cid" && cmcdEffectiveContentId() == null) return false
+        return cmcdAllowedKeys.contains(key) &&
+            isCmcdKeyInWindow(cmcdRules, key, android.os.SystemClock.elapsedRealtime() - cmcdStartMs) { cmcdLocated[it] == true }
     }
 
 
@@ -137,7 +176,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         val deviceName = android.os.Build.MODEL
         val osVersion = android.os.Build.VERSION.RELEASE
         val modifiedUserAgent =
-            "${UserAgentTokens.FIVE_G_MS_REL_17_MEDIA_STREAM_HANDLER} $defaultUserAgent (Android $osVersion; $deviceName)"
+            "${UserAgentTokens.FIVE_G_MS_MEDIA_STREAM_HANDLER} $defaultUserAgent (Android $osVersion; $deviceName)"
         val httpDataSourceFactory: HttpDataSource.Factory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent(modifiedUserAgent)
@@ -145,20 +184,27 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         // transferListenerRef is captured by the factory lambda and set after playerListener is created.
         // DataSources are created lazily when media loads, so the listener is guaranteed to be set by then.
         var transferListenerRef: ExoPlayerListener? = null
-        val dataSourceFactory =
+        val listenedDataSourceFactory =
             DataSource.Factory {
                 val dataSource = httpDataSourceFactory.createDataSource()
                 transferListenerRef?.let { dataSource.addTransferListener(it) }
                 dataSource
             }
+        // the Media Player Entry restricts the CMCD data per request (clause 10.5.1): it is reduced here, where the request is known
+        val dataSourceFactory = ResolvingDataSource.Factory(listenedDataSourceFactory, object : ResolvingDataSource.Resolver {
+            override fun resolveDataSpec(dataSpec: androidx.media3.datasource.DataSpec) =
+                CmcdMediaPlayerEntry.resolve(dataSpec, cmcdEntries, { isCmcdKeyConfigured(it) }, cmcdApplicationReporting)
+        })
 
         val cmcdConfigurationFactory = object : CmcdConfiguration.Factory {
             override fun createCmcdConfiguration(mediaItem: MediaItem): CmcdConfiguration {
                 val cmcdConfig = object : CmcdConfiguration.RequestConfig {
+                    // the keys that the player produces: those of the configurations and those that a Media Player Entry names (ot too, to tell the
+                    // object types apart); the entries are applied to each request in the data source above
                     override fun isKeyAllowed(key: String): Boolean {
-                        if (key == "cid" && cmcdContentId == null) return false
-                        return cmcdAllowedKeys.contains(key) &&
-                            isCmcdKeyInWindow(cmcdRules, key, android.os.SystemClock.elapsedRealtime() - cmcdStartMs) { cmcdLocated[it] == true }
+                        if (isCmcdKeyConfigured(key)) return true
+                        return key in CmcdMediaPlayerEntry.keysOf(cmcdEntries) || key in cmcdApplicationReporting?.keys.orEmpty() ||
+                            (key == "ot" && CmcdMediaPlayerEntry.needsObjectType(cmcdEntries))
                     }
 
                     override fun getRequestedMaximumThroughputKbps(throughputKbps: Int): Int {
@@ -168,9 +214,9 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
 
                 // the media delivery session identifier is the CMCD sid (clause 10.5.1); the Media Session Handler gives it before playback
                 val sessionId = cmcdSessionId ?: UUID.randomUUID().toString()
-                val mode = getCmcdMode(cmcdUseQueryParameters)
+                val mode = getCmcdMode(getCmcdUsesQueryParameters(cmcdUrlMode, cmcdApplicationSetting, cmcdEntries))
 
-                return CmcdConfiguration(sessionId, cmcdContentId, cmcdConfig, mode)
+                return CmcdConfiguration(sessionId, cmcdEffectiveContentId(), cmcdConfig, mode)
             }
         }
 

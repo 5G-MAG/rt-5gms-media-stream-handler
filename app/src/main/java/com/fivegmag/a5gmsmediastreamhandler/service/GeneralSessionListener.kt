@@ -13,6 +13,9 @@ interface GeneralSessionListener {
     /** The general status of table 11.2.3-1; both are null when the identifier is not that of a media delivery session */
     fun onSessionStatus(mediaDeliverySessionIdentifier: String?, contentIdentifier: String?, sessionHandlingState: String?)
 
+    /** The HTTP status that the Media Session Handler returns for a 3GPP Service URL (TS 26.512 V19.3.0 clause 4.8.3.4): 200, 400, 404 or 502 */
+    fun onServiceUrlLaunched(httpStatus: Int) {}
+
     /** The most recently sent consumption report of table 11.5.2-1; null when none has been sent */
     fun onConsumptionReportingStatus(mediaDeliverySessionIdentifier: String?, consumptionReport: String?) {}
 

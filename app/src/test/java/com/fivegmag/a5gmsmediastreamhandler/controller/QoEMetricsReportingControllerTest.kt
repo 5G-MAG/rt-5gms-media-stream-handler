@@ -124,4 +124,25 @@ class QoEMetricsReportingControllerTest {
             )
         }
     }
+
+    // CMCD is reported in-band at M4d: the Media Stream Handler has no QoE reporter for it and posts nothing to the Media Session Handler
+    @Test
+    fun aCmcdConfigurationPostsNoQoeReport() {
+        val request = com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest(
+            scheme = com.fivegmag.a5gmscommonlibrary.helpers.CmcdSchemes.REQUEST, samplingPeriod = 0, reportingInterval = 1, metricsReportingConfigurationId = "cmcd-1"
+        )
+        val playbackRequest = mockk<com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest>(relaxed = true)
+        io.mockk.every { playbackRequest.mediaStreamingSessionIdentifier } returns "session-1"
+        io.mockk.every { playbackRequest.qoeMetricsRequests } returns arrayListOf(request)
+        controller.initialize()
+        controller.handleTriggerPlayback(playbackRequest)
+
+        // the end of the session, and a request of the Media Session Handler
+        controller.triggerQoeMetricsReports()
+        val message = android.os.Message.obtain()
+        message.data = android.os.Bundle().apply { putParcelable("qoeMetricsRequest", request) }
+        controller.handleGetQoeMetricsReport(message)
+
+        io.mockk.verify(exactly = 0) { mockOutgoingMessageHandler.sendMessageByTypeAndBundle(any(), any()) }
+    }
 }

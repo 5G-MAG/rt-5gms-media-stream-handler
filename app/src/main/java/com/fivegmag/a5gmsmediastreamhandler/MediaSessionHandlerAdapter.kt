@@ -34,6 +34,7 @@ import com.fivegmag.a5gmsmediastreamhandler.service.DynamicPolicyPayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.GeneralSessionListener
 import com.fivegmag.a5gmsmediastreamhandler.service.NetworkAssistanceListener
 import com.fivegmag.a5gmsmediastreamhandler.service.NetworkAssistancePayloads
+import com.fivegmag.a5gmsmediastreamhandler.service.ServiceUrlPayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.IncomingMessageHandler
 import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
@@ -129,6 +130,14 @@ class MediaSessionHandlerAdapter() {
         SessionHandlerMessageTypes.GET_SERVICE_OPERATION_POINTS, DynamicPolicyPayloads.serviceOperationPointsRequest(mediaDeliverySessionIdentifier)
     )
 
+    /**
+     * Hands a 3GPP Service URL to the Media Session Handler (TS 26.510 V19.2.0 clause 6.3). The Media Session Handler launches the media delivery
+     * session and triggers playback in this Media Stream Handler; the HTTP status (TS 26.512 V19.3.0 clause 4.8.3.4) goes to the GeneralSessionListener.
+     */
+    fun launchServiceUrl(serviceUrl: String) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.LAUNCH_SERVICE_URL, ServiceUrlPayloads.launchRequest(serviceUrl)
+    )
+
     /** getBDTInfo(), table 11.3.1.1-1; the return value (table 11.3.1.1-2) goes to the DynamicPolicyListener */
     fun getBDTInfo(sessionId: String, serviceOperationPointReference: String) = outgoingMessageHandler.sendClientApiRequest(
         SessionHandlerMessageTypes.GET_BDT_INFO, DynamicPolicyPayloads.bdtInfoRequest(sessionId, serviceOperationPointReference)
@@ -167,6 +176,20 @@ class MediaSessionHandlerAdapter() {
      * the query of the request URL. Takes effect for the next playback.
      */
     fun setCmcdUseQueryParameters(useQueryParameters: Boolean) = exoPlayerAdapter.setCmcdUseQueryParameters(useQueryParameters)
+
+    /**
+     * cmcdReporting of the Media Player configuration (TS 26.512 V19.3.0 clause 13.2.4): CMCD keys that are reported in addition to those of the
+     * client metrics reporting configurations, the content identifier, and the transmission mode. Takes effect for the next playback.
+     */
+    fun setCmcdReporting(keys: List<String>? = null, contentId: String? = null, useQueryParameters: Boolean? = null) =
+        exoPlayerAdapter.setCmcdReporting(keys, contentId, useQueryParameters)
+
+    /**
+     * metricsConfiguration[] of the Media Player configuration (clause 13.2.4) for the CMCD metrics schemes (table 7.8.1-1): each is reported
+     * together with the configurations of the Service Access Information. Other schemes are left out. Takes effect for the next playback.
+     */
+    fun setCmcdMetricsConfigurations(requests: List<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>) =
+        sessionController.setApplicationMetricsConfigurations(requests)
 
     /** createMediaDeliverySession(), table 11.2.2.1-1: the media delivery session identifier is returned to the GeneralSessionListener */
     fun createMediaDeliverySession(

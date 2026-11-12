@@ -30,6 +30,20 @@ interface IExoPlayerAdapter {
     fun setCmcdUseQueryParameters(useQueryParameters: Boolean)
 
     /**
+     * What the playback request carries for CMCD besides the configurations: the client-data-reporting-mode of the 3GPP Service URL and the client
+     * data reporting of the Media Player Entry (clause 10.5.1). The mode of the URL takes precedence over the setting of the application, and that
+     * over the entry.
+     */
+    fun configureCmcdMediaPlayerEntry(entries: List<com.fivegmag.a5gmscommonlibrary.session.ClientDataReportingEntry>, clientDataReportingMode: String?)
+
+    /**
+     * The cmcdReporting setting of the configuration and settings API (TS 26.512 V19.3.0 clause 13.2.4): keys that are reported in addition to
+     * those of the client metrics reporting configurations (clause 10.5.1: the Media Player reports the union), the content identifier and
+     * the transmission mode. The sid is that of the media delivery session. Null values leave the setting out.
+     */
+    fun setCmcdReporting(keys: List<String>?, contentId: String?, useQueryParameters: Boolean?)
+
+    /**
      * The part of the media delivery session for which each provisioned CMCD configuration reports (TS 26.510 V19.2.0 table 8.7.3.1-1:
      * reportingStartOffset and reportingDuration), counted from this call. The sid is sent in every request regardless.
      */

@@ -1,7 +1,9 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import com.fivegmag.a5gmscommonlibrary.helpers.CmcdSchemes
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -43,7 +45,7 @@ class CmcdAllowedKeysTest {
             listOf(CmcdSchemes.REQUEST), "d1",
             mapOf(CmcdSchemes.REQUEST to listOf("urn:3gpp:5gms:event-exposure:common-media-client-data#request/mtp"))
         )
-        assertEquals(setOf("mtp", "sid"), keys)
+        assertEquals(setOf("cid", "mtp", "sid"), keys)
     }
 
     @Test
@@ -52,7 +54,7 @@ class CmcdAllowedKeysTest {
             listOf(CmcdSchemes.STATUS), null,
             mapOf(CmcdSchemes.STATUS to listOf("urn:3gpp:5gms:event-exposure:common-media-client-data#status"))
         )
-        assertEquals(CmcdSchemes.KEYS[CmcdSchemes.STATUS]!! + "sid", keys)
+        assertEquals(CmcdSchemes.KEYS[CmcdSchemes.STATUS]!! + "cid" + "sid", keys)
     }
 
     @Test
@@ -67,6 +69,48 @@ class CmcdAllowedKeysTest {
     @Test
     fun noTermsSelectTheWholeClass() {
         val keys = ExoPlayerAdapter.getCmcdAllowedKeys(listOf(CmcdSchemes.OBJECT), "d1", mapOf(CmcdSchemes.OBJECT to emptyList()))
-        assertEquals(CmcdSchemes.KEYS[CmcdSchemes.OBJECT]!! + "sid", keys)
+        assertEquals(CmcdSchemes.KEYS[CmcdSchemes.OBJECT]!! + "cid" + "sid", keys)
+    }
+
+    // clause 10.5.1: the content identifier is in every CMCD report, whatever class the schemes select
+    @Test
+    fun everyCmcdSchemeAllowsTheContentIdentifier() {
+        for (scheme in CmcdSchemes.KEYS.keys) {
+            assertTrue(scheme, ExoPlayerAdapter.getCmcdAllowedKeys(listOf(scheme), "d1").contains("cid"))
+        }
+    }
+
+    @Test
+    fun theContentIdentifierIsAllowedForAClassOtherThanSession() {
+        val keys = ExoPlayerAdapter.getCmcdAllowedKeys(listOf(CmcdSchemes.REQUEST), "d1")
+        assertEquals(CmcdSchemes.KEYS[CmcdSchemes.REQUEST]!! + "cid" + "sid", keys)
+    }
+
+    @Test
+    fun noCmcdReportNoContentIdentifier() {
+        assertFalse(ExoPlayerAdapter.getCmcdAllowedKeys(emptyList(), "d1").contains("cid"))
+        assertFalse(ExoPlayerAdapter.getCmcdAllowedKeys(listOf("urn:example:other"), "d1").contains("cid"))
+        val none = ExoPlayerAdapter.getCmcdAllowedKeys(
+            listOf(CmcdSchemes.REQUEST), "d1",
+            mapOf(CmcdSchemes.REQUEST to listOf("urn:3gpp:5gms:event-exposure:common-media-client-data#request/zz"))
+        )
+        assertFalse(none.contains("cid"))
+    }
+
+    @Test
+    fun theRuleOfAConfigurationOfAnotherClassCarriesTheContentIdentifier() {
+        val rules = ExoPlayerAdapter.getCmcdRules(
+            listOf(QoeMetricsRequest(scheme = CmcdSchemes.OBJECT, samplingPeriod = 0, metrics = arrayListOf("urn:3gpp:5gms:event-exposure:common-media-client-data#object/br")))
+        )
+        assertEquals(setOf("br", "cid"), rules.single().keys)
+        assertTrue(ExoPlayerAdapter.isCmcdKeyInWindow(rules, "cid", 0))
+    }
+
+    @Test
+    fun theRuleOfAConfigurationThatSelectsNoKeyHasNoContentIdentifier() {
+        val rules = ExoPlayerAdapter.getCmcdRules(
+            listOf(QoeMetricsRequest(scheme = CmcdSchemes.OBJECT, samplingPeriod = 0, metrics = arrayListOf("urn:3gpp:5gms:event-exposure:common-media-client-data#object/zz")))
+        )
+        assertTrue(rules.single().keys.isEmpty())
     }
 }
