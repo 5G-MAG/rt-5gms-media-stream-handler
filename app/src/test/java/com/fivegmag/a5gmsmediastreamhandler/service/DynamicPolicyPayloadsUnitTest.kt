@@ -117,4 +117,14 @@ class DynamicPolicyPayloadsUnitTest {
         assertEquals(status, DynamicPolicyPayloads.readStatus(MapReader(mapOf(Keys.CURRENT_DYNAMIC_POLICIES to status))))
         assertNull(DynamicPolicyPayloads.readStatus(MapReader(emptyMap())))
     }
+
+    // TS 26.512 V19.3.0 table 13.2.5-1 and TS 26.510 V19.2.0 clause 5.4.3: the session, the external reference of the new point and its target QoS
+    @Test
+    fun anOperationPointChangeCarriesTheSessionTheReferenceAndTheTargetBitRates() {
+        val payload = DynamicPolicyPayloads.operationPointChanged("s1", "sop-hd", "6 Mbps", null)
+        assertEquals("s1", payload[Keys.MEDIA_DELIVERY_SESSION_IDENTIFIER])
+        assertEquals("sop-hd", payload[Keys.SERVICE_OPERATION_POINT_REFERENCE])
+        assertEquals("6 Mbps", payload[Keys.TARGET_DOWNLINK_BIT_RATE])
+        assertNull(payload[Keys.TARGET_UPLINK_BIT_RATE])
+    }
 }

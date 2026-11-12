@@ -132,4 +132,50 @@ class ServiceDescriptionActivationTest {
         assertEquals(listOf(fixed, event), ServiceDescriptionSelection.current(listOf(fixed), listOf(event), setOf(7L)))
         assertEquals(listOf(fixed), ServiceDescriptionSelection.current(listOf(fixed), emptyList(), setOf(7L)))
     }
+
+    // D4 on the phone, 2026-11-12: the manifest is live; the position of the player is relative to its window, which slides, so an activation
+    // measured on it (60 s window position + 40 s duration) never ended: the window position stayed between 15 and 20 s for two minutes.
+    @Test
+    fun anActivationOfALivePresentationEndsAfterItsDurationOnTheTimeOfThePeriod() {
+        val activation = ServiceDescriptionActivation()
+        // the Event is delivered at a window position of 16 s; the window starts 2252 s into the period
+        val start = ServiceDescriptionActivation.periodPositionMs(16000, 2252000)
+        assertTrue(activation.onEvent(0, 1250, start, 40000))
+        // the window slides: 20 s later it starts 2272 s into the period, the position in it is again 16 s
+        assertFalse(activation.expire(ServiceDescriptionActivation.periodPositionMs(16000, 2272000)))
+        // 40 s later: the same window position (16 s), the window starts 2292 s into the period
+        assertTrue(activation.expire(ServiceDescriptionActivation.periodPositionMs(16000, 2292000)))
+        assertTrue(activation.activeIds().isEmpty())
+        // on the window position alone it would still be active
+        val onWindowOnly = ServiceDescriptionActivation()
+        onWindowOnly.onEvent(0, 1250, 16000, 40000)
+        assertFalse(onWindowOnly.expire(16000))
+    }
+
+    // the live manifest of the phone proof D4 (ServiceDescription 1250 with the Scope, an EventStream of the scheme in a dynamic MPD)
+    @Test
+    fun theEventStreamOfTheLiveManifestOfD4HasTheEventAtItsPresentationTime() {
+        val mpd = """<?xml version="1.0" encoding="utf-8"?>
+            <MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-live:2011" type="dynamic" minimumUpdatePeriod="PT4S"
+              suggestedPresentationDelay="PT4S" availabilityStartTime="2026-11-12T14:41:44.362Z" publishTime="2026-11-12T15:21:20.043Z" timeShiftBufferDepth="PT40.0S" minBufferTime="PT8.0S">
+              <Period id="0" start="PT0.0S">
+                <EventStream schemeIdUri="urn:mpeg:dash:event:service-description:2024" timescale="1000">
+                  <Event presentationTime="2268638" duration="40000" id="0">1250</Event>
+                </EventStream>
+                <AdaptationSet id="0" contentType="video"><Representation id="0" mimeType="video/mp4" codecs="avc1.640028" bandwidth="5000000" width="1920" height="1080">
+                  <SegmentTemplate timescale="15360" initialization="init.m4s" media="c${"$"}Number${"$"}.m4s" startNumber="585"><SegmentTimeline><S t="35880960" d="61440" r="9"/></SegmentTimeline></SegmentTemplate>
+                </Representation></AdaptationSet>
+              </Period></MPD>"""
+        val manifest = DashManifestParser().parse(android.net.Uri.parse("http://as.example/manifest-event.mpd"), mpd.byteInputStream())
+        assertTrue(manifest.dynamic)
+        val stream = manifest.getPeriod(0).eventStreams.single()
+        assertEquals("$scheme/", stream.id())
+        assertEquals(listOf(2268638000L), stream.presentationTimesUs.toList())
+        assertEquals(40000L, stream.events[0].durationMs)
+        assertEquals(1250L, ServiceDescriptionActivation.descriptionIdOf(stream.events[0]))
+        // the track of the stream is the one that the override looks for
+        val format = Format.Builder().setId(stream.id()).setSampleMimeType("application/x-emsg").build()
+        val tracks = Tracks(listOf(Tracks.Group(TrackGroup(stream.id(), format), false, intArrayOf(C.FORMAT_HANDLED), booleanArrayOf(false))))
+        assertNotNull(ServiceDescriptionActivation.trackOverride(tracks))
+    }
 }

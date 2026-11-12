@@ -42,6 +42,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
 
     companion object {
         private const val SERVICE_DESCRIPTION_TAG = "ServiceDescription"
+        private const val ENTRY_TAG = "CmcdMediaPlayerEntry"
 
         // the transmission mode of CMCD: HTTP request headers by default, the URL query when asked (TS 26.512 V19.3.0 clause 4.9.2)
         fun getCmcdMode(useQueryParameters: Boolean): Int =
@@ -231,7 +232,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         val dataSourceFactory = ResolvingDataSource.Factory(listenedDataSourceFactory, object : ResolvingDataSource.Resolver {
             override fun resolveDataSpec(dataSpec: androidx.media3.datasource.DataSpec) =
                 CmcdMediaPlayerEntry.resolve(
-                    dataSpec, cmcdCurrentEntries(), { isCmcdKeyConfigured(it) }, cmcdApplicationReporting, cmcdContentId, adaptationSetOfRequests.idOf(dataSpec.uri.toString())
+                    dataSpec, cmcdCurrentEntries(), { isCmcdKeyConfigured(it) }, cmcdApplicationReporting, cmcdContentId, adaptationSetOfRequests.idOf(dataSpec.uri.toString()),
+                    cmcdEventEntries.isNotEmpty()
                 )
         })
 
@@ -281,12 +283,25 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         transferListenerRef = playerListener
     }
 
+    // The playback position on the time of the period (see ServiceDescriptionActivation.periodPositionMs): the window of a live presentation slides
+    private fun periodPositionMs(): Long {
+        val timeline = playerInstance.currentTimeline
+        if (timeline.isEmpty) return playerInstance.currentPosition
+        val window = timeline.getWindow(playerInstance.currentMediaItemIndex, androidx.media3.common.Timeline.Window())
+        return ServiceDescriptionActivation.periodPositionMs(playerInstance.currentPosition, window.positionInFirstPeriodMs)
+    }
+
     // clause K.6 of ISO/IEC 23009-1:2026: Media3 hands the Events of the scheme to the player listener at their presentation time
     private fun serviceDescriptionEventListener() = object : androidx.media3.common.Player.Listener {
         private val handler = android.os.Handler(playerInstance.applicationLooper)
         private val expiry = object : Runnable {
             override fun run() {
-                if (serviceDescriptionActivation.expire(playerInstance.currentPosition)) Log.d(SERVICE_DESCRIPTION_TAG, "activation ended at ${playerInstance.currentPosition} ms")
+                val position = periodPositionMs()
+                val before = serviceDescriptionActivation.activeIds()
+                if (serviceDescriptionActivation.expire(position)) {
+                    Log.d(SERVICE_DESCRIPTION_TAG, "activation ended at $position ms")
+                    Log.d(ENTRY_TAG, "activation ended at period position $position ms: ${before - serviceDescriptionActivation.activeIds()}, active now ${serviceDescriptionActivation.activeIds()}")
+                }
                 if (serviceDescriptionActivation.hasEnd()) handler.postDelayed(this, 500)
             }
         }
@@ -294,10 +309,12 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         override fun onMetadata(metadata: androidx.media3.common.Metadata) {
             for (i in 0 until metadata.length()) {
                 val message = metadata.get(i) as? androidx.media3.extractor.metadata.emsg.EventMessage ?: continue
+                Log.d(ENTRY_TAG, "onMetadata: scheme ${message.schemeIdUri}, value '${message.value}', id ${message.id}, presentation time ${metadata.presentationTimeUs} us, duration ${message.durationMs} ms")
                 val id = ServiceDescriptionActivation.descriptionIdOf(message) ?: continue
-                val position = playerInstance.currentPosition
+                val position = periodPositionMs()
                 val activated = serviceDescriptionActivation.onEvent(message.id, id, position, message.durationMs)
                 Log.d(SERVICE_DESCRIPTION_TAG, "event ${message.id} at $position ms: description $id " + if (activated) "activated for ${message.durationMs} ms" else "ignored, the event id is known")
+                if (activated) Log.d(ENTRY_TAG, "activation of description $id started at period position $position ms for ${message.durationMs} ms, active ${serviceDescriptionActivation.activeIds()}")
                 if (activated && serviceDescriptionActivation.hasEnd()) {
                     handler.removeCallbacks(expiry)
                     handler.postDelayed(expiry, 500)
@@ -307,6 +324,9 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
 
         // the player has one renderer for metadata: it must select the EventStream of the scheme, not the first one
         override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+            Log.d(ENTRY_TAG, "tracks changed, metadata groups: " + tracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_METADATA }.map { group ->
+                (0 until group.length).map { "id ${group.getTrackFormat(it).id}, selected ${group.isTrackSelected(it)}, supported ${group.isTrackSupported(it)}" }
+            })
             if (cmcdEventEntries.isEmpty()) return
             ServiceDescriptionActivation.trackOverride(tracks)?.let {
                 Log.d(SERVICE_DESCRIPTION_TAG, "selecting the metadata track of the service description EventStream")

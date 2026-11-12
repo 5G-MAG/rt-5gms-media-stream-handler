@@ -62,6 +62,13 @@ class ServiceDescriptionActivation {
 
     companion object {
         private const val TAG = "ServiceDescription"
+
+        /**
+         * The playback position on a clock that does not run backwards in a live presentation. The position of the player is relative to its window,
+         * and the window of a live presentation slides (it stays near the same value while the presentation advances), so the end of an activation,
+         * which is a duration after the Event, is measured on the time of the period: the start of the window in the period plus the position.
+         */
+        fun periodPositionMs(windowPositionMs: Long, windowStartInPeriodMs: Long): Long = windowStartInPeriodMs + windowPositionMs
         const val SCHEME = "urn:mpeg:dash:event:service-description:2024"
         private const val EMSG_MIME_TYPE = "application/x-emsg"
 

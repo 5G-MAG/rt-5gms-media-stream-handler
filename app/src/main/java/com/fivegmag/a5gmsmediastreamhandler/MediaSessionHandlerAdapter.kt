@@ -28,12 +28,15 @@ import com.fivegmag.a5gmscommonlibrary.models.*
 import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.QoEMetricsReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.SessionController
+import com.fivegmag.a5gmsmediastreamhandler.player.PlayerCapabilities
+import com.fivegmag.a5gmsmediastreamhandler.player.QosMonitoringResultsConsumer
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.service.DynamicPolicyListener
 import com.fivegmag.a5gmsmediastreamhandler.service.DynamicPolicyPayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.GeneralSessionListener
 import com.fivegmag.a5gmsmediastreamhandler.service.NetworkAssistanceListener
 import com.fivegmag.a5gmsmediastreamhandler.service.NetworkAssistancePayloads
+import com.fivegmag.a5gmsmediastreamhandler.service.PlayerCapabilityPayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.ServiceUrlPayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.IncomingMessageHandler
 import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
@@ -54,6 +57,7 @@ class MediaSessionHandlerAdapter() {
     private lateinit var incomingMessageHandler: IncomingMessageHandler
     private val utils = Utils()
     private val exoPlayerAdapter = ExoPlayerAdapter()
+    private val playerCapabilities = PlayerCapabilities()
 
     /**
      * API endpoint to initialize Media Session handling. Connects to the Media Session Handler and calls the provided callback function afterwards
@@ -96,6 +100,16 @@ class MediaSessionHandlerAdapter() {
             qoeMetricsReportingController,
             sessionController
         )
+        // the Media Session Handler interrogates the capabilities of the Media Player (TS 26.512 V19.3.0 clause 4.7.3)
+        incomingMessageHandler.onQosMonitoringResults = { id, results ->
+            playerCapabilities.qosMonitoringResultsConsumer?.onQosMonitoringResults(id, results)
+        }
+        incomingMessageHandler.onPlayerCapabilitiesRequest = { mediaDeliverySessionId ->
+            outgoingMessageHandler.sendClientApiRequest(
+                SessionHandlerMessageTypes.GET_PLAYER_CAPABILITIES_REPLY,
+                PlayerCapabilityPayloads.reply(mediaDeliverySessionId, playerCapabilities.list())
+            )
+        }
 
         registerAccessNetworkCallback()
 
@@ -124,6 +138,45 @@ class MediaSessionHandlerAdapter() {
         set(value) {
             incomingMessageHandler.networkAssistanceListener = value
         }
+
+    /**
+     * capabilities of the Media Player configuration and settings API (TS 26.512 V19.3.0 table 13.2.4-1), a read-only list of table 13.2.4-2:
+     * what the Media Session Handler gets when it interrogates the Media Player. Empty for the Media3 player as it is.
+     */
+    val capabilities: List<String> get() = playerCapabilities.list()
+
+    /**
+     * Declares that the Media Player has an L4S-capable transport stack (CAPABILITY_L4S, table 13.2.4-2): for the code that installs such a
+     * stack in the player. With it the Media Session Handler may set l4SRequired in a Dynamic Policy request (clause 4.7.3).
+     */
+    fun setL4sTransportStackPresent(present: Boolean) {
+        playerCapabilities.l4sTransportStackPresent = present
+    }
+
+    /**
+     * Sets what reacts to QoS monitoring results (for example the bit rate adaptation). With a consumer the Media Player declares CAPABILITY_QOS
+     * (table 13.2.4-2), so that the Media Session Handler may set qoSMonitoringRequired (TS 26.512 V19.3.0 clause 4.7.3) and sends it the
+     * QOS_MONITORING_ENABLED and QOS_MONITORING_RESULTS notifications (clause 4.9.3); the results are also given to the GeneralSessionListener.
+     * Without one the Media Player does not declare it.
+     */
+    fun setQosMonitoringResultsConsumer(consumer: QosMonitoringResultsConsumer?) {
+        playerCapabilities.qosMonitoringResultsConsumer = consumer
+    }
+
+    /**
+     * OPERATION_POINT_CHANGED (TS 26.512 V19.3.0 table 13.2.5-1, TS 26.510 V19.2.0 clause 5.4.3): the Media Access Function tells the Media
+     * Session Handler the Service Operation Point that is now selected, by its external reference, with its target QoS parameters (bit rates).
+     * The Media Session Handler instantiates a Dynamic Policy for it if the one in force does not satisfy it.
+     */
+    fun notifyOperationPointChanged(
+        mediaDeliverySessionIdentifier: String,
+        serviceOperationPointReference: String,
+        targetDownlinkBitRate: String? = null,
+        targetUplinkBitRate: String? = null
+    ) = outgoingMessageHandler.sendClientApiRequest(
+        SessionHandlerMessageTypes.OPERATION_POINT_CHANGED,
+        DynamicPolicyPayloads.operationPointChanged(mediaDeliverySessionIdentifier, serviceOperationPointReference, targetDownlinkBitRate, targetUplinkBitRate)
+    )
 
     /** The Service Operation Points of a media delivery session (the policy template bindings of the Service Access Information), to the DynamicPolicyListener */
     fun getServiceOperationPoints(mediaDeliverySessionIdentifier: String) = outgoingMessageHandler.sendClientApiRequest(

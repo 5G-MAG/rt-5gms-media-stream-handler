@@ -13,6 +13,7 @@ fun Map<String, Any?>.toBundle(): Bundle {
             is Boolean -> bundle.putBoolean(key, value)
             is Int -> bundle.putInt(key, value)
             is Long -> bundle.putLong(key, value)
+            is List<*> -> bundle.putStringArrayList(key, ArrayList(value.map { it as String }))
             else -> throw IllegalArgumentException("The payload item [$key] has a type that a bundle cannot carry")
         }
     }

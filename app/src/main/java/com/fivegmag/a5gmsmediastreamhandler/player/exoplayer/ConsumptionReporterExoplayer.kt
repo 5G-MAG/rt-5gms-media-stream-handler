@@ -239,12 +239,14 @@ class ConsumptionReporterExoplayer(
         return objectMapper.writer(filters).writeValueAsString(consumptionReport)
     }
 
-    private fun getClientEndpointAddress(serverEndpointAddress: EndpointAddress?): EndpointAddress {
+    // The port numbers of the client endpoint are those of the server endpoint. Without a known server endpoint there is no port to give (the schema
+    // wants at least one, and the property is optional), so the unit has no client endpoint rather than an invented port.
+    private fun getClientEndpointAddress(serverEndpointAddress: EndpointAddress?): EndpointAddress? {
+        if (serverEndpointAddress == null) return null
         // the table of TS 26.510 7.3.3.11 has no IP address property (SD-019): the textual address goes in domainName
         val address = utils.getIpAddress(4) ?: utils.getIpAddress(6) ?: "unknown"
-        val portNumbers = serverEndpointAddress?.portNumbers ?: listOf(80)
 
-        return EndpointAddress(address, portNumbers)
+        return EndpointAddress(address, serverEndpointAddress.portNumbers)
     }
 
     private fun cleanConsumptionReportingList() {
@@ -259,13 +261,15 @@ class ConsumptionReporterExoplayer(
         return serverEndpointAddressesPerMediaType[mimeType] ?: return null
     }
 
+    // After a report only the finished units go. The server endpoints stay: they are refreshed at each load, and a unit that starts before the next
+    // load of its media type (after a switch of the Representation) would otherwise have none.
     override fun resetState() {
         cleanConsumptionReportingList()
-        serverEndpointAddressesPerMediaType.clear()
     }
 
     override fun reset() {
         resetState()
+        serverEndpointAddressesPerMediaType.clear()
         consumptionReportingUnitList.clear()
         manifestUriAfterRedirects = null
         locationChangeListener = null

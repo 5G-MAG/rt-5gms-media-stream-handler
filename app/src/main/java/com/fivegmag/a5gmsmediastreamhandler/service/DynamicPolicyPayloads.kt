@@ -67,6 +67,17 @@ object DynamicPolicyPayloads {
         Keys.TARGET_UPLINK_BIT_RATE to targetUplinkBitRate
     )
 
+    /**
+     * The notification OPERATION_POINT_CHANGED (TS 26.512 V19.3.0 table 13.2.5-1: the external reference of the Service Operation Point now selected)
+     * with the target QoS parameters that TS 26.510 V19.2.0 clause 5.4.3 has the notification cite
+     */
+    fun operationPointChanged(sessionId: String, serviceOperationPointReference: String, targetDownlinkBitRate: String?, targetUplinkBitRate: String?): Map<String, Any?> = mapOf(
+        Keys.MEDIA_DELIVERY_SESSION_IDENTIFIER to sessionId,
+        Keys.SERVICE_OPERATION_POINT_REFERENCE to serviceOperationPointReference,
+        Keys.TARGET_DOWNLINK_BIT_RATE to targetDownlinkBitRate,
+        Keys.TARGET_UPLINK_BIT_RATE to targetUplinkBitRate
+    )
+
     /** Table 11.3.1.3-1, and the request of the status of table 11.3.2-1 */
     fun sessionRequest(sessionId: String): Map<String, Any?> = mapOf(Keys.MEDIA_DELIVERY_SESSION_IDENTIFIER to sessionId)
 

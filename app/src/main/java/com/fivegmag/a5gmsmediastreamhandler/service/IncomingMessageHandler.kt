@@ -24,6 +24,12 @@ class IncomingMessageHandler() {
     var dynamicPolicyListener: DynamicPolicyListener? = null
     var networkAssistanceListener: NetworkAssistanceListener? = null
 
+    /** Answers the interrogation of the Media Player capabilities of the Media Session Handler for the media delivery session (null: not known) */
+    var onPlayerCapabilitiesRequest: ((String?) -> Unit)? = null
+
+    /** The QoS monitoring results of the Media Session Handler (QOS_MONITORING_RESULTS): the media delivery session and the results */
+    var onQosMonitoringResults: ((String?, com.fivegmag.a5gmscommonlibrary.models.QosMonitoringReport?) -> Unit)? = null
+
     @UnstableApi
     private val incomingMessenger = Messenger(IncomingHandler())
 
@@ -39,6 +45,10 @@ class IncomingMessageHandler() {
                 )
 
                 SessionHandlerMessageTypes.CMCD_CONFIGURATION_UPDATE -> handleCmcdConfigurationUpdate(msg)
+
+                SessionHandlerMessageTypes.GET_PLAYER_CAPABILITIES -> onPlayerCapabilitiesRequest?.invoke(
+                    msg.data.getString(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER)
+                )
 
                 SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReport(msg)
 
@@ -106,6 +116,11 @@ class IncomingMessageHandler() {
                     msg.data.classLoader = StreamingAccess::class.java.classLoader
                     val event = msg.data.getString(SessionHandlerBundleKeys.EVENT)
                     if (event != null) generalSessionListener?.onNotification(event, msg.data)
+                    if (event == com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerEvents.DynamicPolicy.QOS_MONITORING_RESULTS) {
+                        @Suppress("DEPRECATION")
+                        val results = msg.data.getParcelable<com.fivegmag.a5gmscommonlibrary.models.QosMonitoringReport>(SessionHandlerBundleKeys.QOS_MONITORING_RESULTS)
+                        onQosMonitoringResults?.invoke(msg.data.getString(SessionHandlerBundleKeys.MEDIA_DELIVERY_SESSION_IDENTIFIER), results)
+                    }
                 }
 
                 else -> super.handleMessage(msg)

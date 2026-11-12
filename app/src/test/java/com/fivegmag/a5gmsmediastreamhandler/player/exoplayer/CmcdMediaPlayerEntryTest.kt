@@ -248,4 +248,31 @@ class CmcdMediaPlayerEntryTest {
             CmcdMediaPlayerEntry.resolve(spec, listOf(entry), nothingConfigured).uri.toString()
         )
     }
+
+    // D4 on the phone, 2026-11-12: the player produced the cid of a description that an Event had not activated yet, and the request carried it
+    // from the first request on. Until an Event activates the description the request keeps only the configured keys and the sid.
+    @Test
+    fun theCidOfADescriptionThatNoEventHasActivatedIsRemovedFromTheRequest() {
+        val spec = DataSpec.Builder().setUri(dist1 + "seg.m4s").setHttpRequestHeaders(
+            mapOf("CMCD-Object" to "br=1,ot=v", "CMCD-Session" to """cid="entry-cid-1",sf=d,sid="s"""")
+        ).build()
+        val configured = { key: String -> key == "br" || key == "ot" || key == "sf" }
+        val resolved = CmcdMediaPlayerEntry.resolve(spec, emptyList(), configured, null, null, null, eventPending = true)
+        assertEquals("br=1,ot=v", resolved.httpRequestHeaders["CMCD-Object"])
+        assertEquals("""sf=d,sid="s"""", resolved.httpRequestHeaders["CMCD-Session"])
+        // the entry that an Event has activated gives its cid
+        val active = listOf(ClientDataReportingEntry(contentId = "entry-cid-1", keys = arrayListOf("cid", "sid"), serviceDescriptionId = 1250, activatedByEvent = true))
+        val activated = CmcdMediaPlayerEntry.resolve(spec, active, configured, null, null, null, eventPending = true)
+        assertEquals("""cid="entry-cid-1",sf=d,sid="s"""", activated.httpRequestHeaders["CMCD-Session"])
+        // without a description that an Event can activate the request is left alone, as before
+        assertSame(spec, CmcdMediaPlayerEntry.resolve(spec, emptyList(), configured))
+    }
+
+    @Test
+    fun theCidOfAnEventDescriptionIsAlsoRemovedFromTheQuery() {
+        val cmcd = Uri.encode("""br=1,cid="entry-cid-1",ot=v,sid="s"""")
+        val spec = DataSpec.Builder().setUri(Uri.parse(dist1 + "seg.m4s?CMCD=$cmcd")).build()
+        val resolved = CmcdMediaPlayerEntry.resolve(spec, emptyList(), { it == "br" || it == "ot" }, null, null, null, eventPending = true)
+        assertEquals("""br=1,ot=v,sid="s"""", Uri.decode(resolved.uri.encodedQuery!!.substringAfter('=')))
+    }
 }

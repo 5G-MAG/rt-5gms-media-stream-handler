@@ -116,9 +116,12 @@ object CmcdMediaPlayerEntry {
         configuredAllowed: (String) -> Boolean,
         application: ClientDataReportingEntry? = null,
         contentId: String? = null,
-        adaptationSetId: Long? = null
+        adaptationSetId: Long? = null,
+        eventPending: Boolean = false
     ): DataSpec {
-        if (entries.isEmpty() && application == null) return dataSpec
+        // eventPending: an Event can still activate a description. The player produces the cid and the keys of that description so that a request
+        // can carry them once it is activated; until then they are removed here (they must not reach the request before the Event)
+        if (entries.isEmpty() && application == null && !eventPending) return dataSpec
         val url = dataSpec.uri.toString()
         val inHeaders = HEADERS.filter { dataSpec.httpRequestHeaders.containsKey(it) }
         if (inHeaders.isNotEmpty()) {
