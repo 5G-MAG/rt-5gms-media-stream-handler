@@ -3,6 +3,7 @@ package com.fivegmag.a5gmsmediastreamhandler.controller
 import android.os.Bundle
 import android.os.Message
 import android.telephony.*
+import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.databind.SerializerProvider
@@ -62,14 +63,17 @@ class ConsumptionReportingController(
     }
 
     override fun triggerConsumptionReport() {
-        if (lastConsumptionRequest == null) {
+        val consumptionRequest = lastConsumptionRequest ?: return
+        val sessionId = mediaDeliverySessionId
+        if (sessionId == null) {
+            Log.e(TAG, "Cannot generate a consumption report without a media delivery session ID")
             return
         }
         for (consumptionReporter in activeConsumptionReporter) {
             val consumptionReport = consumptionReporter.getConsumptionReport(
                 reportingClientId,
-                lastConsumptionRequest!!,
-                mediaDeliverySessionId
+                consumptionRequest,
+                sessionId
             )
             sendConsumptionReport(consumptionReport)
             consumptionReporter.resetState()

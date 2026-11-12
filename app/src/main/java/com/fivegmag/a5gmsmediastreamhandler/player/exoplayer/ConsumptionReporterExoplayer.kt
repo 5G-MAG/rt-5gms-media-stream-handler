@@ -130,7 +130,7 @@ class ConsumptionReporterExoplayer(
     override fun getConsumptionReport(
         reportingClientId: String,
         consumptionRequest: ConsumptionRequest,
-        mediaDeliverySessionId: String?
+        mediaDeliverySessionId: String
     ): String {
         val mediaPlayerEntry = exoPlayerAdapter.getCurrentManifestUri()
         // We need to add the duration of the consumption reporting units that are not yet finished
