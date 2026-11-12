@@ -5,8 +5,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.telephony.CellInfo
 import android.telephony.TelephonyManager
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.common.Timeline
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStartTriggerEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
@@ -51,7 +53,8 @@ class SessionController(
                 exoPlayerAdapter.attach(
                     url = mpdUrl,
                     contentType = ContentTypes.DASH,
-                    mediaDeliverySessionId = playbackRequest.mediaDeliverySessionId
+                    mediaDeliverySessionId = playbackRequest.mediaDeliverySessionId,
+                    playbackId = playbackRequest.playbackId
                 )
                 exoPlayerAdapter.preload()
                 exoPlayerAdapter.play()
@@ -77,7 +80,15 @@ class SessionController(
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     override fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
-        outgoingMessageHandler.updatePlaybackState(event.playbackState)
+        val timeline = event.eventTime.timeline
+        val windowIndex = event.eventTime.windowIndex
+        if (windowIndex !in 0 until timeline.windowCount) {
+            Log.d("5GMS-SessionController", "Ignoring playback state without a media item")
+            return
+        }
+        // Use the event's media item, not the player state that may already refer to the next item.
+        val playbackId = timeline.getWindow(windowIndex, Timeline.Window()).mediaItem.mediaId
+        outgoingMessageHandler.updatePlaybackState(event.playbackState, playbackId)
     }
 
     override fun resetState() {

@@ -108,33 +108,26 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         dataSource.setRequestProperty("CMCD-Session", formattedSid)
     }
 
-    override fun attach(url: String, contentType: String, mediaDeliverySessionId: String) {
+    override fun attach(url: String, contentType: String, mediaDeliverySessionId: String, playbackId: String) {
         this.mediaDeliverySessionId = mediaDeliverySessionId
 
         // Reset listener state for new presentation
         playerListener.newPlaybackSession()
         
-        val mediaItem: MediaItem
+        val mediaItemBuilder = MediaItem.Builder()
+            .setUri(url)
+            .setMediaId(playbackId)
         when (contentType) {
             ContentTypes.DASH -> {
-                mediaItem = MediaItem.Builder()
-                    .setUri(url)
-                    .setMimeType(MimeTypes.APPLICATION_MPD)
-                    .build()
+                mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_MPD)
             }
 
             ContentTypes.HLS -> {
-                mediaItem = MediaItem.Builder()
-                    .setUri(url)
-                    .setMimeType(MimeTypes.APPLICATION_M3U8)
-                    .build()
-            }
-
-            else -> {
-                mediaItem = MediaItem.fromUri(url)
+                mediaItemBuilder.setMimeType(MimeTypes.APPLICATION_M3U8)
             }
         }
 
+        val mediaItem = mediaItemBuilder.build()
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem
         activeManifestUrl = url

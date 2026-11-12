@@ -18,6 +18,7 @@ class IncomingMessageHandler() {
     private lateinit var consumptionReportingController: IConsumptionReportingController
     private lateinit var qoeMetricsReportingController: IQoEMetricsReportingController
     private lateinit var sessionController: ISessionController
+    private lateinit var outgoingMessageHandler: OutgoingMessageHandler
     var onMediaDeliverySessionStarted: ((String) -> Unit)? = null
 
     @UnstableApi
@@ -48,6 +49,10 @@ class IncomingMessageHandler() {
         bundle.classLoader = PlaybackRequest::class.java.classLoader
         val playbackRequest: PlaybackRequest? = bundle.getParcelable("playbackRequest")
         if (playbackRequest != null) {
+            if (playbackRequest.playbackId != outgoingMessageHandler.currentPlaybackId) {
+                Log.d("5GMS-IncomingMsg", "Ignoring an outdated playback response")
+                return
+            }
             // Validate once at the boundary, before any controller changes session state.
             try {
                 UUID.fromString(playbackRequest.mediaDeliverySessionId)
@@ -81,11 +86,13 @@ class IncomingMessageHandler() {
     fun initialize(
         consumptionReportingController: IConsumptionReportingController,
         qoEMetricsReportingController: IQoEMetricsReportingController,
-        sessionController: ISessionController
+        sessionController: ISessionController,
+        outgoingMessageHandler: OutgoingMessageHandler
     ) {
         this.consumptionReportingController = consumptionReportingController
         this.qoeMetricsReportingController = qoEMetricsReportingController
         this.sessionController = sessionController
+        this.outgoingMessageHandler = outgoingMessageHandler
     }
 
     @UnstableApi

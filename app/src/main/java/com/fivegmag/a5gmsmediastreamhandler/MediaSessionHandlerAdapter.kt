@@ -91,7 +91,8 @@ class MediaSessionHandlerAdapter() {
         incomingMessageHandler.initialize(
             consumptionReportingController,
             qoeMetricsReportingController,
-            sessionController
+            sessionController,
+            outgoingMessageHandler
         )
 
         messengerService = MessengerService(this.context)
@@ -176,6 +177,7 @@ class MediaSessionHandlerAdapter() {
      *
      */
     fun reset() {
+        endMediaDeliverySession()
         messengerService.reset()
     }
 
@@ -193,13 +195,29 @@ class MediaSessionHandlerAdapter() {
      * API endpoint to send a ServiceListEntry to the MediaSessionHandler to trigger the playback process.
      *
      * @param serviceListEntry
+     * @param newMediaDeliverySession false to continue the client's current session, e.g. a playlist.
+     * Continuing without a current session is rejected by the Media Session Handler.
      */
-    fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
+    fun initializePlaybackByServiceListEntry(
+        serviceListEntry: ServiceListEntry,
+        newMediaDeliverySession: Boolean
+    ) {
         if (exoPlayerAdapter.hasActiveMediaItem()) {
             consumptionReportingController.triggerConsumptionReport()
             qoeMetricsReportingController.triggerQoeMetricsReports()
         }
-        messengerService.initializePlaybackByServiceListEntry(serviceListEntry)
+        messengerService.initializePlaybackByServiceListEntry(serviceListEntry, newMediaDeliverySession)
+    }
+
+    /** Ends the client's media delivery session, including playback and reporting. */
+    fun endMediaDeliverySession() {
+        if (exoPlayerAdapter.hasActiveMediaItem()) {
+            consumptionReportingController.triggerConsumptionReport()
+            qoeMetricsReportingController.triggerQoeMetricsReports()
+            exoPlayerAdapter.stop()
+        }
+        messengerService.endMediaDeliverySession()
+        incomingMessageHandler.reset()
     }
 
     /**
