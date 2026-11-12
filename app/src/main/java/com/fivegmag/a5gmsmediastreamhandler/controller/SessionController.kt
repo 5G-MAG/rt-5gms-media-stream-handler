@@ -91,7 +91,7 @@ class SessionController(
 
         // the mode of the 3GPP Service URL (table 12.4-1) and the client data reporting of the Media Player Entry (clause 10.5.1); the mode
         // is a setting of this playback, so a later playback without one does not keep it
-        exoPlayerAdapter.configureCmcdMediaPlayerEntry(playbackRequest.clientDataReporting.orEmpty(), playbackRequest.clientDataReportingMode)
+        exoPlayerAdapter.configureCmcdMediaPlayerEntry(playbackRequest.clientDataReporting.orEmpty(), playbackRequest.clientDataReportingMode, playbackRequest.mediaPlayerEntryContext)
         // CMCD is reported only for the classes that the provisioned metrics schemes name
         val cmcdRequests = playbackRequest.qoeMetricsRequests + applicationMetricsConfigurations
         exoPlayerAdapter.configureCmcd(

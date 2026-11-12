@@ -34,7 +34,17 @@ interface IExoPlayerAdapter {
      * data reporting of the Media Player Entry (clause 10.5.1). The mode of the URL takes precedence over the setting of the application, and that
      * over the entry.
      */
-    fun configureCmcdMediaPlayerEntry(entries: List<com.fivegmag.a5gmscommonlibrary.session.ClientDataReportingEntry>, clientDataReportingMode: String?)
+    fun configureCmcdMediaPlayerEntry(
+        entries: List<com.fivegmag.a5gmscommonlibrary.session.ClientDataReportingEntry>,
+        clientDataReportingMode: String?,
+        context: com.fivegmag.a5gmscommonlibrary.session.MediaPlayerEntryContext? = null
+    )
+
+    /** serviceDescriptions[] of the settings API (clause 13.2.4): they define or modify service descriptions for the next playback */
+    fun setServiceDescriptions(descriptions: List<ServiceDescriptionSettings>)
+
+    /** serviceDescriptionId of the settings API (clause 13.2.4): the service description that applies to the next playback; null: none selected */
+    fun setServiceDescriptionId(id: Long?)
 
     /**
      * The cmcdReporting setting of the configuration and settings API (TS 26.512 V19.3.0 clause 13.2.4): keys that are reported in addition to

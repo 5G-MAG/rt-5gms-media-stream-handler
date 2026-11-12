@@ -1,6 +1,7 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import android.content.Context
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
@@ -40,6 +41,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
     companion object {
+        private const val SERVICE_DESCRIPTION_TAG = "ServiceDescription"
+
         // the transmission mode of CMCD: HTTP request headers by default, the URL query when asked (TS 26.512 V19.3.0 clause 4.9.2)
         fun getCmcdMode(useQueryParameters: Boolean): Int =
             if (useQueryParameters) MODE_QUERY_PARAMETER else MODE_REQUEST_HEADER
@@ -122,6 +125,12 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     @Volatile private var cmcdUrlMode: String? = null
     @Volatile private var cmcdEntries: List<ClientDataReportingEntry> = emptyList()
     @Volatile private var cmcdApplicationReporting: ClientDataReportingEntry? = null
+    // the entries that an Event can activate (clause K.6 of the ISO text) and what has been activated so far
+    @Volatile private var cmcdEventEntries: List<ClientDataReportingEntry> = emptyList()
+    private val serviceDescriptionActivation = ServiceDescriptionActivation()
+    private val adaptationSetOfRequests = AdaptationSetOfRequests()
+    @Volatile private var serviceDescriptions: List<ServiceDescriptionSettings> = emptyList()
+    @Volatile private var serviceDescriptionId: Long? = null
     @Volatile private var cmcdRules: List<CmcdRule> = emptyList()
     @Volatile private var cmcdStartMs = 0L
     private val cmcdLocated = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
@@ -151,9 +160,23 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         cmcdApplicationSetting = useQueryParameters
     }
 
-    override fun configureCmcdMediaPlayerEntry(entries: List<ClientDataReportingEntry>, clientDataReportingMode: String?) {
-        cmcdEntries = entries
+    override fun configureCmcdMediaPlayerEntry(
+        entries: List<ClientDataReportingEntry>,
+        clientDataReportingMode: String?,
+        context: com.fivegmag.a5gmscommonlibrary.session.MediaPlayerEntryContext?
+    ) {
+        cmcdEntries = ServiceDescriptionSelection.effective(entries, serviceDescriptions, serviceDescriptionId, context)
+        cmcdEventEntries = ServiceDescriptionSelection.activatable(entries, serviceDescriptions, serviceDescriptionId, context)
+        serviceDescriptionActivation.reset()
         cmcdUrlMode = clientDataReportingMode
+    }
+
+    override fun setServiceDescriptions(descriptions: List<ServiceDescriptionSettings>) {
+        serviceDescriptions = descriptions
+    }
+
+    override fun setServiceDescriptionId(id: Long?) {
+        serviceDescriptionId = id
     }
 
     override fun setCmcdReporting(keys: List<String>?, contentId: String?, useQueryParameters: Boolean?) {
@@ -163,13 +186,20 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
 
     // the content identifier of the configuration, or else the one that the application (cmcdReporting) or a Media Player Entry declares (clause 10.5.1)
     private fun cmcdEffectiveContentId(): String? =
-        cmcdContentId ?: cmcdApplicationReporting?.contentId ?: cmcdEntries.firstNotNullOfOrNull { it.contentId }
+        cmcdContentId ?: cmcdApplicationReporting?.contentId ?: (cmcdEntries + cmcdEventEntries).firstNotNullOfOrNull { it.contentId }
+
+    /** The entries that apply to a request now: those of the Media Player Entry and the settings, and those that an Event has activated */
+    private fun cmcdCurrentEntries(): List<ClientDataReportingEntry> {
+        val events = cmcdEventEntries
+        return if (events.isEmpty()) cmcdEntries else ServiceDescriptionSelection.current(cmcdEntries, events, serviceDescriptionActivation.activeIds())
+    }
 
     override fun getContentIdentifier(): String? = cmcdEffectiveContentId()
 
     // a key that the client metrics reporting configurations allow now (their classes, reporting windows and locations)
     private fun isCmcdKeyConfigured(key: String): Boolean {
-        if (key == "cid" && cmcdEffectiveContentId() == null) return false
+        // the content identifier of an entry reaches the request only through the entries that cover it (CmcdMediaPlayerEntry.apply)
+        if (key == "cid" && (cmcdContentId ?: cmcdApplicationReporting?.contentId) == null) return false
         return cmcdAllowedKeys.contains(key) &&
             isCmcdKeyInWindow(cmcdRules, key, android.os.SystemClock.elapsedRealtime() - cmcdStartMs) { cmcdLocated[it] == true }
     }
@@ -200,7 +230,9 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         // the Media Player Entry restricts the CMCD data per request (clause 10.5.1): it is reduced here, where the request is known
         val dataSourceFactory = ResolvingDataSource.Factory(listenedDataSourceFactory, object : ResolvingDataSource.Resolver {
             override fun resolveDataSpec(dataSpec: androidx.media3.datasource.DataSpec) =
-                CmcdMediaPlayerEntry.resolve(dataSpec, cmcdEntries, { isCmcdKeyConfigured(it) }, cmcdApplicationReporting)
+                CmcdMediaPlayerEntry.resolve(
+                    dataSpec, cmcdCurrentEntries(), { isCmcdKeyConfigured(it) }, cmcdApplicationReporting, cmcdContentId, adaptationSetOfRequests.idOf(dataSpec.uri.toString())
+                )
         })
 
         val cmcdConfigurationFactory = object : CmcdConfiguration.Factory {
@@ -210,8 +242,10 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
                     // object types apart); the entries are applied to each request in the data source above
                     override fun isKeyAllowed(key: String): Boolean {
                         if (isCmcdKeyConfigured(key)) return true
-                        return key in CmcdMediaPlayerEntry.keysOf(cmcdEntries) || key in cmcdApplicationReporting?.keys.orEmpty() ||
-                            (key == "ot" && CmcdMediaPlayerEntry.needsObjectType(cmcdEntries))
+                        // the keys of the descriptions that an Event can activate are produced too, so that a request has them once it is activated
+                        val possible = cmcdEntries + cmcdEventEntries
+                        return key in CmcdMediaPlayerEntry.keysOf(possible) || key in cmcdApplicationReporting?.keys.orEmpty() ||
+                            (key == "ot" && CmcdMediaPlayerEntry.needsObjectType(possible))
                     }
 
                     override fun getRequestedMaximumThroughputKbps(throughputKbps: Int): Int {
@@ -227,16 +261,16 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             }
         }
 
+        // the media source factory records the AdaptationSet of each media request (the filter adaptationSets of the client data reporting)
         playerInstance = ExoPlayer.Builder(context)
             .setMediaSourceFactory(
-                DefaultMediaSourceFactory(context)
-                    .setDataSourceFactory(dataSourceFactory)
+                RecordingMediaSourceFactory(context, dataSourceFactory, adaptationSetOfRequests)
                     .setCmcdConfigurationFactory(cmcdConfigurationFactory)
-
             )
             .build()
 
         playerInstance.addAnalyticsListener(EventLogger())
+        playerInstance.addListener(serviceDescriptionEventListener())
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         this.context = context
         playerView = exoPlayerView
@@ -245,6 +279,40 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             ExoPlayerListener(playerInstance, playerView, eventBus)
         playerInstance.addAnalyticsListener(playerListener)
         transferListenerRef = playerListener
+    }
+
+    // clause K.6 of ISO/IEC 23009-1:2026: Media3 hands the Events of the scheme to the player listener at their presentation time
+    private fun serviceDescriptionEventListener() = object : androidx.media3.common.Player.Listener {
+        private val handler = android.os.Handler(playerInstance.applicationLooper)
+        private val expiry = object : Runnable {
+            override fun run() {
+                if (serviceDescriptionActivation.expire(playerInstance.currentPosition)) Log.d(SERVICE_DESCRIPTION_TAG, "activation ended at ${playerInstance.currentPosition} ms")
+                if (serviceDescriptionActivation.hasEnd()) handler.postDelayed(this, 500)
+            }
+        }
+
+        override fun onMetadata(metadata: androidx.media3.common.Metadata) {
+            for (i in 0 until metadata.length()) {
+                val message = metadata.get(i) as? androidx.media3.extractor.metadata.emsg.EventMessage ?: continue
+                val id = ServiceDescriptionActivation.descriptionIdOf(message) ?: continue
+                val position = playerInstance.currentPosition
+                val activated = serviceDescriptionActivation.onEvent(message.id, id, position, message.durationMs)
+                Log.d(SERVICE_DESCRIPTION_TAG, "event ${message.id} at $position ms: description $id " + if (activated) "activated for ${message.durationMs} ms" else "ignored, the event id is known")
+                if (activated && serviceDescriptionActivation.hasEnd()) {
+                    handler.removeCallbacks(expiry)
+                    handler.postDelayed(expiry, 500)
+                }
+            }
+        }
+
+        // the player has one renderer for metadata: it must select the EventStream of the scheme, not the first one
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+            if (cmcdEventEntries.isEmpty()) return
+            ServiceDescriptionActivation.trackOverride(tracks)?.let {
+                Log.d(SERVICE_DESCRIPTION_TAG, "selecting the metadata track of the service description EventStream")
+                playerInstance.trackSelectionParameters = playerInstance.trackSelectionParameters.buildUpon().setOverrideForType(it).build()
+            }
+        }
     }
 
     override fun attach(url: String, contentType: String) {

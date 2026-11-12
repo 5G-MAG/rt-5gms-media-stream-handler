@@ -28,8 +28,8 @@ class CmcdMediaPlayerEntryTest {
 
     private fun pairs(text: String) = CmcdMediaPlayerEntry.parseData(text)
 
-    private fun apply(text: String, url: String, entries: List<ClientDataReportingEntry> = this.entries, configured: (String) -> Boolean = nothingConfigured) =
-        CmcdMediaPlayerEntry.formatData(CmcdMediaPlayerEntry.apply(pairs(text), entries, url, configured))
+    private fun apply(text: String, url: String, entries: List<ClientDataReportingEntry> = this.entries, configured: (String) -> Boolean = nothingConfigured, contentId: String? = null) =
+        CmcdMediaPlayerEntry.formatData(CmcdMediaPlayerEntry.apply(pairs(text), entries, url, configured, null, contentId))
 
     @Test
     fun dataIsReadAndWrittenAsItIs() {
@@ -76,9 +76,9 @@ class CmcdMediaPlayerEntryTest {
     @Test
     fun theIdentifiersOfTheEntryAreUsedOnlyForTheKeysThatItNames() {
         val own = listOf(ClientDataReportingEntry(sessionId = "entry-sid", contentId = "entry-cid", keys = arrayListOf("br")))
-        assertEquals("""br=1,cid="c",sid="s"""", apply("""br=1,cid="c",sid="s"""", "http://any.example/seg.m4s", own, configured = { it == "cid" }))
+        assertEquals("""br=1,cid="c",sid="s"""", apply("""br=1,cid="c",sid="s"""", "http://any.example/seg.m4s", own, configured = { it == "cid" }, contentId = "c"))
         val sidOnly = listOf(ClientDataReportingEntry(sessionId = "entry-sid", contentId = "entry-cid", keys = arrayListOf("sid")))
-        assertEquals("""cid="c",sid="entry-sid"""", apply("""cid="c",sid="s"""", "http://any.example/seg.m4s", sidOnly, configured = { it == "cid" }))
+        assertEquals("""cid="c",sid="entry-sid"""", apply("""cid="c",sid="s"""", "http://any.example/seg.m4s", sidOnly, configured = { it == "cid" }, contentId = "c"))
     }
 
     // table I.4: init segments are the object type i, MPD requests m; a request type that the entry does not name gets none of its keys
@@ -205,5 +205,47 @@ class CmcdMediaPlayerEntryTest {
         assertEquals("", apply("br=2,bl=3,su", dist2 + "seg.m4s", some))
         // absent serviceLocations: all of them
         assertEquals("br=2", apply("br=2,su", "http://anywhere.example/seg.m4s", listOf(ClientDataReportingEntry(keys = arrayListOf("br")))))
+    }
+
+    // the phone run: dist2 lies below dist1 (http://as/ps/ and http://as/ps/dist2/), the manifest is in the directory of dist1
+    private val nested1 = "http://10.45.0.1:8080/m4d/ps/"
+    private val nested2 = "http://10.45.0.1:8080/m4d/ps/dist2/"
+
+    @Test
+    fun aRequestIsInTheServiceLocationOfTheLongestBaseUrl() {
+        val onlyDist1 = ClientDataReportingEntry(arrayListOf(nested1), keys = arrayListOf("br"), otherServiceLocationUrls = arrayListOf(nested2))
+        val onlyDist2 = ClientDataReportingEntry(arrayListOf(nested2), keys = arrayListOf("br"), otherServiceLocationUrls = arrayListOf(nested1))
+        assertEquals("br=2", apply("br=2", nested1 + "chunk-stream0-00561.m4s", listOf(onlyDist1)))
+        assertEquals("", apply("br=2", nested2 + "chunk-stream0-00561.m4s", listOf(onlyDist1)))
+        assertEquals("br=2", apply("br=2", nested2 + "init-stream0.m4s", listOf(onlyDist2)))
+        assertEquals("", apply("br=2", nested1 + "init-stream0.m4s", listOf(onlyDist2)))
+        assertEquals("", apply("br=2", nested1 + "manifest-d2.mpd", listOf(onlyDist2)))
+        // without the other locations the shorter URL claims the nested one (the entry of an older Media Session Handler)
+        assertEquals("br=2", apply("br=2", nested2 + "init-stream0.m4s", listOf(ClientDataReportingEntry(arrayListOf(nested1), keys = arrayListOf("br")))))
+    }
+
+    // the content identifier of an entry that covers no request does not reach it through the cid of the player
+    @Test
+    fun theContentIdentifierOfAnEntryThatCoversNoRequestIsNotSent() {
+        val none = listOf(ClientDataReportingEntry(arrayListOf(), contentId = "entry-cid", keys = arrayListOf("cid", "br")))
+        assertEquals("""sid="s"""", apply("""cid="entry-cid",br=1,sid="s"""", "http://as.example/seg.m4s", none))
+        // the content identifier of the configurations is reported, with the value of the configurations
+        assertEquals("""cid="cfg",sid="s"""", apply("""cid="entry-cid",br=1,sid="s"""", "http://as.example/seg.m4s", none, configured = { it == "cid" }, contentId = "cfg"))
+        // an entry that covers the request and names cid without a content identifier of its own gives none: the configurations' one, or no cid
+        val noId = listOf(ClientDataReportingEntry(keys = arrayListOf("cid")), ClientDataReportingEntry(arrayListOf(), contentId = "other", keys = arrayListOf("cid")))
+        assertEquals("""sid="s"""", apply("""cid="other",sid="s"""", "http://as.example/seg.m4s", noId))
+        assertEquals("""cid="cfg",sid="s"""", apply("""cid="other",sid="s"""", "http://as.example/seg.m4s", noId, contentId = "cfg"))
+    }
+
+    // end to end on the data of a request: the query of the player, reduced for an entry as the Media Session Handler reads it from the manifest
+    @Test
+    fun theQueryOfARequestOutsideTheNamedLocationLosesTheKeysOfTheEntry() {
+        val entry = ClientDataReportingEntry(arrayListOf(), arrayListOf("a", "v", "av", "c", "tt", "i", "m"), "cmcd-query", null, "entry-cid-1", arrayListOf("bl", "br", "cid", "ot", "sid", "v"))
+        val query = "CMCD=" + Uri.encode("""bl=1,br=2,cid="entry-cid-1",ot=v,sid="s"""")
+        val spec = DataSpec.Builder().setUri("http://10.45.0.1:8080/m4d/ps/dist2/chunk-stream0-00561.m4s?$query").build()
+        assertEquals(
+            "http://10.45.0.1:8080/m4d/ps/dist2/chunk-stream0-00561.m4s?CMCD=" + Uri.encode("""sid="s""""),
+            CmcdMediaPlayerEntry.resolve(spec, listOf(entry), nothingConfigured).uri.toString()
+        )
     }
 }

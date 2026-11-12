@@ -13,8 +13,13 @@ import org.robolectric.annotation.Config
 @Config(sdk = [33])
 class ClientDataReportingParcelTest {
     @Test
-    fun anEmptyListOfServiceLocationsSurvivesTheParcel() {
-        val entry = ClientDataReportingEntry(arrayListOf(), arrayListOf(), "cmcd-headers", null, null, arrayListOf("br"))
+    fun anEmptyListOfServiceLocationsSurvivesTheParcel() = roundTrip(ClientDataReportingEntry(arrayListOf(), arrayListOf(), "cmcd-headers", null, null, arrayListOf("br")))
+
+    @Test
+    fun theOtherServiceLocationsSurviveTheParcel() =
+        roundTrip(ClientDataReportingEntry(arrayListOf("http://as/ps/"), null, null, null, "c", arrayListOf("br"), arrayListOf("http://as/ps/dist2/")))
+
+    private fun roundTrip(entry: ClientDataReportingEntry) {
         val parcel = Parcel.obtain()
         entry.writeToParcel(parcel, 0)
         parcel.setDataPosition(0)
@@ -22,6 +27,7 @@ class ClientDataReportingParcelTest {
         val creator = ClientDataReportingEntry::class.java.getField("CREATOR").get(null) as android.os.Parcelable.Creator<ClientDataReportingEntry>
         val read = creator.createFromParcel(parcel)
         assertNotNull(read.serviceLocationUrls)
+        assertEquals(entry.otherServiceLocationUrls, read.otherServiceLocationUrls)
         assertEquals(entry, read)
     }
 }

@@ -185,6 +185,16 @@ class MediaSessionHandlerAdapter() {
         exoPlayerAdapter.setCmcdReporting(keys, contentId, useQueryParameters)
 
     /**
+     * serviceDescriptions[] of the Media Player configuration (clause 13.2.4), for client data reporting: each defines a service description
+     * or, with the id of one in the manifest, modifies it; what it gives takes precedence over the Media Player Entry. Takes effect for the next playback.
+     */
+    fun setServiceDescriptions(descriptions: List<com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ServiceDescriptionSettings>) =
+        exoPlayerAdapter.setServiceDescriptions(descriptions)
+
+    /** serviceDescriptionId of the Media Player configuration (clause 13.2.4): selects the service description that applies. Takes effect for the next playback. */
+    fun setServiceDescriptionId(id: Long?) = exoPlayerAdapter.setServiceDescriptionId(id)
+
+    /**
      * metricsConfiguration[] of the Media Player configuration (clause 13.2.4) for the CMCD metrics schemes (table 7.8.1-1): each is reported
      * together with the configurations of the Service Access Information. Other schemes are left out. Takes effect for the next playback.
      */
