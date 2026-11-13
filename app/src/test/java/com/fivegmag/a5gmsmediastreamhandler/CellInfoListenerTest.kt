@@ -24,6 +24,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowLooper
+import java.util.concurrent.TimeUnit
 import org.robolectric.annotation.Config
 
 /** TS 26.510 V19.2.0 clause 5.3.6.1: the location change is detected from the cell information, on Android 10 and 11 by the PhoneStateListener */
@@ -66,6 +68,33 @@ class CellInfoListenerTest {
         val before = received.size
         callback.onCellInfoChanged(mutableListOf<CellInfo>())
         assertEquals(before + 1, received.size)
+    }
+
+    @Test
+    fun theCellInformationIsAskedForAgainWhileTheSessionRunsAndNotAfterTheReset() {
+        shadowOf(telephony).setCallbackCellInfos(mutableListOf<CellInfo>())   // the answer to each request of the platform
+        val controller = controller(Build.VERSION_CODES.S)
+        controller.initialize()
+        ShadowLooper.idleMainLooper()
+        val asked = received.size
+        ShadowLooper.idleMainLooper(9, TimeUnit.SECONDS)
+        assertEquals(asked, received.size)
+        ShadowLooper.idleMainLooper(2, TimeUnit.SECONDS)
+        assertEquals(asked + 1, received.size)
+        ShadowLooper.idleMainLooper(10, TimeUnit.SECONDS)
+        assertEquals(asked + 2, received.size)
+        controller.reset()
+        ShadowLooper.idleMainLooper(30, TimeUnit.SECONDS)
+        assertEquals(asked + 2, received.size)
+    }
+
+    @Test
+    fun withoutThePermissionNothingIsAskedFor() {
+        shadowOf(telephony).setCallbackCellInfos(mutableListOf<CellInfo>())
+        controller(Build.VERSION_CODES.S, permission = false).also { it.initialize() }
+        val asked = received.size
+        ShadowLooper.idleMainLooper(30, TimeUnit.SECONDS)
+        assertEquals(asked, received.size)
     }
 
     @Test

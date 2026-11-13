@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.telephony.CellInfo
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
@@ -31,6 +33,7 @@ class SessionController(
 ) : ISessionController {
 
     companion object {
+        private const val CELL_INFO_REFRESH_MS = 10_000L
         // TS 26.512 V19.3.0 clause 4.7.2.1: one of the Media Entry Points is selected by its MIME media type; DASH is preferred, HLS is the
         // other type that the player handles. The Media Session Handler has already left out the entry points of unsupported profiles.
         fun selectEntryPoint(entryPoints: List<EntryPoint>): EntryPoint? =
@@ -62,6 +65,16 @@ class SessionController(
 
     private var cellInfoListener: Any? = null
 
+    // the platform does not always push a change of the serving cell (a Pixel did not after a gNB with another cell identity came up), so the cell
+    // information is asked for again while the session runs (clause 5.3.6.1: a location change is reported)
+    private val refreshHandler = Handler(Looper.getMainLooper())
+    private val refreshCellInfo = object : Runnable {
+        override fun run() {
+            requestCellInfoUpdates()
+            refreshHandler.postDelayed(this, CELL_INFO_REFRESH_MS)
+        }
+    }
+
     // the platform version that decides which listener is used (a test sets another one)
     internal var sdkInt: Int = Build.VERSION.SDK_INT
 
@@ -69,6 +82,8 @@ class SessionController(
         exoPlayerAdapter.eventBus.register(this)
         requestCellInfoUpdates()
         listenToCellInfoChanges()
+        refreshHandler.removeCallbacks(refreshCellInfo)
+        refreshHandler.postDelayed(refreshCellInfo, CELL_INFO_REFRESH_MS)
     }
 
     override fun handleCmcdLocationUpdate(configurationId: String, located: Boolean) {
@@ -171,6 +186,7 @@ class SessionController(
     }
 
     override fun reset() {
+        refreshHandler.removeCallbacks(refreshCellInfo)
         resetState()
     }
 
