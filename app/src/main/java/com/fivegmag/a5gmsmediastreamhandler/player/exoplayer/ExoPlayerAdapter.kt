@@ -389,16 +389,21 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         playerInstance.pause()
     }
 
+    // TS 26.512 V19.3.0 clause 13.2.3.7: the earliest media time is the mediaTime (milliseconds) and playback goes on from there
     override fun seek(time: Long) {
-        TODO("Not yet implemented")
+        playerInstance.seekTo(time)
+        playerInstance.play()
     }
 
     override fun stop() {
         playerInstance.stop()
     }
 
+    // clause 13.2.3.8: playback ends, its requests and the current MPD are removed and the Media Player is INITIALIZED again
     override fun reset() {
-        TODO("Not yet implemented")
+        playerInstance.stop()
+        playerInstance.clearMediaItems()
+        activeMediaItem = null
     }
 
     override fun destroy() {
