@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.databind.ser.PropertyFilter
 import com.fasterxml.jackson.databind.ser.PropertyWriter
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider
+import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit
 import com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionRequest
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
@@ -198,7 +199,7 @@ class ConsumptionReportingUnitFilter(private val propertiesToIgnore: List<String
         prov: SerializerProvider?,
         writer: PropertyWriter?
     ) {
-        if (include(writer)) {
+        if (include(writer, pojo)) {
             writer?.serializeAsField(pojo, gen, prov)
         } else if (!gen?.canOmitFields()!!) {
             writer?.serializeAsOmittedField(pojo, gen, prov)
@@ -211,7 +212,7 @@ class ConsumptionReportingUnitFilter(private val propertiesToIgnore: List<String
         prov: SerializerProvider?,
         writer: PropertyWriter?
     ) {
-        if (include(writer)) {
+        if (include(writer, elementValue)) {
             writer?.serializeAsElement(elementValue, gen, prov)
         } else if (!gen?.canOmitFields()!!) {
             writer?.serializeAsOmittedField(elementValue, gen, prov)
@@ -233,7 +234,9 @@ class ConsumptionReportingUnitFilter(private val propertiesToIgnore: List<String
     ) {
     }
 
-    private fun include(writer: PropertyWriter?): Boolean {
+    private fun include(writer: PropertyWriter?, pojo: Any?): Boolean {
+        // TS 26.510 V19.2.0 table 9.6.3.2-1: locations is a list of one or more locations, so a unit that has none leaves the property out
+        if (writer?.name == "locations" && (pojo as? ConsumptionReportingUnit)?.locations.isNullOrEmpty()) return false
         return writer?.name !in propertiesToIgnore
     }
 }

@@ -14,7 +14,9 @@ import io.mockk.mockk
 import org.greenrobot.eventbus.EventBus
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -133,5 +135,14 @@ class ConsumptionReporterLocationTest {
         val unitsOfTheReporter = reporter.javaClass.getDeclaredField("consumptionReportingUnitList").also { it.isAccessible = true }.get(reporter) as List<*>
         val lists = unitsOfTheReporter.map { (it as com.fivegmag.a5gmscommonlibrary.consumptionReporting.ConsumptionReportingUnit).locations }
         assertNotSame(lists[0], lists[1])
+    }
+
+    // table 9.6.3.2-1: locations (0..1) is a list of one or more locations (the OpenAPI has minItems 1), so a unit without a known location has none
+    @Test
+    fun aUnitWithoutAKnownLocationHasNoLocationsProperty() {
+        selected("v1", "video/mp4")
+        assertFalse(units()[0].has("locations"))
+        reporter.onLocationsUpdated(listOf(cellA))
+        assertTrue(units()[0].has("locations"))
     }
 }
