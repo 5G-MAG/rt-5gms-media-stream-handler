@@ -21,6 +21,7 @@ object QoeSchemaValidator {
 
         val parser = SAXParser()
 
+        parser.setFeature("http://xml.org/sax/features/validation", true)
         parser.setFeature("http://apache.org/xml/features/validation/schema", true)
         parser.setFeature("http://apache.org/xml/features/validation/schema-full-checking", true)
 
