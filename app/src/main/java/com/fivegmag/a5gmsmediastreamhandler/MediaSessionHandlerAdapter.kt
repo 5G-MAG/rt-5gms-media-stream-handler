@@ -12,6 +12,7 @@ package com.fivegmag.a5gmsmediastreamhandler
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
@@ -37,6 +38,7 @@ import com.fivegmag.a5gmsmediastreamhandler.service.GeneralSessionListener
 import com.fivegmag.a5gmsmediastreamhandler.service.NetworkAssistanceListener
 import com.fivegmag.a5gmsmediastreamhandler.service.NetworkAssistancePayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.PlayerCapabilityPayloads
+import com.fivegmag.a5gmsmediastreamhandler.service.ServiceUrlIntents
 import com.fivegmag.a5gmsmediastreamhandler.service.ServiceUrlPayloads
 import com.fivegmag.a5gmsmediastreamhandler.service.IncomingMessageHandler
 import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
@@ -190,6 +192,14 @@ class MediaSessionHandlerAdapter() {
     fun launchServiceUrl(serviceUrl: String) = outgoingMessageHandler.sendClientApiRequest(
         SessionHandlerMessageTypes.LAUNCH_SERVICE_URL, ServiceUrlPayloads.launchRequest(serviceUrl)
     )
+
+    /**
+     * The intent that requests a 3GPP Service URL from the URL handler of the Media Session Handler (TS 26.512 V19.3.0 clause 4.8.3.1) for this
+     * instance, after the connection to the Media Session Handler is established (the instance is its client). Start it for a result: the extra
+     * HTTP_RESPONSE_CODE of the result is the HTTP status (clause 4.8.3.4), see ServiceUrlIntents.statusOf(). Playback is triggered in this instance.
+     */
+    fun serviceUrlIntent(serviceUrl: String): Intent =
+        ServiceUrlIntents.request(serviceUrl, outgoingMessageHandler.clientMessenger())
 
     /** getBDTInfo(), table 11.3.1.1-1; the return value (table 11.3.1.1-2) goes to the DynamicPolicyListener */
     fun getBDTInfo(sessionId: String, serviceOperationPointReference: String) = outgoingMessageHandler.sendClientApiRequest(

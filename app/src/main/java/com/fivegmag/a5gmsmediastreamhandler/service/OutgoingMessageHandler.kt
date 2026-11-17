@@ -36,6 +36,9 @@ class OutgoingMessageHandler {
 
     }
 
+    /** The Messenger that this instance registered with the Media Session Handler: it names the instance's media delivery session context */
+    fun clientMessenger(): Messenger? = nativeIncomingHandler
+
     fun handleServiceDisconnected() {
         outgoingMessengerService = null
         boundToMediaSessionHandler = false
