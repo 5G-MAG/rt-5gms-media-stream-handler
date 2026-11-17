@@ -20,6 +20,7 @@ import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.BufferLeve
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.InitialPlayoutDelay
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.PlayoutDelayforMediaStartup
 
+import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.MpdInfo
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.MpdInformation
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeReport
@@ -225,6 +226,12 @@ class QoeMetricsReporterExoplayer(
                 }
             }
 
+            // TS 26.247 V19.1.0 clause 10.6.2: "If a supplementQoEMetric needs to be sent when no ordinary QoEMetric is due, a dummy MPDInformation
+            // metric shall be sent with codecs="none", bandwidth=0, mimeType="none", representationId="none"."
+            if (qoeMetricsReport.supplementQoEMetric != null && !hasOrdinaryMetric(qoeMetricsReport)) {
+                qoeMetricsReport.mpdInformation = arrayListOf(MpdInformation("none", null, MpdInfo("none", 0, "none")))
+            }
+
             val receptionReport =
                 ReceptionReport(qoeReport = qoeMetricsReport, contentUri = exoPlayerAdapter.getCurrentManifestUrl())
             receptionReport.schemaVersion = "TSG105-Rel18"
@@ -250,6 +257,11 @@ class QoeMetricsReporterExoplayer(
     // Sampling timer moved to BufferLevelTracker
 
 
+
+    private fun hasOrdinaryMetric(report: QoeReport): Boolean =
+        report.representationSwitchList != null || report.bufferLevel != null || report.mpdInformation != null ||
+            report.initialPlayoutDelay != null || report.playoutDelayForMediaStartup != null || report.avgThroughputList != null ||
+            report.playList != null
 
     private fun shouldReportMetric(metric: String, metricsList: ArrayList<String>?): Boolean {
         return metricsList.isNullOrEmpty() || metricsList.any { termSelectsMetric(it, metric) }

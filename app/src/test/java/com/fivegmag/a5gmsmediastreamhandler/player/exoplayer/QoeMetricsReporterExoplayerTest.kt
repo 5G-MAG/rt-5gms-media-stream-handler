@@ -291,4 +291,34 @@ class QoeMetricsReporterExoplayerTest {
     }
 
 
+
+    // TS 26.247 V19.1.0 clause 10.6.2: a supplementQoEMetric that goes out alone needs a dummy MPDInformation (a QoeReport has at least one QoeMetric)
+    @Test
+    fun aSupplementWithoutAnOrdinaryMetricGetsTheDummyMpdInformation() {
+        val request = requestSpecificMetrics(Metrics.DEVICE_INFORMATION)
+        reporter.initialize(request)
+
+        val xmlReport = reporter.getQoeMetricsReport(request, "client-1", "deadbeef1234")
+        writeReport("supplement_only_report.xml", xmlReport)
+
+        assertTrue("Report should contain supplementQoEMetric", xmlReport.contains("supplementQoEMetric"))
+        assertTrue("Report should contain the dummy MPDInformation", xmlReport.contains("<MPDInformation representationId=\"none\">"))
+        assertTrue("Dummy should have codecs none", xmlReport.contains("codecs=\"none\""))
+        assertTrue("Dummy should have bandwidth 0", xmlReport.contains("bandwidth=\"0\""))
+        assertTrue("Dummy should have mimeType none", xmlReport.contains("mimeType=\"none\""))
+        QoeSchemaValidator.validate(xmlReport)
+    }
+
+    @Test
+    fun aSupplementWithAnOrdinaryMetricGetsNoDummy() {
+        val request = requestSpecificMetrics(Metrics.DEVICE_INFORMATION, Metrics.INITIAL_PLAYOUT_DELAY)
+        reporter.initialize(request)
+
+        PlaybackSessionSimulator.simulateFullPlaybackSession()
+
+        val xmlReport = reporter.getQoeMetricsReport(request, "client-1", "deadbeef1234")
+        assertTrue("Report should contain InitialPlayoutDelay", xmlReport.contains("InitialPlayoutDelay"))
+        assertFalse("Report should NOT contain a dummy", xmlReport.contains("representationId=\"none\""))
+        QoeSchemaValidator.validate(xmlReport)
+    }
 }
