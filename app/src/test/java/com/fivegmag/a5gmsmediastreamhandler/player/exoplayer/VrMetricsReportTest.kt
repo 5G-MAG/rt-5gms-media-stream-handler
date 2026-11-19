@@ -85,12 +85,11 @@ class VrMetricsReportTest {
         assertFalse(xml, xml.contains("<RepSwitchList"))
     }
 
+    // a configuration of the viewport metrics only has no metric to report (no source, no value made up), so no report is made (CR-050, O-3)
     @Test
-    fun aConfigurationOfTheViewportMetricsOnlyHasNoVrMetric() {
+    fun aConfigurationOfTheViewportMetricsOnlyHasNothingToReport() {
         val xml = report(request(MetricReportingSchemes.THREE_GPP_VR_METRIC_REPORTING, VrMetrics.COMP_QUAL_LATENCY, VrMetrics.RENDERED_VIEWPORTS + "/duration"))
-        assertTrue(xml, xml.contains("xsi:type=\"vr:VrQoeReportType\""))
-        assertFalse(xml, xml.contains("vrMetric>"))
-        assertFalse(xml, xml.contains("vr:vrDeviceInformation"))
+        assertEquals("", xml)
     }
 
     // clause E.2.2: a term below the key selects the metric (the terminal path elements are pruned to select all below a branch)

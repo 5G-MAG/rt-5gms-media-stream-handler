@@ -67,7 +67,8 @@ class QoeMetricsReporterExoplayer(
 
     // The crossing thresholds of the configuration (TS 26.510 V19.2.0 clause 5.2.11.1): the values that have a single number are sampled
     // every samplingPeriod, BufferLevel (the level in ms) and InitialPlayoutDelay (in ms); other metrics are lists or text and have no value to
-    // compare (DEFECTS K9: the text does not say which value is compared, this is the reading)
+    // compare. Implementation choice, text silent, see CR-029 (open item O-35): clause 5.2.11.1 does not say which value of a metric is compared; the
+    // single-valued metrics are, and no value is made up for the others
     private var thresholdMonitor: ThresholdMonitor? = null
     private val thresholdHandler = Handler(Looper.getMainLooper())
     private var thresholdSampler: Runnable? = null
@@ -264,7 +265,8 @@ class QoeMetricsReporterExoplayer(
 
             // TS 26.247 V19.1.0 clause 10.6.2: "If a supplementQoEMetric needs to be sent when no ordinary QoEMetric is due, a dummy MPDInformation
             // metric shall be sent with codecs="none", bandwidth=0, mimeType="none", representationId="none"." The extension of TS 26.118 has the same
-            // need (the base type requires a QoeMetric) and no rule of its own: the rule is applied to a report that carries a vrMetric (open item O-41)
+            // need (the base type requires a QoeMetric) and no rule of its own: the rule is applied to a report that carries a vrMetric (implementation choice,
+            // text silent, see CR-050, open item O-41)
             if ((qoeMetricsReport.supplementQoEMetric != null || qoeMetricsReport.vrMetric != null) && !hasOrdinaryMetric(qoeMetricsReport)) {
                 qoeMetricsReport.mpdInformation = arrayListOf(MpdInformation("none", null, MpdInfo("none", 0, "none")))
             }
@@ -328,7 +330,8 @@ class QoeMetricsReporterExoplayer(
      * The VR metrics of the report (TS 26.118 V19.0.0 clause 9.3), those that the client can source: the device information. CompQualLatency
      * (clause 9.3.2) needs the gaze (observation point 3), the quality of the regions of the viewport (point 2), the rendering of the viewport
      * (point 4) and the field of view of the device (point 5), RenderedViewports (clause 9.3.3) the gaze and the field of view; the library has no
-     * VR renderer or viewport tracker that supplies them, so they are not reported and no value is made up (open item O-40).
+     * VR renderer or viewport tracker that supplies them, so they are not reported and no value is made up (open item O-40, not available: needs a
+     * VR renderer, see CR-053).
      */
     private fun getVrMetric(request: QoeMetricsRequest): VrMetric? {
         for (unavailable in listOf(VrMetrics.COMP_QUAL_LATENCY, VrMetrics.RENDERED_VIEWPORTS)) {

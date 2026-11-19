@@ -67,4 +67,25 @@ class ThresholdSamplingTest {
         ShadowLooper.idleMainLooper(3500, TimeUnit.MILLISECONDS)
         assertTrue(collector.crossings.isEmpty())
     }
+
+    // Implementation choice, text silent, see CR-029 (O-35): clause 5.2.11.1 does not say which value of a metric is compared. The value of
+    // BufferLevel is the buffer length in milliseconds
+    @Test
+    fun theBufferLevelIsComparedInMilliseconds() {
+        every { adapter.getBufferLength() } returns 12_000L
+        reporter.initialize(request("urn:3GPP:ns:PSS:DASH:QM10#BufferLevel" to 10_000f))
+        ShadowLooper.idleMainLooper(3500, TimeUnit.MILLISECONDS)
+        assertEquals(1, collector.crossings.size)
+        assertEquals(12_000.0, collector.crossings[0].crossing.value, 0.0)
+    }
+
+    // the same choice: a metric that is a list of entries (here the average throughput) has no single value, and no value is made up for it
+    @Test
+    fun aMetricThatIsAListOfEntriesIsNeverCompared() {
+        reporter.initialize(request("urn:3GPP:ns:PSS:DASH:QM10#AvgThroughput" to 0f))
+        bus.post(PlaybackStartTriggerEvent(1000))
+        bus.post(FirstFrameRenderedEvent(1800))
+        ShadowLooper.idleMainLooper(3500, TimeUnit.MILLISECONDS)
+        assertTrue(collector.crossings.isEmpty())
+    }
 }

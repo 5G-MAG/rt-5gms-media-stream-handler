@@ -67,7 +67,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         // clause 10.1A: all media requests cite the media delivery session identifier in the CMCD-Session header (clause 6.2.3.6); in header mode
         // the player has put it there already. In query mode a request that carries the CMCD query argument has the identifier in it: CTA-5004-B
         // clause 3 says a report uses only one data transmission mode and clause 6 has a server ignore the query argument when a CMCD header is
-        // present, so the header would discard the other keys (the mismatch with 10.1A is open item O-27). Other requests get the header.
+        // present, so the header would discard the other keys. Implementation choice, texts conflicting, see CR-034 (open item O-27): clause 10.1A (the
+        // header on all media requests) against clause 10.5.1 (the mode follows the configuration), the more specific, and CTA-5004-B. Other requests get the header.
         fun withSessionIdentifierHeader(dataSpec: androidx.media3.datasource.DataSpec, sessionId: String?, useQueryParameters: Boolean): androidx.media3.datasource.DataSpec {
             if (sessionId == null || !useQueryParameters) return dataSpec
             if (dataSpec.httpRequestHeaders.keys.any { it.equals("CMCD-Session", ignoreCase = true) }) return dataSpec
@@ -531,7 +532,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private fun getBufferLengthInSeconds(): Double =
         if (playerInstance.currentTracks.isEmpty) Double.NaN else getBufferLength() / 1000.0
 
-    // null while the player has no latency measurement (it is not playing a live stream)
+    // null while the player has no latency measurement (it is not playing a live stream). Implementation choice, text silent, see CR-042 (open item
+    // O-36): table 13.2.6-1 gives no value for a stream that is not live; no value is made up (not NaN, not the raw unset value of Media3)
     private fun getLiveLatencyInSeconds(): Double? {
         val latency = getLiveLatency()
         return if (latency == C.TIME_UNSET) null else latency / 1000.0
