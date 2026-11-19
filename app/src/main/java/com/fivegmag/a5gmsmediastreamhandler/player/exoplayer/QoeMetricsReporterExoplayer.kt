@@ -61,6 +61,10 @@ class QoeMetricsReporterExoplayer(
     private val mpdInformationTracker: MpdInformationTracker = MpdInformationTracker()
     private var lastQoeMetricsRequest: QoeMetricsRequest? = null
 
+    // Clock (ms) and start of the QoE session, for reportPeriod of a report without a reporting interval (CR-048)
+    internal var clock: () -> Long = { System.currentTimeMillis() }
+    private var sessionStartMs: Long = clock()
+
     // The crossing thresholds of the configuration (TS 26.510 V19.2.0 clause 5.2.11.1): the values that have a single number are sampled
     // every samplingPeriod, BufferLevel (the level in ms) and InitialPlayoutDelay (in ms); other metrics are lists or text and have no value to
     // compare (DEFECTS K9: the text does not say which value is compared, this is the reading)
@@ -112,6 +116,7 @@ class QoeMetricsReporterExoplayer(
     // HttpList handling moved to HttpListTracker
 
     override fun initialize(lastQoeMetricsRequest: QoeMetricsRequest) {
+        sessionStartMs = clock()
         // the trackers listen on the event bus of the instance that owns the player
         val bus = exoPlayerAdapter.eventBus
         initialPlayoutDelayTracker.eventBus = bus
@@ -181,7 +186,10 @@ class QoeMetricsReporterExoplayer(
             val qoeMetricsReport = QoeReport()
             qoeMetricsReport.reportTime = utils.getCurrentXsDateTime()
             qoeMetricsReport.periodId = exoPlayerAdapter.getCurrentPeriodId()
-            qoeMetricsReport.reportPeriod = qoeMetricsRequest.reportingInterval?.toInt()
+            // Implementation choice, text silent, see CR-048 (open item O-2): TS 26.247 V19.1.0 clause 10.6.2 does not define reportPeriod, which the
+            // schema requires. The period the report covers: the configured reporting interval (seconds, as in listing 10.6.3-1) or, for a single final
+            // report (no interval), the time in seconds since the QoE session started.
+            qoeMetricsReport.reportPeriod = reportPeriodSeconds(qoeMetricsRequest)
             qoeMetricsReport.recordingSessionId = recordingSessionId
             qoeMetricsReport.delimiters = arrayListOf(Delimiter(), Delimiter(), Delimiter(), Delimiter())
 
@@ -261,6 +269,14 @@ class QoeMetricsReporterExoplayer(
                 qoeMetricsReport.mpdInformation = arrayListOf(MpdInformation("none", null, MpdInfo("none", 0, "none")))
             }
 
+            // Implementation choice, text silent, see CR-050 (open item O-3): the schema requires at least one QoeMetric and TS 26.247 V19.1.0
+            // clause 10.6.2 gives the dummy rule only for a supplement metric. A report with no metric at all would be schema-invalid and carries no
+            // data: it is not sent (an empty string; the controller sends nothing).
+            if (!hasOrdinaryMetric(qoeMetricsReport) && qoeMetricsReport.supplementQoEMetric == null && qoeMetricsReport.vrMetric == null) {
+                Log.d(TAG, "No metric to report for configuration ${qoeMetricsRequest.metricsReportingConfigurationId}: no report")
+                return ""
+            }
+
             val receptionReport =
                 ReceptionReport(qoeReport = qoeMetricsReport, contentUri = exoPlayerAdapter.getCurrentManifestUrl())
             receptionReport.schemaVersion = "TSG105-Rel18"
@@ -287,6 +303,12 @@ class QoeMetricsReporterExoplayer(
     // Sampling timer moved to BufferLevelTracker
 
 
+
+    private fun reportPeriodSeconds(request: QoeMetricsRequest): Int {
+        val interval = request.reportingInterval
+        if (interval != null && interval > 0) return interval.toInt()
+        return ((clock() - sessionStartMs) / 1000).toInt().coerceAtLeast(0)
+    }
 
     private fun hasOrdinaryMetric(report: QoeReport): Boolean =
         report.representationSwitchList != null || report.bufferLevel != null || report.mpdInformation != null ||

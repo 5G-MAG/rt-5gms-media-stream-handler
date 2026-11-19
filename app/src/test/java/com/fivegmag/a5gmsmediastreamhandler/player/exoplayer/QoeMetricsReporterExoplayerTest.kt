@@ -321,4 +321,43 @@ class QoeMetricsReporterExoplayerTest {
         assertFalse("Report should NOT contain a dummy", xmlReport.contains("representationId=\"none\""))
         QoeSchemaValidator.validate(xmlReport)
     }
+
+    // Implementation choice, text silent, see CR-048 (O-2): reportPeriod is required by the schema; a single final report (no reporting interval) has
+    // the time in seconds since the QoE session started
+    @Test
+    fun theReportPeriodOfAFinalReportIsTheSecondsSinceTheSessionStarted() {
+        var now = 1_000_000L
+        reporter.clock = { now }
+        val request = requestSpecificMetrics(Metrics.DEVICE_INFORMATION)
+        every { request.reportingInterval } returns 0L
+        reporter.initialize(request)
+        now += 42_900L
+
+        val xmlReport = reporter.getQoeMetricsReport(request, "client-1", "deadbeef1234")
+
+        assertTrue("reportPeriod is the elapsed seconds: $xmlReport", xmlReport.contains("reportPeriod=\"42\""))
+        QoeSchemaValidator.validate(xmlReport)
+    }
+
+    @Test
+    fun theReportPeriodWithAReportingIntervalIsTheInterval() {
+        val request = requestSpecificMetrics(Metrics.DEVICE_INFORMATION)
+        every { request.reportingInterval } returns 7L
+        reporter.initialize(request)
+
+        val xmlReport = reporter.getQoeMetricsReport(request, "client-1", "deadbeef1234")
+
+        assertTrue("reportPeriod is the interval: $xmlReport", xmlReport.contains("reportPeriod=\"7\""))
+    }
+
+    // Implementation choice, text silent, see CR-050 (O-3): a report with no metric at all is not made (it would be invalid against the schema)
+    @Test
+    fun aReportWithNoMetricAtAllIsNotMade() {
+        val request = requestSpecificMetrics(Metrics.INITIAL_PLAYOUT_DELAY)
+        reporter.initialize(request)
+
+        val xmlReport = reporter.getQoeMetricsReport(request, "client-1", "deadbeef1234")
+
+        assertEquals("", xmlReport)
+    }
 }

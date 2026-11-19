@@ -106,6 +106,8 @@ class QoEMetricsReportingController(
     private fun triggerSingleQoeMetricsReport(qoeMetricsRequest: QoeMetricsRequest) {
         try {
             val qoeMetricsReport = getQoeMetricsReport(qoeMetricsRequest)
+            // no report when there is nothing to report (CR-050, open item O-3)
+            if (qoeMetricsReport.isEmpty()) return
             sendQoeMetricsReport(
                 qoeMetricsReport,
                 qoeMetricsRequest.metricsReportingConfigurationId
