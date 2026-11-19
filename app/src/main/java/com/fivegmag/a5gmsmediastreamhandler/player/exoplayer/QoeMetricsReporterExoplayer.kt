@@ -17,6 +17,7 @@ import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.helpers.VrMetrics
 import com.fivegmag.a5gmscommonlibrary.helpers.XmlSchemaStrings
+import com.fivegmag.a5gmscommonlibrary.helpers.ignoreParcelableStability
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers.BufferLevelTracker
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.InitialPlayoutDelay
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.PlayoutDelayforMediaStartup
@@ -360,7 +361,7 @@ class QoeMetricsReporterExoplayer(
 
     @SuppressLint("Range")
     private fun serializeReceptionReportToXml(input: ReceptionReport): String {
-        val xmlMapper = XmlMapper()
+        val xmlMapper = XmlMapper().ignoreParcelableStability()
         val serializedResult = xmlMapper.writeValueAsString(input)
 
         return "<?xml version=\"1.0\" encoding=\"utf-8\"?>$serializedResult"

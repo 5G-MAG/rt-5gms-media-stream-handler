@@ -19,6 +19,7 @@ import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
+import com.fivegmag.a5gmscommonlibrary.helpers.ignoreParcelableStability
 import com.fivegmag.a5gmscommonlibrary.models.EndpointAddress
 import com.fivegmag.a5gmscommonlibrary.models.Snssai
 import com.fivegmag.a5gmscommonlibrary.models.TypedLocation
@@ -221,7 +222,7 @@ class ConsumptionReporterExoplayer(
             reportingClientId,
             consumptionReportingUnitList
         )
-        val objectMapper: ObjectMapper = jacksonObjectMapper()
+        val objectMapper: ObjectMapper = jacksonObjectMapper().ignoreParcelableStability()
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
 
         // Filter the values according to the current configuration
