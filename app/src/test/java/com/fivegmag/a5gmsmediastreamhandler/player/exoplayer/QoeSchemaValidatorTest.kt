@@ -32,4 +32,15 @@ class QoeSchemaValidatorTest {
         val rejection = assertThrows(AssertionError::class.java) { QoeSchemaValidator.validate(uuid) }
         assertTrue(rejection.message!!.contains("hexBinary"))
     }
+
+    // TS 26.118 V19.0.0 clause 9.4.3: the schema as printed (corrected for its typing errors, vr.xsd) extends QoeReportType, which ends in a wildcard for
+    // other name spaces, by elements of such a name space: the unique particle attribution rule is violated and the report cannot be validated as a whole
+    @Test
+    fun theSchemaOfTheVrMetricsAsPrintedCannotValidateTheExtendedReport() {
+        val vrReport = report("<QoeMetric><InitialPlayoutDelay>100</InitialPlayoutDelay></QoeMetric>")
+            .replace("<QoeReport ", "<QoeReport xmlns:vr=\"urn:3gpp:metadata:2020:VR:metrics\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"vr:VrQoeReportType\" ")
+            .replace("<sv:delimiter>0</sv:delimiter></QoeReport>", "<sv:delimiter>0</sv:delimiter><vr:vrMetricSchemaVersion>1</vr:vrMetricSchemaVersion></QoeReport>")
+        val rejection = assertThrows(AssertionError::class.java) { QoeSchemaValidator.validateAsWhole(vrReport) }
+        assertTrue(rejection.message, rejection.message!!.contains("cos-nonambig"))
+    }
 }

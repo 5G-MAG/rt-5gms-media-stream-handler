@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!-- Test harness, not part of TS 26.118: a root element for the type VrMetricType of the schema of clause 9.4.3 (vr.xsd), whose only global
+     declarations are types, so that one vrMetric can be validated by itself. It is checked without the full schema check, which vr.xsd does not pass. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:3gpp:metadata:2020:VR:metrics"
+    xmlns="urn:3gpp:metadata:2020:VR:metrics" elementFormDefault="qualified">
+    <xs:include schemaLocation="vr.xsd"/>
+    <xs:element name="vrMetricTest" type="VrMetricType"/>
+</xs:schema>

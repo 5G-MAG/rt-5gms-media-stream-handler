@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<!-- TS 26.118 V19.0.0 clause 9.4.3 as printed, with the corrections that a schema processor needs and no other change:
+     type=cs:string and type=cs:unsignedInt (quotes, prefix xs), </xs:cmplexType> (complexType), minoccurs and maxoccurs (camel case),
+     type="unsignedInt" (prefix xs), the anyAttribute of VrQoeReportType moved into the extension (it cannot follow complexContent),
+     the base type QoeReportType (prefix hsd and an import of the receptionreport schema of TS 26.247, which the text does not import).
+     The text declares hsd as urn:3gpp:metadata:2011:HSD:receptionreport; the QoE report of TS 26.247 V19.1.0 is in the 2017 namespace, which is used here. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+     targetNamespace="urn:3gpp:metadata:2020:VR:metrics"
+     xmlns:hsd="urn:3gpp:metadata:2017:HSD:receptionreport"
+     xmlns="urn:3gpp:metadata:2020:VR:metrics" elementFormDefault="qualified">
+
+      <xs:import namespace="urn:3gpp:metadata:2017:HSD:receptionreport" schemaLocation="main.xsd"/>
+
+      <xs:complexType name="VrQoeReportType">
+          <xs:complexContent>
+              <xs:extension base="hsd:QoeReportType">
+                  <xs:sequence>
+                      <xs:element name="vrMetric" type="VrMetricType"
+                          minOccurs="0" maxOccurs="unbounded"/>
+                      <xs:element name="vrMetricSchemaVersion" type="xs:unsignedInt"/>
+                      <xs:any namespace="##other" processContents="lax"
+                          minOccurs="0" maxOccurs="unbounded"/>
+                  </xs:sequence>
+                  <xs:anyAttribute processContents="skip"/>
+              </xs:extension>
+          </xs:complexContent>
+      </xs:complexType>
+
+      <xs:complexType name="VrMetricType">
+          <xs:choice maxOccurs="unbounded">
+              <xs:element name="compQualLatency" type="CompQualLatencyType"
+                  maxOccurs="unbounded"/>
+              <xs:element name="renderedViewports" type="RenderedViewportsType"
+                  maxOccurs="unbounded"/>
+              <xs:element name="vrDeviceInformation" type="VrDeviceInformationType"
+                  maxOccurs="unbounded"/>
+              <xs:any namespace="##other" processContents="lax"
+                  minOccurs="0" maxOccurs="unbounded"/>
+          </xs:choice>
+
+         <xs:anyAttribute processContents="skip"/>
+     </xs:complexType>
+
+     <xs:complexType name="CompQualLatencyType">
+         <xs:sequence>
+             <xs:element name="firstViewport" type="ViewportItem"/>
+             <xs:element name="secondViewport" type="ViewportItem"/>
+             <xs:element name="worstViewport" type="ViewportItem"/>
+             <xs:element name="time" type="xs:dateTime"/>
+             <xs:element name="mtime" type="xs:duration"/>
+             <xs:element name="latency" type="xs:unsignedInt"/>
+             <xs:element name="accuracy" type="xs:unsignedInt"/>
+             <xs:element name="cause" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded"/>
+             <xs:any namespace="##other" processContents="lax"
+                 minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:anyAttribute processContents="skip"/>
+     </xs:complexType>
+
+     <xs:complexType name="RenderedViewportsType">
+         <xs:sequence>
+             <xs:element name="startTime" type="xs:duration"/>
+             <xs:element name="duration" type="xs:unsignedInt"/>
+             <xs:element name="viewport" type="ViewportDataType"/>
+             <xs:any namespace="##other" processContents="lax"
+                 minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:anyAttribute processContents="skip"/>
+     </xs:complexType>
+
+     <xs:complexType name="VrDeviceInformationType">
+         <xs:sequence>
+             <xs:element name="start" type="xs:dateTime"/>
+             <xs:element name="mstart" type="xs:duration"/>
+             <xs:element name="deviceIdentifier" type="xs:string"/>
+             <xs:element name="horizontalResolution" type="xs:unsignedInt"/>
+             <xs:element name="verticalResolution" type="xs:unsignedInt"/>
+             <xs:element name="horizontalFoV" type="xs:unsignedInt"/>
+             <xs:element name="verticalFoV" type="xs:unsignedInt"/>
+             <xs:element name="renderedHorizontalFoV" type="xs:unsignedInt"/>
+             <xs:element name="renderedVerticalFoV" type="xs:unsignedInt"/>
+             <xs:element name="refreshRate" type="xs:unsignedInt"/>
+             <xs:any namespace="##other" processContents="lax"
+                 minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:anyAttribute processContents="skip"/>
+     </xs:complexType>
+
+     <xs:complexType name="ViewportItem">
+         <xs:sequence>
+             <xs:element name="position" type="ViewportDataType"/>
+             <xs:element name="qualityLevel" type="QualityLevelEntry" maxOccurs="unbounded"/>
+             <xs:any namespace="##other" processContents="lax"
+                 minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:anyAttribute processContents="skip"/>
+     </xs:complexType>
+
+     <xs:complexType name="ViewportDataType">
+         <xs:sequence>
+             <xs:element name="centreAzimuth" type="xs:unsignedInt"/>
+             <xs:element name="centreElevation" type="xs:unsignedInt"/>
+             <xs:element name="centreTilt" type="xs:unsignedInt"/>
+             <xs:element name="azimuthRange" type="xs:unsignedInt"/>
+             <xs:element name="elevationRange" type="xs:unsignedInt"/>
+             <xs:any namespace="##other" processContents="lax"
+                 minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:anyAttribute processContents="skip"/>
+     </xs:complexType>
+
+     <xs:complexType name="QualityLevelEntry">
+         <xs:sequence>
+             <xs:element name="coverage" type="xs:double"/>
+             <xs:element name="qr" type="xs:unsignedInt"/>
+             <xs:element name="width" type="xs:unsignedInt"/>
+             <xs:element name="height" type="xs:unsignedInt"/>
+             <xs:any namespace="##other" processContents="lax"
+
+                 minOccurs="0" maxOccurs="unbounded"/>
+         </xs:sequence>
+         <xs:anyAttribute processContents="skip"/>
+     </xs:complexType>
+
+ </xs:schema>
