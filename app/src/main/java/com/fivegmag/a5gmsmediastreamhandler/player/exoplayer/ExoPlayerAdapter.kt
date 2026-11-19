@@ -422,6 +422,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     }
 
     /**
+     * Implementation choice, texts conflicting, see CR-042 (open item O-19): clause 13.2.3.7 names the error ERROR_MEDIA_TIME_NOT_ACCESSIBLE, which
+     * table 13.2.5-2 does not have; the table, which the clause cites for the errors, is followed.
      * TS 26.512 V19.3.0 clause 13.2.3.7: a mediaTime (milliseconds) that is not accessible gives PLAYBACK_ERROR with ERROR_INACCESSIBLE_MEDIA_TIME
      * (table 13.2.5-2; the text of the method calls the error ERROR_MEDIA_TIME_NOT_ACCESSIBLE and refers to clause 13.2.5) and nothing else is done;
      * otherwise the earliest media time is the mediaTime and playback goes on from there

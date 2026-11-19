@@ -97,7 +97,9 @@ class MediaPlayerNotifier(
         /**
          * The error reason of table 13.2.5-2 for an error of Media3: a 404 or 410 is ERROR_MEDIA_ENTRY_NOT_FOUND while there is no manifest yet and
          * ERROR_CONTENT_NOT_FOUND afterwards; a manifest that cannot be parsed is ERROR_INVALID_MEDIA_ENTRY, one that uses what the player does not
-         * support ERROR_UNSUPPORTED_PROFILE; any other error is one of the media playback platform, ERROR_MEDIA_PLAYBACK.
+         * support ERROR_UNSUPPORTED_PROFILE; any other error is one of the media playback platform, ERROR_MEDIA_PLAYBACK. Implementation choice,
+         * texts conflicting, see CR-042 (open item O-19): clause 13.2.3.3 names ERROR_MPD_NOT_FOUND, ERROR_MPD_NOT_VALID, ERROR_PROFILE_NOT_SUPPORTED and
+         * ERROR_MEDIA_NOT_SUPPORTED, which table 13.2.5-2 does not have; the table is followed.
          */
         fun errorReasonOf(error: PlaybackException, manifestLoaded: Boolean): String {
             val response = generateSequence(error.cause) { it.cause }.filterIsInstance<HttpDataSource.InvalidResponseCodeException>().firstOrNull()
