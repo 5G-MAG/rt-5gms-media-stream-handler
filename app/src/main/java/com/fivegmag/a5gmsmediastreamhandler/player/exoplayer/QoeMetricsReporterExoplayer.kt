@@ -258,7 +258,8 @@ class QoeMetricsReporterExoplayer(
             }
 
             // TS 26.118 V19.0.0 clauses 9.4.2 and 9.4.3: the report is of the type VrQoeReportType, the QoeReportType extended by the VR metrics and the
-            // schema version 1
+            // schema version 1. The schema of clause 9.4.3 declares no element, so the type is used through xsi:type, and its typing errors are those of
+            // the printed text: implementation choice, text defective, see CR-051 (open item O-42); the test schema (vr.xsd) lists the corrections.
             val asksForVr = asksForVrMetrics(qoeMetricsRequest)
             if (asksForVr) {
                 qoeMetricsReport.xsiType = "vr:" + XmlSchemaStrings.THREE_GPP_METADATA_2020_VR_METRICS.TYPE
