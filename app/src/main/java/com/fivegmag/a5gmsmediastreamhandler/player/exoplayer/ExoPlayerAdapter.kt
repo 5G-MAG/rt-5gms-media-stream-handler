@@ -580,4 +580,17 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? android.hardware.display.DisplayManager
         return displayManager?.getDisplay(android.view.Display.DEFAULT_DISPLAY)?.refreshRate ?: 0f
     }
+
+    override fun addDisplayChangedListener(listener: () -> Unit): () -> Unit {
+        val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? android.hardware.display.DisplayManager ?: return {}
+        val displayListener = object : android.hardware.display.DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) = Unit
+            override fun onDisplayRemoved(displayId: Int) = Unit
+            override fun onDisplayChanged(displayId: Int) {
+                if (displayId == android.view.Display.DEFAULT_DISPLAY) listener()
+            }
+        }
+        displayManager.registerDisplayListener(displayListener, android.os.Handler(android.os.Looper.getMainLooper()))
+        return { displayManager.unregisterDisplayListener(displayListener) }
+    }
 }

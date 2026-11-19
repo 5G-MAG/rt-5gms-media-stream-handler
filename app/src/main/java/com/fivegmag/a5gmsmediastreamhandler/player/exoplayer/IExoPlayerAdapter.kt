@@ -111,4 +111,7 @@ interface IExoPlayerAdapter {
 
     /** The refresh rate of the display in Hz, 0 if the platform gives none (VrDeviceInformation, TS 26.118 V19.0.0 clause 9.3.4) */
     fun getDisplayRefreshRate(): Float
+
+    /** Calls the listener when the display changes (refresh rate, size); returns the function that removes it. The default adapter has no display to watch. */
+    fun addDisplayChangedListener(listener: () -> Unit): () -> Unit = {}
 }

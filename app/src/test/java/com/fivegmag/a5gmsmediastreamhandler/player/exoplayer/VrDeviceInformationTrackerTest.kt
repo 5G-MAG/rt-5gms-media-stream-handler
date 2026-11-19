@@ -62,4 +62,20 @@ class VrDeviceInformationTrackerTest {
         tracker.initialize()
         assertEquals(1, tracker.getEntries().size)
     }
+
+    // clause 9.3.4: "whenever the information changes": a change of the display is logged when the platform says so, without waiting for a report
+    @Test
+    fun aChangeOfTheDisplayIsLoggedWhenItHappens() {
+        var listener: (() -> Unit)? = null
+        var removed = false
+        every { adapter.addDisplayChangedListener(any()) } answers { listener = firstArg(); { removed = true } }
+        tracker.initialize()
+        every { adapter.getDisplayRefreshRate() } returns 60f
+        listener!!.invoke()
+        every { adapter.getDisplayRefreshRate() } returns 120f
+        listener!!.invoke()
+        tracker.unregister()
+        assertEquals(true, removed)
+        assertEquals(listOf(90L, 60L, 120L), tracker.getEntries().map { it.refreshRate })
+    }
 }

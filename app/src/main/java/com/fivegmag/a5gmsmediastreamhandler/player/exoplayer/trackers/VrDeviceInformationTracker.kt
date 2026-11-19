@@ -21,7 +21,8 @@ import kotlin.math.roundToLong
 class VrDeviceInformationTracker(
     private val exoPlayerAdapter: IExoPlayerAdapter,
     private val utils: Utils = Utils(),
-    // "The brand, model and version of the device": the version is the Android release, as in the User-Agent of the library
+    // "The brand, model and version of the device": the version is the Android release, as in the User-Agent of the library (implementation choice,
+    // text silent on the format, see CR-053, open item O-45)
     private val deviceIdentifier: () -> String = { "${Build.BRAND} ${Build.MODEL} ${Build.VERSION.RELEASE}" }
 ) {
     /** The event bus of the Media Stream Handler instance that owns the player (set by the reporter before use) */
@@ -29,6 +30,7 @@ class VrDeviceInformationTracker(
 
     private val entries = ArrayList<VrDeviceInformationEntry>()
     private var lastLogged: VrDeviceInformationEntry? = null
+    private var removeDisplayListener: (() -> Unit)? = null
 
     companion object {
         const val TAG = "5GMS-VrDeviceInformationTracker"
@@ -40,10 +42,15 @@ class VrDeviceInformationTracker(
         if (!eventBus.isRegistered(this)) eventBus.register(this)
         lastLogged = null
         logIfChanged()
+        // "whenever the information changes" (clause 9.3.4): a change of the display is logged when it happens, not at the next report
+        removeDisplayListener?.invoke()
+        removeDisplayListener = exoPlayerAdapter.addDisplayChangedListener { logIfChanged() }
     }
 
     fun unregister() {
         if (eventBus.isRegistered(this)) eventBus.unregister(this)
+        removeDisplayListener?.invoke()
+        removeDisplayListener = null
     }
 
     // the display may have changed with the size of the video (orientation, window)
