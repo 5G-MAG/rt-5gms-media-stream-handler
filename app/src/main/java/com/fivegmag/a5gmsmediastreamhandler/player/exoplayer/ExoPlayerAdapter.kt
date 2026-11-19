@@ -56,6 +56,14 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             CmcdMediaPlayerEntry.usesQueryParameters(urlMode) ?: applicationSetting
                 ?: entries.firstNotNullOfOrNull { CmcdMediaPlayerEntry.usesQueryParameters(it.mode) } ?: false
 
+        // clause 10.1A: all media requests cite the media delivery session identifier in the CMCD-Session header (clause 6.2.3.6), also when the
+        // CMCD data go in the URL query (clause 10.5.1); in header mode the player has put it there already
+        fun withSessionIdentifierHeader(dataSpec: androidx.media3.datasource.DataSpec, sessionId: String?, useQueryParameters: Boolean): androidx.media3.datasource.DataSpec {
+            if (sessionId == null || !useQueryParameters) return dataSpec
+            if (dataSpec.httpRequestHeaders.keys.any { it.equals("CMCD-Session", ignoreCase = true) }) return dataSpec
+            return dataSpec.withAdditionalHeaders(mapOf("CMCD-Session" to "sid=\"$sessionId\""))
+        }
+
         // the keys of the provisioned schemes, plus sid: every M4d request cites the media delivery session identifier
         // in the CMCD-Session header (TS 26.512 clauses 10.1A and 6.2.3.6), also when no CMCD scheme is provisioned;
         // plus cid whenever a CMCD report is made (clause 10.5.1: the content identifier is in every report, if available)
@@ -232,9 +240,12 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         // the Media Player Entry restricts the CMCD data per request (clause 10.5.1): it is reduced here, where the request is known
         val dataSourceFactory = ResolvingDataSource.Factory(listenedDataSourceFactory, object : ResolvingDataSource.Resolver {
             override fun resolveDataSpec(dataSpec: androidx.media3.datasource.DataSpec) =
-                CmcdMediaPlayerEntry.resolve(
-                    dataSpec, cmcdCurrentEntries(), { isCmcdKeyConfigured(it) }, cmcdApplicationReporting, cmcdContentId, adaptationSetOfRequests.idOf(dataSpec.uri.toString()),
-                    cmcdEventEntries.isNotEmpty()
+                withSessionIdentifierHeader(
+                    CmcdMediaPlayerEntry.resolve(
+                        dataSpec, cmcdCurrentEntries(), { isCmcdKeyConfigured(it) }, cmcdApplicationReporting, cmcdContentId, adaptationSetOfRequests.idOf(dataSpec.uri.toString()),
+                        cmcdEventEntries.isNotEmpty()
+                    ),
+                    cmcdSessionId, getCmcdUsesQueryParameters(cmcdUrlMode, cmcdApplicationSetting, cmcdEntries)
                 )
         })
 

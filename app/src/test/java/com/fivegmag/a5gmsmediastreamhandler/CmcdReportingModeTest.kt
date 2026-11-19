@@ -10,6 +10,8 @@ import com.fivegmag.a5gmsmediastreamhandler.controller.SessionController
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.ExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
+import androidx.media3.datasource.DataSpec
+import android.net.Uri
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertEquals
@@ -79,5 +81,23 @@ class CmcdReportingModeTest {
         controller.handleTriggerPlayback(PlaybackRequest(ArrayList(), ConsumptionRequest(), arrayListOf(fromRequest), "s"))
         verify(exactly = 1) { adapter.configureCmcd(listOf(CmcdSchemes.REQUEST, CmcdSchemes.OBJECT), any(), any(), any()) }
         verify(exactly = 1) { adapter.configureCmcdReportingWindows(listOf(fromRequest, fromApplication)) }
+    }
+
+    // TS 26.512 V19.3.0 clause 10.1A: every media request cites the identifier in the CMCD-Session header, also in query mode, where the CMCD data are in the URL
+    @Test
+    fun theSessionIdentifierIsInTheHeaderAlsoWhenTheCmcdDataAreInTheQuery() {
+        val spec = DataSpec(Uri.parse("http://as.example/seg1.m4s"))
+        val sent = ExoPlayerAdapter.withSessionIdentifierHeader(spec, "8bf9f090-82fd-4686-aa4a-39e6a9381b76", true)
+        assertEquals("sid=\"8bf9f090-82fd-4686-aa4a-39e6a9381b76\"", sent.httpRequestHeaders["CMCD-Session"])
+    }
+
+    // in header mode the player gives the header; a header that is there is left as it is
+    @Test
+    fun theHeaderIsNotAddedInHeaderModeOrOverwritten() {
+        val spec = DataSpec(Uri.parse("http://as.example/seg1.m4s"))
+        assertEquals(emptyMap<String, String>(), ExoPlayerAdapter.withSessionIdentifierHeader(spec, "s", false).httpRequestHeaders)
+        val given = spec.withAdditionalHeaders(mapOf("CMCD-Session" to "cid=\"c\",sid=\"s\""))
+        assertEquals("cid=\"c\",sid=\"s\"", ExoPlayerAdapter.withSessionIdentifierHeader(given, "s", true).httpRequestHeaders["CMCD-Session"])
+        assertEquals(emptyMap<String, String>(), ExoPlayerAdapter.withSessionIdentifierHeader(spec, null, true).httpRequestHeaders)
     }
 }
