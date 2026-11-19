@@ -25,6 +25,9 @@ import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.PlayerView
 import com.fivegmag.a5gmscommonlibrary.helpers.ContentTypes
+import com.fivegmag.a5gmscommonlibrary.helpers.MediaPlayerErrorReasons
+import com.fivegmag.a5gmscommonlibrary.helpers.MediaPlayerNotificationEvents
+import com.fivegmag.a5gmscommonlibrary.helpers.MediaPlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.StatusInformation
 import com.fivegmag.a5gmscommonlibrary.helpers.UserAgentTokens
@@ -40,6 +43,11 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var activeManifestUrl: String
     private lateinit var playerListener: ExoPlayerListener
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
+
+    // the state of the Media Player of TS 26.512 V19.3.0 table 13.2.2-1, that the methods of clause 13.2.3 change (table 13.2.3.1-1)
+    @Volatile private var mediaPlayerState = MediaPlayerStates.IDLE
+    private val notificationListeners = java.util.concurrent.CopyOnWriteArrayList<MediaPlayerNotificationListener>()
+    private var notifier: MediaPlayerNotifier? = null
 
     companion object {
         private const val SERVICE_DESCRIPTION_TAG = "ServiceDescription"
@@ -284,11 +292,14 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             .build()
 
         playerInstance.addAnalyticsListener(EventLogger())
+        notifier = MediaPlayerNotifier(playerInstance, { cmcdSessionId }) { notification -> notificationListeners.forEach { it.onNotification(notification) } }
+            .also { playerInstance.addListener(it) }
         playerInstance.addListener(serviceDescriptionEventListener())
         bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
         this.context = context
         playerView = exoPlayerView
         playerView.player = playerInstance
+        mediaPlayerState = MediaPlayerStates.INITIALIZED
         playerListener =
             ExoPlayerListener(playerInstance, playerView, eventBus)
         playerInstance.addAnalyticsListener(playerListener)
@@ -375,6 +386,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         playerInstance.setMediaItem(mediaItem)
         activeMediaItem = mediaItem
         activeManifestUrl = url
+        notifier?.mediaReset()
+        mediaPlayerState = MediaPlayerStates.READY
     }
 
     override fun hasActiveMediaItem() : Boolean {
@@ -391,21 +404,52 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
 
     override fun preload() {
         playerInstance.prepare()
+        mediaPlayerState = MediaPlayerStates.PRELOADED
     }
 
     override fun play() {
         playerInstance.play()
+        mediaPlayerState = MediaPlayerStates.PLAYING
     }
 
     override fun pause() {
         playerInstance.pause()
+        mediaPlayerState = MediaPlayerStates.PAUSED
     }
 
-    // TS 26.512 V19.3.0 clause 13.2.3.7: the earliest media time is the mediaTime (milliseconds) and playback goes on from there
+    /**
+     * TS 26.512 V19.3.0 clause 13.2.3.7: a mediaTime (milliseconds) that is not accessible gives PLAYBACK_ERROR with ERROR_INACCESSIBLE_MEDIA_TIME
+     * (table 13.2.5-2; the text of the method calls the error ERROR_MEDIA_TIME_NOT_ACCESSIBLE and refers to clause 13.2.5) and nothing else is done;
+     * otherwise the earliest media time is the mediaTime and playback goes on from there
+     */
     override fun seek(time: Long) {
+        if (!isMediaTimeAccessible(time)) {
+            notifier?.notify(MediaPlayerNotificationEvents.PLAYBACK_ERROR, MediaPlayerErrorReasons.ERROR_INACCESSIBLE_MEDIA_TIME)
+            return
+        }
         playerInstance.seekTo(time)
         playerInstance.play()
+        mediaPlayerState = MediaPlayerStates.PLAYING
     }
+
+    // the media time is accessible within the window of the presentation; before the timeline is known any time is
+    private fun isMediaTimeAccessible(time: Long): Boolean {
+        if (time < 0) return false
+        val timeline = playerInstance.currentTimeline
+        if (timeline.isEmpty) return true
+        val duration = timeline.getWindow(playerInstance.currentMediaItemIndex, androidx.media3.common.Timeline.Window()).durationMs
+        return duration == C.TIME_UNSET || time <= duration
+    }
+
+    override fun addNotificationListener(listener: MediaPlayerNotificationListener) {
+        notificationListeners.addIfAbsent(listener)
+    }
+
+    override fun removeNotificationListener(listener: MediaPlayerNotificationListener) {
+        notificationListeners.remove(listener)
+    }
+
+    override fun getMediaPlayerState(): String = mediaPlayerState
 
     override fun stop() {
         playerInstance.stop()
@@ -416,10 +460,13 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         playerInstance.stop()
         playerInstance.clearMediaItems()
         activeMediaItem = null
+        notifier?.mediaReset()
+        mediaPlayerState = MediaPlayerStates.INITIALIZED
     }
 
     override fun destroy() {
         playerInstance.release()
+        mediaPlayerState = MediaPlayerStates.IDLE
     }
 
     override fun getPlayerInstance(): ExoPlayer {
@@ -461,12 +508,16 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         return ""
     }
 
-    // TS 26.512 V19.3.0 table 13.2.6-1: averageThroughput is in bit/s, bufferLength and liveLatency are floats in seconds
+    // TS 26.512 V19.3.0 table 13.2.6-1: state is one of table 13.2.2-1, averageThroughput is in bit/s, bufferLength, liveLatency and mediaTime are floats in seconds,
+    // playbackRate is 1.0 for normal speed
     override fun getStatusInformation(status: String): Any? {
         when (status) {
+            StatusInformation.STATE -> return getMediaPlayerState()
             StatusInformation.AVERAGE_THROUGHPUT -> return getAverageThroughput()
             StatusInformation.BUFFER_LENGTH -> return getBufferLengthInSeconds()
             StatusInformation.LIVE_LATENCY -> return getLiveLatencyInSeconds()
+            StatusInformation.MEDIA_TIME -> return playerInstance.currentPosition / 1000.0
+            StatusInformation.PLAYBACK_RATE -> return playerInstance.playbackParameters.speed.toDouble()
             else -> {
                 return null
             }

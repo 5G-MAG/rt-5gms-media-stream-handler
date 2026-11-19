@@ -94,6 +94,13 @@ interface IExoPlayerAdapter {
     fun getStatusInformation(status: String): Any?
     fun getPlayerState(): String
 
+    /** The state of the Media Player of TS 26.512 V19.3.0 table 13.2.2-1 (the method getPlayerState gives the state of the playback of the library) */
+    fun getMediaPlayerState(): String
+
+    /** The notifications of the Media Player (clause 13.2.5) go to the listeners, with the media delivery session identifier */
+    fun addNotificationListener(listener: MediaPlayerNotificationListener)
+    fun removeNotificationListener(listener: MediaPlayerNotificationListener)
+
     // Device information for QoE metrics
     fun getVideoWidth(): Int
     fun getVideoHeight(): Int
