@@ -33,4 +33,12 @@ class EntryPointSelectionTest {
         assertNull(SessionController.selectEntryPoint(listOf(entry("x", null), entry("y", "video/mp4"))))
         assertNull(SessionController.selectEntryPoint(emptyList()))
     }
+
+    // Implementation choice, text silent, see CR-043 (O-5): an entry point with a protocol and no contentType is never selected
+    @Test
+    fun anEntryPointWithAProtocolAndNoContentTypeIsNotSelected() {
+        val byProtocol = EntryPoint("http://as.example/a", null, null, "urn:3gpp:5gms:content-protocol:http-pull")
+        assertNull(SessionController.selectEntryPoint(listOf(byProtocol)))
+        assertEquals("a.mpd", SessionController.selectEntryPoint(listOf(byProtocol, entry("a.mpd", ContentTypes.DASH)))!!.locator)
+    }
 }

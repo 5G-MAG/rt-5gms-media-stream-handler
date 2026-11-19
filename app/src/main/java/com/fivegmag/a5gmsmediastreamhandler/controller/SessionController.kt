@@ -35,7 +35,9 @@ class SessionController(
     companion object {
         private const val CELL_INFO_REFRESH_MS = 10_000L
         // TS 26.512 V19.3.0 clause 4.7.2.1: one of the Media Entry Points is selected by its MIME media type; DASH is preferred, HLS is the
-        // other type that the player handles. The Media Session Handler has already left out the entry points of unsupported profiles.
+        // other type that the player handles. The Media Session Handler has already left out the entry points of unsupported profiles. An entry point
+        // with a protocol and no contentType is never selected: implementation choice, text silent, see CR-043 (open item O-5): the vocabulary of
+        // protocols that clause 10 of TS 26.512 is said to hold has no term for distribution, so what a protocol term means is not known.
         fun selectEntryPoint(entryPoints: List<EntryPoint>): EntryPoint? =
             entryPoints.firstOrNull { it.contentType == ContentTypes.DASH }
                 ?: entryPoints.firstOrNull { it.contentType == ContentTypes.HLS }

@@ -360,4 +360,18 @@ class QoeMetricsReporterExoplayerTest {
 
         assertEquals("", xmlReport)
     }
+
+    // Implementation choice, text silent, see CR-049 (O-4): no slice, Data Network name or location element of the event exposure supplement
+    @Test
+    fun theReportHasNoEventExposureFields() {
+        val request = requestAllMetrics()
+        reporter.initialize(request)
+        PlaybackSessionSimulator.simulateFullPlaybackSession()
+
+        val xmlReport = reporter.getQoeMetricsReport(request, "client-1", "deadbeef1234")
+
+        for (field in listOf("SliceInfo", "DNN", "UserLocations", "Locations", "SupplementalEventExposure")) {
+            assertFalse("$field is not reported: $xmlReport", xmlReport.contains(field))
+        }
+    }
 }

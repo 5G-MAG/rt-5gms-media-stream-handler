@@ -231,6 +231,9 @@ class QoeMetricsReporterExoplayer(
                 }
             }
 
+            // The supplement carries DeviceInformation only. The slice, Data Network name and location of the event exposure supplement (TS 26.247
+            // clause 10.6.2, listing 10.6.2-2a) are not reported: implementation choice, text silent, see CR-049 (open item O-4): the text asks for
+            // S-NSSAI and DNN only for the QMC scheme, and the schema of the location types has patterns that no value matches.
             if (shouldReportMetric(Metrics.DEVICE_INFORMATION, qoeMetricsRequest)) {
                 val deviceInformation = deviceInformationTracker.getDeviceInformation()
                 if (deviceInformation.entries.size > 0) {
