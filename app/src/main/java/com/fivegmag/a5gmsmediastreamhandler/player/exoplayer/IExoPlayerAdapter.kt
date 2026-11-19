@@ -108,4 +108,7 @@ interface IExoPlayerAdapter {
     fun getScreenHeight(): Int
     fun getPixelDensityX(): Float
     fun getPixelDensityY(): Float
+
+    /** The refresh rate of the display in Hz, 0 if the platform gives none (VrDeviceInformation, TS 26.118 V19.0.0 clause 9.3.4) */
+    fun getDisplayRefreshRate(): Float
 }

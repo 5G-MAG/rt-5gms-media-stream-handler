@@ -575,4 +575,9 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     override fun getPixelDensityY(): Float {
         return context.resources.displayMetrics.ydpi
     }
+
+    override fun getDisplayRefreshRate(): Float {
+        val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as? android.hardware.display.DisplayManager
+        return displayManager?.getDisplay(android.view.Display.DEFAULT_DISPLAY)?.refreshRate ?: 0f
+    }
 }

@@ -50,8 +50,9 @@ class QoEMetricsReportingController(
     }
 
     private fun registerExoplayerQoeMetricsReporter() {
-        val scheme = QoeMetricsReporterExoplayer.SCHEME
-        availableQoeMetricsReporterExoplayerByScheme[scheme] = QoeMetricsReporterExoplayer::class
+        availableQoeMetricsReporterExoplayerByScheme[QoeMetricsReporterExoplayer.SCHEME] = QoeMetricsReporterExoplayer::class
+        // the report of the virtual reality metrics is the QoE report extended (TS 26.118 V19.0.0 clause 9.4.2): the same reporter makes it
+        availableQoeMetricsReporterExoplayerByScheme[QoeMetricsReporterExoplayer.VR_SCHEME] = QoeMetricsReporterExoplayer::class
     }
 
     override fun handleTriggerPlayback(playbackRequest: PlaybackRequest) {

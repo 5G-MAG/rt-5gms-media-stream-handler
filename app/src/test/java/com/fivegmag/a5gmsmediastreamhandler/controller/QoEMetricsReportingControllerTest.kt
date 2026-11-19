@@ -83,6 +83,31 @@ class QoEMetricsReportingControllerTest {
         }
     }
 
+    // TS 26.512 V19.3.0 clause 4.9.2: the report of the virtual reality metrics is made by the Media Player like that of QM10 (TS 26.118 clause 9.4.2)
+    @Test
+    fun theReportOfTheVrSchemeIsMadeAndSent() {
+        val qoeMetricsRequest = mockk<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>(relaxed = true)
+        io.mockk.every { qoeMetricsRequest.scheme } returns com.fivegmag.a5gmscommonlibrary.helpers.MetricReportingSchemes.THREE_GPP_VR_METRIC_REPORTING
+        io.mockk.every { qoeMetricsRequest.metricsReportingConfigurationId } returns "vr-config"
+        io.mockk.every { qoeMetricsRequest.metrics } returns ArrayList()
+        val playbackRequest = mockk<com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest>(relaxed = true)
+        io.mockk.every { playbackRequest.mediaStreamingSessionIdentifier } returns "session-1"
+        io.mockk.every { playbackRequest.qoeMetricsRequests } returns arrayListOf()
+        controller.initialize()
+        controller.handleTriggerPlayback(playbackRequest)
+
+        val message = android.os.Message.obtain()
+        message.data = android.os.Bundle().apply { putParcelable("qoeMetricsRequest", qoeMetricsRequest) }
+        controller.handleGetQoeMetricsReport(message)
+
+        io.mockk.verify(exactly = 1) {
+            mockOutgoingMessageHandler.sendMessageByTypeAndBundle(
+                eq(com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes.REPORT_QOE_METRICS),
+                any()
+            )
+        }
+    }
+
     @Test
     fun recordingSessionId_isTheMediaDeliverySessionIdentifier() {
         val playbackRequest = mockk<com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest>(relaxed = true)
