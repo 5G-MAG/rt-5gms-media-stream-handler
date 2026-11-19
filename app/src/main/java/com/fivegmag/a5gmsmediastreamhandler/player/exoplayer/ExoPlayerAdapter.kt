@@ -2,6 +2,7 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
 import android.content.Context
 import android.util.Log
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
@@ -449,15 +450,26 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         return ""
     }
 
+    // TS 26.512 V19.3.0 table 13.2.6-1: averageThroughput is in bit/s, bufferLength and liveLatency are floats in seconds
     override fun getStatusInformation(status: String): Any? {
         when (status) {
             StatusInformation.AVERAGE_THROUGHPUT -> return getAverageThroughput()
-            StatusInformation.BUFFER_LENGTH -> return getBufferLength()
-            StatusInformation.LIVE_LATENCY -> return getLiveLatency()
+            StatusInformation.BUFFER_LENGTH -> return getBufferLengthInSeconds()
+            StatusInformation.LIVE_LATENCY -> return getLiveLatencyInSeconds()
             else -> {
                 return null
             }
         }
+    }
+
+    // the minimum of the buffer lengths of the media types; NaN if the presentation has no adaptation sets (no tracks)
+    private fun getBufferLengthInSeconds(): Double =
+        if (playerInstance.currentTracks.isEmpty) Double.NaN else getBufferLength() / 1000.0
+
+    // null while the player has no latency measurement (it is not playing a live stream)
+    private fun getLiveLatencyInSeconds(): Double? {
+        val latency = getLiveLatency()
+        return if (latency == C.TIME_UNSET) null else latency / 1000.0
     }
 
     override fun getPlayerState(): String {

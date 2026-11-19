@@ -87,6 +87,7 @@ interface IExoPlayerAdapter {
     fun getPlayerInstance(): ExoPlayer
     fun getPlaybackState(): Int
     fun getCurrentPosition(): Long
+    /** The buffer length in milliseconds, the unit of the BufferLevel metric; getStatusInformation(BUFFER_LENGTH) gives seconds */
     fun getBufferLength(): Long
     fun getAverageThroughput(): Long
     fun getCurrentPeriodId(): String
