@@ -111,4 +111,26 @@ class MediaPlayerNotifierTest {
         notifier.onPlayerError(httpError(404))
         assertEquals(listOf(MediaPlayerNotification(Events.PLAYBACK_ERROR, "sid-1", MediaPlayerErrorReasons.ERROR_MEDIA_ENTRY_NOT_FOUND)), notifications)
     }
+
+    // Implementation choice, text silent on the mapping, see CR-042 (O-18): PLAYBACK_WAITING is the rebuffering of a player that was playing; the
+    // buffering before the first play and the buffering of a seek are not
+    @Test
+    fun playbackThatStopsForALackOfDataIsWaiting() {
+        every { player.playWhenReady } returns true
+        notifier.onPlaybackStateChanged(Player.STATE_BUFFERING)
+        assertEquals(emptyList<String>(), events())
+        notifier.onIsPlayingChanged(true)
+        notifier.onPlaybackStateChanged(Player.STATE_BUFFERING)
+        assertEquals(listOf(Events.PLAYBACK_PLAYING, Events.PLAYBACK_WAITING), events())
+    }
+
+    @Test
+    fun theBufferingOfASeekIsNotWaiting() {
+        every { player.playWhenReady } returns true
+        notifier.onIsPlayingChanged(true)
+        val position = Player.PositionInfo(null, 0, null, null, 0, 0L, 0L, -1, -1)
+        notifier.onPositionDiscontinuity(position, position, Player.DISCONTINUITY_REASON_SEEK)
+        notifier.onPlaybackStateChanged(Player.STATE_BUFFERING)
+        assertEquals(listOf(Events.PLAYBACK_PLAYING, Events.PLAYBACK_SEEKING), events())
+    }
 }

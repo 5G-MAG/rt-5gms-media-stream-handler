@@ -18,8 +18,10 @@ fun interface MediaPlayerNotificationListener {
  * The notifications of the Media Player (TS 26.512 V19.3.0 clause 13.2.5) that the events of Media3 define unambiguously: PLAYBACK_PLAYING when the media
  * begins to play, PLAYBACK_PAUSED when playback is paused, PLAYBACK_STARTED when it is resumed after a pause, PLAYBACK_ENDED, PLAYBACK_SEEKING and
  * PLAYBACK_SEEKED around a seek, CAN_PLAY when enough data is available, MANIFEST_LOADED when the manifest is loaded, and PLAYBACK_ERROR with a
- * reason of table 13.2.5-2. The buffer events (BUFFER_EMPTY, BUFFER_LOADED, PLAYBACK_STALLED, PLAYBACK_WAITING) are not given: their definitions
- * overlap and the text does not say which Media3 event each is.
+ * reason of table 13.2.5-2. Of the buffer events only PLAYBACK_WAITING is given: its definition ("the media playback has stopped because of a
+ * temporary lack of data") is the rebuffering of Media3 while playing, outside a seek. Implementation choice, text silent on the mapping, see
+ * CR-042 (open item O-18). BUFFER_EMPTY and BUFFER_LOADED carry a media type and Media3 has one buffer state, not one for each type, and
+ * PLAYBACK_STALLED ("the media playback platform reports stalled") has no counterpart: Media3 reports no stall apart from the buffering.
  */
 class MediaPlayerNotifier(
     private val player: Player,
@@ -29,12 +31,14 @@ class MediaPlayerNotifier(
     private var paused = false
     private var seeking = false
     private var canPlaySent = false
+    private var played = false
 
     /** The media is replaced or removed: the next one can play again */
     fun mediaReset() {
         paused = false
         seeking = false
         canPlaySent = false
+        played = false
     }
 
     fun notify(event: String, errorReason: String? = null) {
@@ -43,6 +47,7 @@ class MediaPlayerNotifier(
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         if (isPlaying) {
+            played = true
             notify(MediaPlayerNotificationEvents.PLAYBACK_PLAYING)
             if (paused) {
                 paused = false
@@ -57,6 +62,7 @@ class MediaPlayerNotifier(
     override fun onPlaybackStateChanged(playbackState: Int) {
         when (playbackState) {
             Player.STATE_ENDED -> notify(MediaPlayerNotificationEvents.PLAYBACK_ENDED)
+            Player.STATE_BUFFERING -> if (played && !seeking && player.playWhenReady) notify(MediaPlayerNotificationEvents.PLAYBACK_WAITING)
             Player.STATE_READY -> {
                 if (!canPlaySent) {
                     canPlaySent = true
