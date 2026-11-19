@@ -83,12 +83,20 @@ class CmcdReportingModeTest {
         verify(exactly = 1) { adapter.configureCmcdReportingWindows(listOf(fromRequest, fromApplication)) }
     }
 
-    // TS 26.512 V19.3.0 clause 10.1A: every media request cites the identifier in the CMCD-Session header, also in query mode, where the CMCD data are in the URL
+    // TS 26.512 V19.3.0 clause 10.1A: every media request cites the identifier in the CMCD-Session header; in query mode a request without the CMCD
+    // query argument gets it
     @Test
-    fun theSessionIdentifierIsInTheHeaderAlsoWhenTheCmcdDataAreInTheQuery() {
+    fun theSessionIdentifierIsInTheHeaderOfARequestWithoutTheCmcdQuery() {
         val spec = DataSpec(Uri.parse("http://as.example/seg1.m4s"))
         val sent = ExoPlayerAdapter.withSessionIdentifierHeader(spec, "8bf9f090-82fd-4686-aa4a-39e6a9381b76", true)
         assertEquals("sid=\"8bf9f090-82fd-4686-aa4a-39e6a9381b76\"", sent.httpRequestHeaders["CMCD-Session"])
+    }
+
+    // CTA-5004-B clauses 3 and 6: a report uses one data transmission mode, and a server that finds a CMCD header ignores the CMCD query argument
+    @Test
+    fun aRequestWithTheCmcdQueryHasNoCmcdHeader() {
+        val spec = DataSpec(Uri.parse("http://as.example/seg1.m4s?token=a&CMCD=cid%3D%22c%22%2Csid%3D%22s%22"))
+        assertEquals(emptyMap<String, String>(), ExoPlayerAdapter.withSessionIdentifierHeader(spec, "s", true).httpRequestHeaders)
     }
 
     // in header mode the player gives the header; a header that is there is left as it is

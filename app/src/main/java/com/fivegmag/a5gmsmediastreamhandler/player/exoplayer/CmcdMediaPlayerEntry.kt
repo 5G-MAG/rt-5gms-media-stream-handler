@@ -15,7 +15,7 @@ import com.fivegmag.a5gmscommonlibrary.session.ClientDataReportingEntry
  */
 object CmcdMediaPlayerEntry {
     private const val TAG = "CmcdMediaPlayerEntry"
-    private const val QUERY_PARAMETER = "CMCD"
+    const val QUERY_PARAMETER = "CMCD"
     private val HEADERS = listOf("CMCD-Object", "CMCD-Request", "CMCD-Session", "CMCD-Status")
 
     /** true for the URL query, false for the HTTP request headers, null for a value that is none of the modes */

@@ -64,11 +64,14 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             CmcdMediaPlayerEntry.usesQueryParameters(urlMode) ?: applicationSetting
                 ?: entries.firstNotNullOfOrNull { CmcdMediaPlayerEntry.usesQueryParameters(it.mode) } ?: false
 
-        // clause 10.1A: all media requests cite the media delivery session identifier in the CMCD-Session header (clause 6.2.3.6), also when the
-        // CMCD data go in the URL query (clause 10.5.1); in header mode the player has put it there already
+        // clause 10.1A: all media requests cite the media delivery session identifier in the CMCD-Session header (clause 6.2.3.6); in header mode
+        // the player has put it there already. In query mode a request that carries the CMCD query argument has the identifier in it: CTA-5004-B
+        // clause 3 says a report uses only one data transmission mode and clause 6 has a server ignore the query argument when a CMCD header is
+        // present, so the header would discard the other keys (the mismatch with 10.1A is open item O-27). Other requests get the header.
         fun withSessionIdentifierHeader(dataSpec: androidx.media3.datasource.DataSpec, sessionId: String?, useQueryParameters: Boolean): androidx.media3.datasource.DataSpec {
             if (sessionId == null || !useQueryParameters) return dataSpec
             if (dataSpec.httpRequestHeaders.keys.any { it.equals("CMCD-Session", ignoreCase = true) }) return dataSpec
+            if (dataSpec.uri.getQueryParameter(CmcdMediaPlayerEntry.QUERY_PARAMETER) != null) return dataSpec
             return dataSpec.withAdditionalHeaders(mapOf("CMCD-Session" to "sid=\"$sessionId\""))
         }
 
