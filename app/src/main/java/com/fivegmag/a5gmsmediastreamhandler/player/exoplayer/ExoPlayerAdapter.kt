@@ -45,6 +45,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var bandwidthMeter: DefaultBandwidthMeter
 
     // the state of the Media Player of TS 26.512 V19.3.0 table 13.2.2-1, that the methods of clause 13.2.3 change (table 13.2.3.1-1)
+    // The state of table 13.2.2-1 is moved by the methods only (table 13.2.3.1-1). Implementation choice, text silent, see CR-042 (open item O-18):
+    // buffering, the end of playback and an error define no state in the table, so none of them changes it (they are notifications, clause 13.2.5).
     @Volatile private var mediaPlayerState = MediaPlayerStates.IDLE
     private val notificationListeners = java.util.concurrent.CopyOnWriteArrayList<MediaPlayerNotificationListener>()
     private var notifier: MediaPlayerNotifier? = null
