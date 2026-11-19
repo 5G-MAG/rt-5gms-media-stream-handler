@@ -68,4 +68,11 @@ class ConsumptionReporterRepeatTest {
         assertEquals(listOf("v1", "v2"), sendReport().map { it.get("mediaConsumed").asText() })
         assertEquals(listOf("v2"), sendReport().map { it.get("mediaConsumed").asText() })
     }
+
+    // Table 9.6.3.2-1: "Media consumed for less than 1 second should be reported with duration = 0". The text wins over the exclusiveMinimum of the YAML.
+    @Test
+    fun mediaConsumedForLessThanASecondIsReportedWithDurationZero() {
+        selected("v1")
+        assertEquals(0, sendReport()[0].get("duration").asInt())
+    }
 }
