@@ -342,7 +342,7 @@ class MediaSessionHandlerAdapter() {
     fun generateReportingClientId(): String {
         val strGpsi: String
         var strMsisdn = ""
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
+        if (ReportingClientIdStore.msisdnIsAvailableOn(Build.VERSION.SDK_INT)) {
             strMsisdn = getMsisdn()
         }
         strGpsi = if (strMsisdn != "") {
