@@ -179,6 +179,21 @@ dependencies {
 }
 ````
 
+#### 3. Start playback and end media delivery sessions
+
+Start playback with `initializePlaybackByServiceListEntry(serviceListEntry, newMediaDeliverySession)`:
+
+* `true`: the Media Session Handler allocates a new media delivery session identifier (a UUID).
+* `false`: continue the current session, e.g. the next item of a playlist that the application treats
+  as one session. This is rejected if no session is active.
+
+The identifier is sent in the `CMCD-Session:sid` header on every request to the 5GMS AS (M4) and in
+consumption and QoE reports (TS 26.512, clauses 6.2.3.6, 10.1A and 11.4.3). TS 26.512 requires a
+different identifier for every media streaming session; the application decides what counts as one.
+
+The session is kept when a playback ends or the M5 endpoint changes. It ends when the application
+calls `endMediaDeliverySession()` (also called by `reset()`).
+
 ## Development
 
 This project follows the
