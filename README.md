@@ -75,6 +75,18 @@ Maven repository:
 
 * [Common Android Library](https://github.com/5G-MAG/rt-5gms-common-android-library#publish-to-local-maven-repository)
 
+### Compatibility with the Media Session Handler
+
+From version 2.0.0, the Media Stream Handler tags each playback request with a `playbackId` and
+only starts playback when the Media Session Handler returns the same `playbackId` in its response.
+A Media Session Handler that does not return it is not compatible: its responses are rejected and
+playback does not start.
+
+Upgrade the Media Stream Handler, the
+[Media Session Handler](https://github.com/5G-MAG/rt-5gms-media-session-handler) and the
+[Common Android Library](https://github.com/5G-MAG/rt-5gms-common-android-library) together, so that
+all three use Common Android Library 2.0.0 or later.
+
 ## Downloading
 
 Release versions are on the [releases](https://github.com/5G-MAG/rt-5gms-media-stream-handler/releases)

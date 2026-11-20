@@ -49,6 +49,14 @@ class IncomingMessageHandler() {
         bundle.classLoader = PlaybackRequest::class.java.classLoader
         val playbackRequest: PlaybackRequest? = bundle.getParcelable("playbackRequest")
         if (playbackRequest != null) {
+            if (playbackRequest.playbackId == null) {
+                Log.e(
+                    "5GMS-IncomingMsg",
+                    "Playback rejected: response has no playbackId. The Media Session Handler is " +
+                        "incompatible; upgrade it to a version built on Common Android Library 2.0.0 or later"
+                )
+                return
+            }
             if (playbackRequest.playbackId != outgoingMessageHandler.currentPlaybackId) {
                 Log.d("5GMS-IncomingMsg", "Ignoring an outdated playback response")
                 return
