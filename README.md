@@ -196,6 +196,19 @@ calls `endMediaDeliverySession()` (also called by `reset()`).
 
 ## Development
 
+### Code style
+
+Kotlin code is checked with [ktlint](https://pinterest.github.io/ktlint/), using the rules in
+`.editorconfig`. The CI workflow runs the check on every pull request. To check and auto-fix
+locally, run:
+
+````
+./gradlew ktlintCheck
+./gradlew ktlintFormat
+````
+
+### Branches
+
 This project follows the
 [Gitflow workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow).
 The `development` branch is the integration branch for new features, so switch to it before starting
