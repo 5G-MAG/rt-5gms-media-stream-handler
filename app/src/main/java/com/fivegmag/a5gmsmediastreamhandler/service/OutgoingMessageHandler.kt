@@ -53,7 +53,6 @@ class OutgoingMessageHandler {
             return
         }
         val bundle = Bundle()
-        currentPlaybackId = null
         bundle.putString("m5BaseUrl", m5BaseUrl)
         sendMessageByTypeAndBundle(SessionHandlerMessageTypes.SET_M5_ENDPOINT, bundle)
     }

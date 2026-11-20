@@ -214,7 +214,7 @@ class MediaSessionHandlerAdapter() {
         if (exoPlayerAdapter.hasActiveMediaItem()) {
             consumptionReportingController.triggerConsumptionReport()
             qoeMetricsReportingController.triggerQoeMetricsReports()
-            exoPlayerAdapter.stop()
+            exoPlayerAdapter.reset()
         }
         messengerService.endMediaDeliverySession()
         incomingMessageHandler.reset()

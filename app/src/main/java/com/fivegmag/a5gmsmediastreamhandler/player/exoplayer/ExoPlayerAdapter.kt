@@ -29,7 +29,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     private lateinit var playerInstance: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var context: Context
-    private lateinit var mediaDeliverySessionId: String
+    private var mediaDeliverySessionId: String? = null
+    private var released = false
     private var activeMediaItem: MediaItem? = null
     private var activeManifestUrl: String = ""
     private lateinit var playerListener: ExoPlayerListener
@@ -104,8 +105,8 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
             TS 26.512 Rel-18, 10.1A
             TS 26.512 Rel-18, 6.2.3.6
         */
-        val formattedSid = "sid=\"$mediaDeliverySessionId\""
-        dataSource.setRequestProperty("CMCD-Session", formattedSid)
+        val sessionId = mediaDeliverySessionId ?: return
+        dataSource.setRequestProperty("CMCD-Session", "sid=\"$sessionId\"")
     }
 
     override fun attach(url: String, contentType: String, mediaDeliverySessionId: String, playbackId: String) {
@@ -134,7 +135,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     }
 
     override fun hasActiveMediaItem() : Boolean {
-        return activeMediaItem != null
+        return !released && activeMediaItem != null
     }
 
     override fun getCurrentManifestUri(): String {
@@ -167,6 +168,9 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     }
 
     override fun stop() {
+        if (released) {
+            return
+        }
         playerInstance.stop()
     }
 
@@ -176,16 +180,21 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
      * kept and can be reused with [attach]. Use [destroy] to release it.
      */
     override fun reset() {
+        mediaDeliverySessionId = null
+        activeMediaItem = null
+        activeManifestUrl = ""
+        if (released) {
+            return
+        }
         playerInstance.stop()
         playerInstance.clearMediaItems()
         playerInstance.playWhenReady = false
         playerInstance.playbackParameters = PlaybackParameters.DEFAULT
-        activeMediaItem = null
-        activeManifestUrl = ""
         playerListener.newPlaybackSession()
     }
 
     override fun destroy() {
+        released = true
         playerInstance.release()
     }
 

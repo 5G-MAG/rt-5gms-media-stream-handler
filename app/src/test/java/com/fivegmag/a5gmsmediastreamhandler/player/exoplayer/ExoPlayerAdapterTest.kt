@@ -114,4 +114,33 @@ class ExoPlayerAdapterTest {
 
         assertFalse(adapter.hasActiveMediaItem())
     }
+
+    @Test
+    fun hasActiveMediaItem_afterDestroy_returnsFalse() {
+        attach("https://example.com/manifest.mpd")
+
+        adapter.destroy()
+
+        assertFalse(adapter.hasActiveMediaItem())
+    }
+
+    @Test
+    fun stopAndReset_afterDestroy_doNotThrow() {
+        attach("https://example.com/manifest.mpd")
+        adapter.destroy()
+
+        adapter.stop()
+        adapter.reset()
+
+        assertFalse(adapter.hasActiveMediaItem())
+    }
+
+    @Test
+    fun preload_beforeAttach_doesNotThrow() {
+        adapter.getPlayerInstance().setMediaItem(
+            androidx.media3.common.MediaItem.fromUri("https://example.com/manifest.mpd")
+        )
+
+        adapter.preload()
+    }
 }
