@@ -31,6 +31,10 @@ class ExoPlayerAdapterTest {
         adapter.initialize(mockk<PlayerView>(relaxed = true), context)
     }
 
+    private fun attach(url: String) {
+        adapter.attach(url, ContentTypes.DASH, "test-session-id", "test-playback-id")
+    }
+
     @After
     fun tearDown() {
         adapter.destroy()
@@ -38,7 +42,7 @@ class ExoPlayerAdapterTest {
 
     @Test
     fun seek_movesPlaybackPositionToGivenMilliseconds() {
-        adapter.attach("https://example.com/manifest.mpd", ContentTypes.DASH)
+        attach("https://example.com/manifest.mpd")
 
         adapter.seek(5000L)
 
@@ -47,7 +51,7 @@ class ExoPlayerAdapterTest {
 
     @Test
     fun reset_clearsActiveMediaItemAndStopsPlayer() {
-        adapter.attach("https://example.com/manifest.mpd", ContentTypes.DASH)
+        attach("https://example.com/manifest.mpd")
         adapter.preload()
         assertTrue(adapter.hasActiveMediaItem())
 
@@ -61,7 +65,7 @@ class ExoPlayerAdapterTest {
 
     @Test
     fun getCurrentManifestUrl_afterReset_returnsEmptyString() {
-        adapter.attach("https://example.com/manifest.mpd", ContentTypes.DASH)
+        attach("https://example.com/manifest.mpd")
         assertEquals("https://example.com/manifest.mpd", adapter.getCurrentManifestUrl())
 
         adapter.reset()
@@ -71,10 +75,10 @@ class ExoPlayerAdapterTest {
 
     @Test
     fun reset_keepsPlayerUsableForNextMediaItem() {
-        adapter.attach("https://example.com/first.mpd", ContentTypes.DASH)
+        attach("https://example.com/first.mpd")
         adapter.reset()
 
-        adapter.attach("https://example.com/second.mpd", ContentTypes.DASH)
+        attach("https://example.com/second.mpd")
 
         assertTrue(adapter.hasActiveMediaItem())
         assertEquals("https://example.com/second.mpd", adapter.getCurrentManifestUri())
@@ -83,12 +87,12 @@ class ExoPlayerAdapterTest {
 
     @Test
     fun reset_nextMediaItemDoesNotStartPlayingWithoutPlay() {
-        adapter.attach("https://example.com/first.mpd", ContentTypes.DASH)
+        attach("https://example.com/first.mpd")
         adapter.preload()
         adapter.play()
 
         adapter.reset()
-        adapter.attach("https://example.com/second.mpd", ContentTypes.DASH)
+        attach("https://example.com/second.mpd")
         adapter.preload()
 
         assertFalse(adapter.getPlayerInstance().playWhenReady)
@@ -96,7 +100,7 @@ class ExoPlayerAdapterTest {
 
     @Test
     fun reset_restoresDefaultPlaybackSpeed() {
-        adapter.attach("https://example.com/first.mpd", ContentTypes.DASH)
+        attach("https://example.com/first.mpd")
         adapter.getPlayerInstance().playbackParameters = PlaybackParameters(1.5f)
 
         adapter.reset()
