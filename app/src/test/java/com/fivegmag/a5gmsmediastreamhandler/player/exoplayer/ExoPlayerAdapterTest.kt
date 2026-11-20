@@ -60,6 +60,16 @@ class ExoPlayerAdapterTest {
     }
 
     @Test
+    fun getCurrentManifestUrl_afterReset_returnsEmptyString() {
+        adapter.attach("https://example.com/manifest.mpd", ContentTypes.DASH)
+        assertEquals("https://example.com/manifest.mpd", adapter.getCurrentManifestUrl())
+
+        adapter.reset()
+
+        assertEquals("", adapter.getCurrentManifestUrl())
+    }
+
+    @Test
     fun reset_keepsPlayerUsableForNextMediaItem() {
         adapter.attach("https://example.com/first.mpd", ContentTypes.DASH)
         adapter.reset()

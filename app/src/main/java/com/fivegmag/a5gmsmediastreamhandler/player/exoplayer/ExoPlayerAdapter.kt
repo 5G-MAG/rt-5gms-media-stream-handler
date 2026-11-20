@@ -136,7 +136,7 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     }
 
     override fun getCurrentManifestUrl(): String {
-        return playerInstance.currentMediaItem?.localConfiguration?.uri.toString()
+        return playerInstance.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
     }
 
     override fun preload() {
