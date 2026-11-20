@@ -134,8 +134,12 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
         activeManifestUrl = url
     }
 
+    /**
+     * True while a media item is attached, even after [destroy], so callers can still send the
+     * final reports for it. [reset] clears it.
+     */
     override fun hasActiveMediaItem() : Boolean {
-        return !released && activeMediaItem != null
+        return activeMediaItem != null
     }
 
     override fun getCurrentManifestUri(): String {
@@ -194,6 +198,9 @@ class ExoPlayerAdapter: IExoPlayerAdapter {
     }
 
     override fun destroy() {
+        if (released) {
+            return
+        }
         released = true
         playerInstance.release()
     }

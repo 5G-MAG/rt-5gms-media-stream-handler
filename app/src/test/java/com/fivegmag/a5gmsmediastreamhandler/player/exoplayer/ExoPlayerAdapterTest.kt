@@ -116,12 +116,19 @@ class ExoPlayerAdapterTest {
     }
 
     @Test
-    fun hasActiveMediaItem_afterDestroy_returnsFalse() {
+    fun hasActiveMediaItem_afterDestroy_staysTrueSoFinalReportsCanBeSent() {
         attach("https://example.com/manifest.mpd")
 
         adapter.destroy()
 
-        assertFalse(adapter.hasActiveMediaItem())
+        assertTrue(adapter.hasActiveMediaItem())
+    }
+
+    @Test
+    fun destroy_calledTwice_doesNotThrow() {
+        adapter.destroy()
+
+        adapter.destroy()
     }
 
     @Test
