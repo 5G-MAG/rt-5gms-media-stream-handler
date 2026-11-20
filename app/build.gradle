@@ -82,8 +82,8 @@ kover {
         variant("debug") {
             verify {
                 rule("Minimum line coverage") {
-                    // Baseline line coverage is 44.6%. Raise this after each test PR (see issue #89).
-                    minBound(44)
+                    // Line coverage is 52.5%. Raise this after each test PR (see issue #89).
+                    minBound(52)
                 }
             }
         }
