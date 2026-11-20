@@ -65,6 +65,7 @@ class QoEMetricsReportingController(
          */
         return uuid.replace("-", "")
     }
+
     private fun initializeQoeMetricsReporter(qoeMetricsRequests: ArrayList<QoeMetricsRequest>) {
         for (qoeMetricsRequest in qoeMetricsRequests) {
             initializeQoeMetricsReporterForConfigurationId(qoeMetricsRequest)
