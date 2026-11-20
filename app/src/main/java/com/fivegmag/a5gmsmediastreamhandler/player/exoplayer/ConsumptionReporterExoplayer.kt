@@ -21,15 +21,13 @@ import com.fivegmag.a5gmscommonlibrary.models.EndpointAddress
 import com.fivegmag.a5gmscommonlibrary.models.TypedLocation
 import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingFilterProvider
 import com.fivegmag.a5gmsmediastreamhandler.player.ConsumptionReporter
+import java.lang.Exception
+import java.util.Date
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import java.lang.Exception
-import java.util.Date
 
-class ConsumptionReporterExoplayer(
-    private val exoPlayerAdapter: IExoPlayerAdapter
-) : ConsumptionReporter() {
+class ConsumptionReporterExoplayer(private val exoPlayerAdapter: IExoPlayerAdapter) : ConsumptionReporter() {
 
     companion object {
         const val TAG = "5GMS-ConsumptionReporterExoplayer"
@@ -42,7 +40,6 @@ class ConsumptionReporterExoplayer(
     override fun initialize() {
         EventBus.getDefault().register(this)
     }
-
 
     @RequiresApi(Build.VERSION_CODES.R)
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -74,7 +71,12 @@ class ConsumptionReporterExoplayer(
     fun onCellInfoUpdated(event: CellInfoUpdatedEvent) {
         activeLocations.clear()
         for (cellInfo in event.cellInfoList) {
-            if (cellInfo.isRegistered && (cellInfo.cellConnectionStatus == CellInfo.CONNECTION_PRIMARY_SERVING || cellInfo.cellConnectionStatus == CellInfo.CONNECTION_SECONDARY_SERVING)) {
+            if (cellInfo.isRegistered &&
+                (
+                    cellInfo.cellConnectionStatus == CellInfo.CONNECTION_PRIMARY_SERVING ||
+                        cellInfo.cellConnectionStatus == CellInfo.CONNECTION_SECONDARY_SERVING
+                    )
+            ) {
                 val location = createTypedLocationByCellInfo(cellInfo)
                 if (location != null) {
                     activeLocations.add(location)
@@ -201,5 +203,4 @@ class ConsumptionReporterExoplayer(
         resetState()
         consumptionReportingUnitList.clear()
     }
-
 }

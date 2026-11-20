@@ -13,7 +13,8 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.*
+import android.os.Build
+import android.os.Handler
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
@@ -21,7 +22,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
-import com.fivegmag.a5gmscommonlibrary.models.*
+import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
 import com.fivegmag.a5gmsmediastreamhandler.controller.ConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.QoEMetricsReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.SessionController
@@ -31,7 +32,7 @@ import com.fivegmag.a5gmsmediastreamhandler.service.MessengerService
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
 
 @UnstableApi
-class MediaSessionHandlerAdapter() {
+class MediaSessionHandlerAdapter {
     companion object {
         const val TAG = "5GMS-MediaSessionHandlerAdapter"
     }
@@ -43,6 +44,7 @@ class MediaSessionHandlerAdapter() {
     private lateinit var sessionController: SessionController
     private lateinit var outgoingMessageHandler: OutgoingMessageHandler
     private lateinit var incomingMessageHandler: IncomingMessageHandler
+
     /** Called with the UUID assigned by the Media Session Handler when playback starts. */
     var onMediaDeliverySessionStarted: ((String) -> Unit)? = null
 
@@ -57,10 +59,7 @@ class MediaSessionHandlerAdapter() {
      * @param onConnectionToMediaSessionHandlerEstablished
      */
 
-    fun initialize(
-        context: Context,
-        onConnectionToMediaSessionHandlerEstablished: () -> (Unit)
-    ) {
+    fun initialize(context: Context, onConnectionToMediaSessionHandlerEstablished: () -> (Unit)) {
         this.context = context
 
         outgoingMessageHandler = OutgoingMessageHandler()
@@ -198,10 +197,7 @@ class MediaSessionHandlerAdapter() {
      * @param newMediaDeliverySession false to continue the client's current session, e.g. a playlist.
      * Continuing without a current session is rejected by the Media Session Handler.
      */
-    fun initializePlaybackByServiceListEntry(
-        serviceListEntry: ServiceListEntry,
-        newMediaDeliverySession: Boolean
-    ) {
+    fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry, newMediaDeliverySession: Boolean) {
         if (exoPlayerAdapter.hasActiveMediaItem()) {
             consumptionReportingController.triggerConsumptionReport()
             qoeMetricsReportingController.triggerQoeMetricsReports()
@@ -224,7 +220,5 @@ class MediaSessionHandlerAdapter() {
      * API endpoint to get the instance of ExoPlayerAdapter
      *
      */
-    fun getExoPlayerAdapter(): ExoPlayerAdapter {
-        return exoPlayerAdapter
-    }
+    fun getExoPlayerAdapter(): ExoPlayerAdapter = exoPlayerAdapter
 }

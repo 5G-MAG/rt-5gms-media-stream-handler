@@ -8,16 +8,13 @@ import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.BufferLevelEntry
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
 
-class BufferLevelTracker(
-    private val exoPlayerAdapter: IExoPlayerAdapter,
-    private val utils: Utils = Utils()
-) {
+class BufferLevelTracker(private val exoPlayerAdapter: IExoPlayerAdapter, private val utils: Utils = Utils()) {
     private val bufferLevel: BufferLevel = BufferLevel(ArrayList())
     private val handler = Handler(Looper.getMainLooper())
     private var samplingRunnable: Runnable? = null
 
     fun initialize() {
-        // No EventBus registration needed as this tracker is strictly periodic 
+        // No EventBus registration needed as this tracker is strictly periodic
         // per TS 26.247 / ISO/IEC 23009-1 (BufferLevel(n))
     }
 
@@ -37,8 +34,6 @@ class BufferLevelTracker(
         }
     }
 
-
-
     private fun addBufferLevelEntry() {
         val level: Int = exoPlayerAdapter.getBufferLength().toInt()
         val time: String = utils.getCurrentXsDateTime()
@@ -50,9 +45,7 @@ class BufferLevelTracker(
         addBufferLevelEntry()
     }
 
-    fun getBufferLevel(): BufferLevel {
-        return bufferLevel
-    }
+    fun getBufferLevel(): BufferLevel = bufferLevel
 
     fun reset() {
         bufferLevel.entries.clear()

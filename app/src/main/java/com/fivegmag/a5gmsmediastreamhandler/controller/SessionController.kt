@@ -7,8 +7,8 @@ import android.telephony.CellInfo
 import android.telephony.TelephonyManager
 import android.util.Log
 import androidx.core.app.ActivityCompat
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.Timeline
+import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStartTriggerEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
@@ -76,7 +76,6 @@ class SessionController(
         }
     }
 
-
     @Subscribe(threadMode = ThreadMode.MAIN)
     @UnstableApi
     override fun onPlaybackStateChangedEvent(event: PlaybackStateChangedEvent) {
@@ -92,11 +91,9 @@ class SessionController(
     }
 
     override fun resetState() {
-
     }
 
     override fun reset() {
         resetState()
     }
-
 }

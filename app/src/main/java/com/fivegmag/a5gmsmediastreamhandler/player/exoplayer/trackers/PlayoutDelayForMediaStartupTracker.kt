@@ -11,11 +11,11 @@ import org.greenrobot.eventbus.ThreadMode
 
 /**
  * Tracks Playout Delay for Media Start-up per TS 26.247 clause 10.2.9
- * 
- * The playout delay for media start-up is measured as the time in milliseconds from 
- * the time instant of DASH player receives playback-start trigger to the instant of 
+ *
+ * The playout delay for media start-up is measured as the time in milliseconds from
+ * the time instant of DASH player receives playback-start trigger to the instant of
  * media playout (first frame rendered).
- * 
+ *
  * This metric is only logged at the time point when the media start-up happens.
  */
 @OptIn(markerClass = [UnstableApi::class])
@@ -77,9 +77,7 @@ class PlayoutDelayForMediaStartupTracker {
      * Get the calculated playout delay for media start-up
      * @return Playout delay for media start-up in milliseconds, or null if not yet calculated
      */
-    fun getPlayoutDelayForMediaStartup(): Long? {
-        return playoutDelayForMediaStartup
-    }
+    fun getPlayoutDelayForMediaStartup(): Long? = playoutDelayForMediaStartup
 
     /**
      * Reset all state for a new playback session

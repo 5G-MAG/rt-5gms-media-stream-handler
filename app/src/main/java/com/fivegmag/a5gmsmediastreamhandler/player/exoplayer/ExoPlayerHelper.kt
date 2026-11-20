@@ -3,7 +3,7 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 import androidx.media3.common.Player
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 
-fun mapStateToConstant(playbackState: Int) : String {
+fun mapStateToConstant(playbackState: Int): String {
     val state = when (playbackState) {
         Player.STATE_IDLE -> PlayerStates.IDLE
         Player.STATE_BUFFERING -> PlayerStates.BUFFERING

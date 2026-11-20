@@ -126,18 +126,21 @@ class ConsumptionReportingControllerTest {
     }
 
     private fun requestReport() {
-        controller.handleGetConsumptionReport(Message.obtain().apply {
-            data = Bundle().apply { putParcelable("consumptionRequest", ConsumptionRequest()) }
-        })
+        controller.handleGetConsumptionReport(
+            Message.obtain().apply {
+                data = Bundle().apply { putParcelable("consumptionRequest", ConsumptionRequest()) }
+            }
+        )
     }
 
-    private fun reportedSessionIds() =
-        reports.map { jacksonObjectMapper().readTree(it).get("sessionId").asText() }
+    private fun reportedSessionIds() = reports.map { jacksonObjectMapper().readTree(it).get("sessionId").asText() }
 
     private fun assertMissingSessionError() {
-        assertTrue(ShadowLog.getLogsForTag(ConsumptionReportingController.TAG).any {
-            it.type == Log.ERROR &&
-                it.msg == "Cannot generate a consumption report without a media delivery session ID"
-        })
+        assertTrue(
+            ShadowLog.getLogsForTag(ConsumptionReportingController.TAG).any {
+                it.type == Log.ERROR &&
+                    it.msg == "Cannot generate a consumption report without a media delivery session ID"
+            }
+        )
     }
 }

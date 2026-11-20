@@ -57,11 +57,19 @@ class SessionControllerPlaybackTest {
     @Test
     fun statusUsesTheOriginalEventsMediaItemInsteadOfTheCurrentPlayer() {
         val originalTimeline = SinglePeriodTimeline(
-            1_000_000L, true, false, false, null,
+            1_000_000L,
+            true,
+            false,
+            false,
+            null,
             MediaItem.Builder().setMediaId("original-playback").build()
         )
         val currentTimeline = SinglePeriodTimeline(
-            1_000_000L, true, false, false, null,
+            1_000_000L,
+            true,
+            false,
+            false,
+            null,
             MediaItem.Builder().setMediaId("current-playback").build()
         )
         val eventTime = AnalyticsListener.EventTime(

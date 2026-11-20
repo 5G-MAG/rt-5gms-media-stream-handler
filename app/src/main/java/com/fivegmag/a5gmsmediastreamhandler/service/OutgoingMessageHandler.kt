@@ -31,7 +31,6 @@ class OutgoingMessageHandler {
             registerClient()
         } catch (_: RemoteException) {
         }
-
     }
 
     fun handleServiceDisconnected() {
@@ -57,10 +56,7 @@ class OutgoingMessageHandler {
         sendMessageByTypeAndBundle(SessionHandlerMessageTypes.SET_M5_ENDPOINT, bundle)
     }
 
-    fun initializePlaybackByServiceListEntry(
-        serviceListEntry: ServiceListEntry,
-        newMediaDeliverySession: Boolean
-    ) {
+    fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry, newMediaDeliverySession: Boolean) {
         if (!canSendMessage()) {
             return
         }
@@ -101,9 +97,7 @@ class OutgoingMessageHandler {
         sendMessage(msg)
     }
 
-    private fun canSendMessage(): Boolean {
-        return boundToMediaSessionHandler
-    }
+    private fun canSendMessage(): Boolean = boundToMediaSessionHandler
 
     private fun getMessage(messageType: Int): Message {
         val msg: Message = Message.obtain(

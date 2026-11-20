@@ -9,7 +9,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -29,8 +28,10 @@ class QoEMetricsReportingControllerTest {
     @Test
     fun handleTriggerPlayback_initializesReporters() {
         // Given
-        val scheme = "urn:3GPP:ns:PSS:DASH:QM10" // Hardcoded scheme from MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
-        val qoeMetricsRequest = mockk<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>(relaxed = true)
+        // Hardcoded scheme from MetricReportingSchemes.THREE_GPP_DASH_METRIC_REPORTING
+        val scheme = "urn:3GPP:ns:PSS:DASH:QM10"
+        val qoeMetricsRequest =
+            mockk<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>(relaxed = true)
         io.mockk.every { qoeMetricsRequest.scheme } returns scheme
         io.mockk.every { qoeMetricsRequest.metricsReportingConfigurationId } returns "config-1"
 
@@ -51,7 +52,8 @@ class QoEMetricsReportingControllerTest {
     fun triggerQoeMetricsReports_sendsMessage() {
         // Given
         val scheme = "urn:3GPP:ns:PSS:DASH:QM10"
-        val qoeMetricsRequest = mockk<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>(relaxed = true)
+        val qoeMetricsRequest =
+            mockk<com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.QoeMetricsRequest>(relaxed = true)
         io.mockk.every { qoeMetricsRequest.scheme } returns scheme
         io.mockk.every { qoeMetricsRequest.metricsReportingConfigurationId } returns "config-1"
         // Ensure getMpdInformation returns a list (empty or not) to avoid null pointer in reporter
