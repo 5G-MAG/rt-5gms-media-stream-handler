@@ -8,7 +8,18 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
-import com.fivegmag.a5gmscommonlibrary.eventbus.*
+import com.fivegmag.a5gmscommonlibrary.eventbus.BytesTransferredEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.CellInfoUpdatedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.FirstMediaSegmentRequestedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.LoadCompletedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackSpeedChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStartTriggerEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.SeekEvent
+import com.fivegmag.a5gmscommonlibrary.eventbus.VideoSizeChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import io.mockk.mockk
 import org.greenrobot.eventbus.EventBus
@@ -78,7 +89,8 @@ object PlaybackSessionSimulator {
         loadId: Long
     ) {
         val loadUri = Uri.parse(uri)
-        val loadInfo = LoadEventInfo(loadId, DataSpec(loadUri), loadUri, emptyMap(), elapsedRealtimeMs, durationMs, bytesLoaded)
+        val loadInfo =
+            LoadEventInfo(loadId, DataSpec(loadUri), loadUri, emptyMap(), elapsedRealtimeMs, durationMs, bytesLoaded)
         bus.post(LoadCompletedEvent(fakeEventTime(), loadInfo, MediaLoadData(dataType)))
     }
 
@@ -133,8 +145,13 @@ object PlaybackSessionSimulator {
             .setHeight(height)
             .build()
         val loadData = MediaLoadData(
-            C.DATA_TYPE_MEDIA, C.TRACK_TYPE_VIDEO, videoFormat,
-            C.SELECTION_REASON_ADAPTIVE, null, 0L, 5000L
+            C.DATA_TYPE_MEDIA,
+            C.TRACK_TYPE_VIDEO,
+            videoFormat,
+            C.SELECTION_REASON_ADAPTIVE,
+            null,
+            0L,
+            5000L
         )
         simulateDownstreamFormatChanged(loadData)
     }
@@ -171,27 +188,38 @@ object PlaybackSessionSimulator {
 
         // --- Phase 2: Active Playback ---
         simulatePlaybackStateChanged(PlayerStates.PLAYING)
-        simulateMediaSegmentLoad("http://example.com/stream/segment_002.m4s", elapsedRealtimeMs = 2000L, durationMs = 150L, bytesLoaded = 480000L, loadId = 3L)
+        simulateMediaSegmentLoad(
+            "http://example.com/stream/segment_002.m4s",
+            elapsedRealtimeMs = 2000L,
+            durationMs = 150L,
+            bytesLoaded = 480000L,
+            loadId = 3L
+        )
 
         // User Interaction Simulation
         Thread.sleep(50)
         simulatePause()
-        
+
         Thread.sleep(50)
         simulateSeek(seekFromMs = 10000L, seekToMs = 30000L)
-        
+
         Thread.sleep(50)
         simulateResume()
-        
+
         Thread.sleep(50)
         simulatePlaybackSpeedChanged(1.5f)
         Thread.sleep(50)
 
         // More segments load (post-seek)
-        simulateMediaSegmentLoad("http://example.com/stream/segment_003.m4s", elapsedRealtimeMs = 4000L, durationMs = 180L, bytesLoaded = 520000L, loadId = 4L)
+        simulateMediaSegmentLoad(
+            "http://example.com/stream/segment_003.m4s",
+            elapsedRealtimeMs = 4000L,
+            durationMs = 180L,
+            bytesLoaded = 520000L,
+            loadId = 4L
+        )
 
         // --- Phase 3: Playback Ends ---
         simulatePlaybackEnd()
     }
 }
-

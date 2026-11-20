@@ -7,7 +7,6 @@ import com.fivegmag.a5gmscommonlibrary.eventbus.PlaybackStateChangedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.AvgThroughput
-
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.InactivityType
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -15,13 +14,11 @@ import org.greenrobot.eventbus.ThreadMode
 
 /**
  * Tracks average throughput metrics per TS 26.247 clause 10.2.4
- * 
+ *
  * Handles measurement interval tracking, activity time calculation,
  * and inactivity type determination for QoE metrics reporting.
  */
-class ThroughputTracker(
-    private val utils: Utils = Utils()
-) {
+class ThroughputTracker(private val utils: Utils = Utils()) {
     // Average throughput list for reporting
     private val avgThroughputList: ArrayList<AvgThroughput> = ArrayList()
 
@@ -133,9 +130,16 @@ class ThroughputTracker(
     private fun recordInactivityType() {
         val inactivityType = when (lastPlayerState) {
             PlayerStates.PAUSED -> InactivityType.USER_REQUEST
-            PlayerStates.READY -> InactivityType.CLIENT_MEASURE  // Buffer is sufficient
-            PlayerStates.BUFFERING -> InactivityType.ERROR       // Buffering but no requests = error
-            PlayerStates.ENDED -> InactivityType.USER_REQUEST    // Playback ended
+
+            PlayerStates.READY -> InactivityType.CLIENT_MEASURE
+
+            // Buffer is sufficient
+            PlayerStates.BUFFERING -> InactivityType.ERROR
+
+            // Buffering but no requests = error
+            PlayerStates.ENDED -> InactivityType.USER_REQUEST
+
+            // Playback ended
             else -> null
         }
         if (inactivityType != null) {
@@ -168,9 +172,7 @@ class ThroughputTracker(
     /**
      * Get the average throughput list for reporting
      */
-    fun getAvgThroughputList(): ArrayList<AvgThroughput> {
-        return avgThroughputList
-    }
+    fun getAvgThroughputList(): ArrayList<AvgThroughput> = avgThroughputList
 
     /**
      * Create an AvgThroughput entry for the current measurement interval
@@ -196,14 +198,14 @@ class ThroughputTracker(
             numBytes = totalBytesInInterval,
             activityTime = activityTime,
             duration = duration,
-            accessBearer = null,  // Access bearer info not available from ExoPlayer
+            accessBearer = null, // Access bearer info not available from ExoPlayer
             inactivityType = getConsistentInactivityType()
         )
 
         // Reset interval tracking for next interval after creating the entry.
         // We preserve active requests so they continue being tracked in the next interval.
         resetIntervalTracking(clearActiveRequests = false)
-        
+
         // Start new measurement interval immediately
         measurementIntervalStartTime = utils.getCurrentXsDateTime()
         measurementIntervalStartTimestamp = currentTimestamp
@@ -229,12 +231,12 @@ class ThroughputTracker(
         totalBytesInInterval = 0L
         totalActivityTimeInInterval = 0L
         inactivityTypes.clear()
-        
+
         if (clearActiveRequests) {
             activeRequestCount = 0
             lastRequestStartTimestamp = 0L
         } else if (activeRequestCount > 0) {
-            // Keep tracking active requests, but reset their start time to now 
+            // Keep tracking active requests, but reset their start time to now
             // for the new interval so we don't double-count activity time
             lastRequestStartTimestamp = utils.getCurrentTimestamp()
         }

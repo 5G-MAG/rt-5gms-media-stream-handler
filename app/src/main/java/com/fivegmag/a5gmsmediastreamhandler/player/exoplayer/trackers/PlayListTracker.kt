@@ -20,21 +20,20 @@ import org.greenrobot.eventbus.ThreadMode
 
 /**
  * Helper class for tracking PlayList QoE metric per TS 26.247 clause 10.2.7
- * 
+ *
  * Tracks playback sessions including:
  * - Start types (NewPlayoutRequest, Resume, OtherUserRequest, StartOfMetricsCollectionPeriod)
  * - Trace entries with representation switches, speed changes, rebuffering
  * - Stop reasons (UserRequest, EndOfContent, RepresentationSwitch, Rebuffering, etc.)
  */
 @UnstableApi
-class PlayListTracker(
-    private val exoPlayerAdapter: IExoPlayerAdapter
-) {
+class PlayListTracker(private val exoPlayerAdapter: IExoPlayerAdapter) {
     private val utils: Utils = Utils()
-    
+
     // PlayList tracking state
     private val playList: PlayList = PlayList(ArrayList())
     private var currentPlayListEntry: PlayListEntry? = null
+
     // Active tracks state (maps ExoPlayer trackType to its state)
     private data class TrackTraceState(
         var representationId: String? = null,
@@ -77,12 +76,12 @@ class PlayListTracker(
         val oldPositionMs = seekEvent.oldPositionMs
         val newPositionMs = seekEvent.newPositionMs
         Log.d(TAG, "Seek event: ${oldPositionMs}ms -> ${newPositionMs}ms")
-        
+
         // Finalize current trace entries if active
         if (isPlaybackActive && currentPlayListEntry != null) {
             finalizeAllTraceEntries(StopReasonType.UserRequest)
         }
-        
+
         // Finalize current playlist entry and start new one with SEEK type
         finalizeCurrentPlayListEntry()
         startNewPlayListEntry(StartType.NewPlayoutRequest, newPositionMs)
@@ -96,7 +95,7 @@ class PlayListTracker(
     fun onPlaybackSpeedChangedEvent(playbackSpeedChangedEvent: PlaybackSpeedChangedEvent) {
         val speed = playbackSpeedChangedEvent.playbackSpeed.toDouble()
         Log.d(TAG, "Playback speed changed: $currentPlaybackSpeed -> $speed")
-        
+
         // If speed actually changed and we have an active trace, finalize it
         if (speed != currentPlaybackSpeed && isPlaybackActive && currentPlayListEntry != null) {
             finalizeAllTraceEntries(StopReasonType.UserRequest)
@@ -128,6 +127,7 @@ class PlayListTracker(
                     }
                 }
             }
+
             PlayerStates.BUFFERING -> {
                 if (isPlaybackActive) {
                     // Rebuffering/stalling occurred during playback
@@ -137,6 +137,7 @@ class PlayListTracker(
                     // A new trace entry will be started when PLAYING state resumes
                 }
             }
+
             PlayerStates.PAUSED -> {
                 if (isPlaybackActive) {
                     // User paused playback
@@ -144,6 +145,7 @@ class PlayListTracker(
                     isPlaybackActive = false
                 }
             }
+
             PlayerStates.ENDED -> {
                 if (isPlaybackActive) {
                     // Playback ended
@@ -152,6 +154,7 @@ class PlayListTracker(
                     isPlaybackActive = false
                 }
             }
+
             PlayerStates.IDLE -> {
                 if (isPlaybackActive) {
                     // Playback stopped
@@ -171,15 +174,15 @@ class PlayListTracker(
     fun onDownstreamFormatChangedEvent(downstreamFormatChangedEvent: DownstreamFormatChangedEvent) {
         val trackType = downstreamFormatChangedEvent.mediaLoadData.trackType
         val newRepresentationId = downstreamFormatChangedEvent.mediaLoadData.trackFormat?.id
-        
+
         if (newRepresentationId == null) return
-        
+
         val trackState = activeTracks.getOrPut(trackType) { TrackTraceState() }
-        
+
         if (trackState.representationId == newRepresentationId) {
             return
         }
-        
+
         // If we have an active trace entry for this track, finalize it with REP_SWITCH
         if (isPlaybackActive && currentPlayListEntry != null && trackState.startTime != null) {
             finalizeTraceEntryForTrack(trackType, trackState, StopReasonType.RepresentationSwitch)
@@ -188,7 +191,7 @@ class PlayListTracker(
         } else {
             // Just update the current representation ID
             trackState.representationId = newRepresentationId
-            
+
             // If playback is active but track wasn't active, start tracking it now
             if (isPlaybackActive && currentPlayListEntry != null && trackState.startTime == null) {
                 startTraceEntryForTrack(trackState)
@@ -202,10 +205,10 @@ class PlayListTracker(
      */
     fun createSnapshot(): PlayList? {
         val snapshotEntries = ArrayList<PlayListEntry>()
-        
+
         // Add all completed entries
         snapshotEntries.addAll(playList.entries)
-        
+
         // If there's a current entry in progress, create a snapshot of it
         if (currentPlayListEntry != null) {
             val currentTraceEntries = ArrayList<PlayListTraceEntry>()
@@ -214,11 +217,11 @@ class PlayListTracker(
             // Add snapshots of all active track traces
             if (isPlaybackActive) {
                 val currentTimestamp = utils.getCurrentTimestamp()
-                
+
                 for ((_, trackState) in activeTracks) {
                     if (trackState.startTime != null) {
                         val duration = currentTimestamp - trackState.startTimestamp
-                        
+
                         if (duration > 0) {
                             val traceEntrySnapshot = PlayListTraceEntry(
                                 start = trackState.startTime!!,
@@ -226,7 +229,8 @@ class PlayListTracker(
                                 duration = duration,
                                 representationId = trackState.representationId,
                                 playbackSpeed = if (currentPlaybackSpeed != 1.0) currentPlaybackSpeed else null,
-                                stopReason = StopReasonType.EndOfMetricsCollectionPeriod,  // Forced cut off by end of interval
+                                // Forced cut off by end of interval
+                                stopReason = StopReasonType.EndOfMetricsCollectionPeriod,
                                 stopReasonOther = null
                             )
                             currentTraceEntries.add(traceEntrySnapshot)
@@ -234,7 +238,7 @@ class PlayListTracker(
                     }
                 }
             }
-            
+
             if (currentTraceEntries.isNotEmpty()) {
                 val entrySnapshot = PlayListEntry(
                     start = currentPlayListEntry!!.start,
@@ -245,7 +249,7 @@ class PlayListTracker(
                 snapshotEntries.add(entrySnapshot)
             }
         }
-        
+
         return if (snapshotEntries.isNotEmpty()) PlayList(snapshotEntries) else null
     }
 
@@ -265,19 +269,22 @@ class PlayListTracker(
     /**
      * Start a new PlayListEntry with the given start type
      */
-    private fun startNewPlayListEntry(startType: StartType, mediaPositionMs: Long = exoPlayerAdapter.getCurrentPosition()) {
+    private fun startNewPlayListEntry(
+        startType: StartType,
+        mediaPositionMs: Long = exoPlayerAdapter.getCurrentPosition()
+    ) {
         val start = utils.getCurrentXsDateTime()
         val mstart = utils.millisecondsToISO8601(mediaPositionMs)
-        
+
         currentPlayListEntry = PlayListEntry(
             start = start,
             mstart = mstart,
             startType = startType,
             traceEntries = ArrayList()
         )
-        
+
         Log.d(TAG, "Started new PlayListEntry: startType=$startType, mstart=$mstart")
-        
+
         // Start first trace entries within this playlist entry for all active tracks
         startAllTraceEntries()
     }
@@ -295,8 +302,11 @@ class PlayListTracker(
         trackState.startTime = utils.getCurrentXsDateTime()
         trackState.startTimestamp = utils.getCurrentTimestamp()
         trackState.mediaStartMs = exoPlayerAdapter.getCurrentPosition()
-        
-        Log.d(TAG, "Started new trace entry: representationId=${trackState.representationId}, speed=$currentPlaybackSpeed")
+
+        Log.d(
+            TAG,
+            "Started new trace entry: representationId=${trackState.representationId}, speed=$currentPlaybackSpeed"
+        )
     }
 
     private fun finalizeAllTraceEntries(stopReason: StopReasonType, stopReasonOther: String? = null) {
@@ -308,21 +318,26 @@ class PlayListTracker(
     /**
      * Finalize the trace entry for a specific track with a stop reason
      */
-    private fun finalizeTraceEntryForTrack(trackType: Int, trackState: TrackTraceState, stopReason: StopReasonType, stopReasonOther: String? = null) {
+    private fun finalizeTraceEntryForTrack(
+        trackType: Int,
+        trackState: TrackTraceState,
+        stopReason: StopReasonType,
+        stopReasonOther: String? = null
+    ) {
         if (trackState.startTime == null || currentPlayListEntry == null) {
             return
         }
-        
+
         val currentTimestamp = utils.getCurrentTimestamp()
         val duration = currentTimestamp - trackState.startTimestamp
-        
+
         // Don't add entries with zero duration
         if (duration <= 0) {
             trackState.startTime = null
             trackState.startTimestamp = 0L
             return
         }
-        
+
         val traceEntry = PlayListTraceEntry(
             start = trackState.startTime!!,
             sstart = utils.millisecondsToISO8601(trackState.mediaStartMs),
@@ -332,10 +347,13 @@ class PlayListTracker(
             stopReason = stopReason,
             stopReasonOther = if (stopReason == StopReasonType.Other) stopReasonOther else null
         )
-        
+
         currentPlayListEntry!!.traceEntries.add(traceEntry)
-        Log.d(TAG, "Finalized trace entry for repId=${trackState.representationId}: duration=${duration}ms, stopReason=$stopReason")
-        
+        Log.d(
+            TAG,
+            "Finalized trace entry for repId=${trackState.representationId}: duration=${duration}ms, stopReason=$stopReason"
+        )
+
         // Reset trace entry tracking
         trackState.startTime = null
         trackState.startTimestamp = 0L

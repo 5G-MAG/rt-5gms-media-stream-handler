@@ -3,6 +3,7 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -14,7 +15,6 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.ui.PlayerView
-import androidx.media3.common.C
 import com.fivegmag.a5gmscommonlibrary.eventbus.BytesTransferredEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
@@ -29,10 +29,9 @@ import com.fivegmag.a5gmscommonlibrary.helpers.PlayerStates
 import org.greenrobot.eventbus.EventBus
 
 @UnstableApi
-class ExoPlayerListener(
-    private val playerInstance: ExoPlayer,
-    private val playerView: PlayerView,
-) : AnalyticsListener, TransferListener {
+class ExoPlayerListener(private val playerInstance: ExoPlayer, private val playerView: PlayerView) :
+    AnalyticsListener,
+    TransferListener {
 
     companion object {
         const val TAG = "5GMS-ExoPlayerListener"
@@ -58,7 +57,7 @@ class ExoPlayerListener(
                     lastVideoWidth = newWidth
                     lastVideoHeight = newHeight
                     val displayMetrics = playerView.context.resources.displayMetrics
-                    Log.d(TAG, "Video size changed: ${newWidth}x${newHeight}")
+                    Log.d(TAG, "Video size changed: ${newWidth}x$newHeight")
                     EventBus.getDefault().post(
                         VideoSizeChangedEvent(
                             videoWidth = newWidth,
@@ -72,10 +71,7 @@ class ExoPlayerListener(
         }
     }
 
-    override fun onPlaybackStateChanged(
-        eventTime: AnalyticsListener.EventTime,
-        playbackState: Int
-    ) {
+    override fun onPlaybackStateChanged(eventTime: AnalyticsListener.EventTime, playbackState: Int) {
         val state: String = mapStateToConstant(playbackState)
 
         playerView.keepScreenOn = !(state == PlayerStates.IDLE || state == PlayerStates.ENDED)
@@ -96,10 +92,7 @@ class ExoPlayerListener(
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    override fun onDownstreamFormatChanged(
-        eventTime: AnalyticsListener.EventTime,
-        mediaLoadData: MediaLoadData
-    ) {
+    override fun onDownstreamFormatChanged(eventTime: AnalyticsListener.EventTime, mediaLoadData: MediaLoadData) {
         EventBus.getDefault().post(DownstreamFormatChangedEvent(eventTime, mediaLoadData))
     }
 
@@ -124,19 +117,13 @@ class ExoPlayerListener(
      * Excludes initialization segments (C.DATA_TYPE_MEDIA_INITIALIZATION) to strictly
      * comply with TS 26.247 which requires the "first media Segment (or sub-segment)".
      */
-    private fun isMediaSegment(dataType: Int): Boolean {
-        return dataType == C.DATA_TYPE_MEDIA
-    }
-    
+    private fun isMediaSegment(dataType: Int): Boolean = dataType == C.DATA_TYPE_MEDIA
+
     /**
      * Called when the first video frame is rendered.
      * Used for Initial Playout Delay per TS 26.247 clause 10.2.5
      */
-    override fun onRenderedFirstFrame(
-        eventTime: AnalyticsListener.EventTime,
-        output: Any,
-        renderTimeMs: Long
-    ) {
+    override fun onRenderedFirstFrame(eventTime: AnalyticsListener.EventTime, output: Any, renderTimeMs: Long) {
         if (!firstFrameRendered) {
             firstFrameRendered = true
             Log.d(TAG, "First frame rendered at realtimeMs: ${eventTime.realtimeMs}")

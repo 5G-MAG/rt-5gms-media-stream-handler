@@ -2,7 +2,6 @@ package com.fivegmag.a5gmsmediastreamhandler.controller
 
 import android.os.Bundle
 import android.os.Message
-import android.telephony.*
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fasterxml.jackson.core.JsonGenerator
@@ -40,7 +39,6 @@ class ConsumptionReportingController(
     private val activeConsumptionReporter = mutableListOf<ConsumptionReporter>()
     private var lastConsumptionRequest: ConsumptionRequest? =
         null
-
 
     override fun initialize() {
         EventBus.getDefault().register(this)
@@ -152,14 +150,8 @@ class ConsumptionReportingController(
     }
 }
 
-class ConsumptionReportingUnitFilter(private val propertiesToIgnore: List<String>) :
-    PropertyFilter {
-    override fun serializeAsField(
-        pojo: Any?,
-        gen: JsonGenerator?,
-        prov: SerializerProvider?,
-        writer: PropertyWriter?
-    ) {
+class ConsumptionReportingUnitFilter(private val propertiesToIgnore: List<String>) : PropertyFilter {
+    override fun serializeAsField(pojo: Any?, gen: JsonGenerator?, prov: SerializerProvider?, writer: PropertyWriter?) {
         if (include(writer)) {
             writer?.serializeAsField(pojo, gen, prov)
         } else if (!gen?.canOmitFields()!!) {
@@ -195,16 +187,12 @@ class ConsumptionReportingUnitFilter(private val propertiesToIgnore: List<String
     ) {
     }
 
-    private fun include(writer: PropertyWriter?): Boolean {
-        return writer?.name !in propertiesToIgnore
-    }
+    private fun include(writer: PropertyWriter?): Boolean = writer?.name !in propertiesToIgnore
 }
 
 object ConsumptionReportingFilterProvider {
-    fun createFilter(propertiesToIgnore: List<String>): SimpleFilterProvider {
-        return SimpleFilterProvider().addFilter(
-            "consumptionReportingUnitFilter",
-            ConsumptionReportingUnitFilter(propertiesToIgnore)
-        )
-    }
+    fun createFilter(propertiesToIgnore: List<String>): SimpleFilterProvider = SimpleFilterProvider().addFilter(
+        "consumptionReportingUnitFilter",
+        ConsumptionReportingUnitFilter(propertiesToIgnore)
+    )
 }

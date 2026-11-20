@@ -3,19 +3,17 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 import androidx.annotation.OptIn
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
-
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstFrameRenderedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.FirstMediaSegmentRequestedEvent
-
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
 /**
  * Tracks Initial Playout Delay per TS 26.247 clause 10.2.5
- * 
- * The initial playout delay is measured as the time in milliseconds from the fetch 
- * of the first media Segment (or sub-segment) and the time at which media is 
+ *
+ * The initial playout delay is measured as the time in milliseconds from the fetch
+ * of the first media Segment (or sub-segment) and the time at which media is
  * retrieved from the client buffer (first frame rendered).
  */
 @OptIn(markerClass = [UnstableApi::class])
@@ -77,9 +75,7 @@ class InitialPlayoutDelayTracker {
      * Get the calculated initial playout delay
      * @return Initial playout delay in milliseconds, or null if not yet calculated
      */
-    fun getInitialPlayoutDelay(): Long? {
-        return initialPlayoutDelay
-    }
+    fun getInitialPlayoutDelay(): Long? = initialPlayoutDelay
 
     /**
      * Reset all state for a new playback session
