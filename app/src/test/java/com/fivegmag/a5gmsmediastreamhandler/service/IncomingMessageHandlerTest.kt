@@ -72,9 +72,11 @@ class IncomingMessageHandlerTest {
             "550e8400-e29b-41d4-a716-446655440000",
             playbackId
         )
-        incoming.IncomingHandler().handleMessage(Message.obtain().apply {
-            what = SessionHandlerMessageTypes.TRIGGER_PLAYBACK
-            data = Bundle().apply { putParcelable("playbackRequest", request) }
-        })
+        incoming.IncomingHandler().handleMessage(
+            Message.obtain().apply {
+                what = SessionHandlerMessageTypes.TRIGGER_PLAYBACK
+                data = Bundle().apply { putParcelable("playbackRequest", request) }
+            }
+        )
     }
 }

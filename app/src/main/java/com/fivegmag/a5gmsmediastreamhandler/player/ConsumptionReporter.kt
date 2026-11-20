@@ -39,6 +39,7 @@ abstract class ConsumptionReporter {
                     val ci = cellIdentity.cid
                     typedLocation = TypedLocation(CellIdentifierType.CGI, "$mcc$mnc$lac$ci")
                 }
+
                 // ECGI = MCC + MNC + ECI
                 is CellInfoLte -> {
                     val cellIdentity = cellInfo.cellIdentity as CellIdentityLte
@@ -47,6 +48,7 @@ abstract class ConsumptionReporter {
                     val eci = cellIdentity.ci
                     typedLocation = TypedLocation(CellIdentifierType.ECGI, "$mcc$mnc$eci")
                 }
+
                 // NCGI = MCC + MNC + NCI
                 is CellInfoNr -> {
                     val cellIdentity = cellInfo.cellIdentity as CellIdentityNr

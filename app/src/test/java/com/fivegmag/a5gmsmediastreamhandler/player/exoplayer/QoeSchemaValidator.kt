@@ -1,10 +1,10 @@
 package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer
 
+import java.io.StringReader
 import org.apache.xerces.parsers.SAXParser
 import org.xml.sax.ErrorHandler
 import org.xml.sax.InputSource
 import org.xml.sax.SAXParseException
-import java.io.StringReader
 
 /**
  * Utility to validate QoE Report XML against the 3GPP Rel-19 XSD schema using Apache Xerces.
@@ -41,8 +41,14 @@ object QoeSchemaValidator {
 
         val errors = mutableListOf<String>()
         parser.errorHandler = object : ErrorHandler {
-            override fun warning(ex: SAXParseException) { errors += "Warning [${ex.lineNumber}:${ex.columnNumber}]: ${ex.message}" }
-            override fun error(ex: SAXParseException) { errors += "Error [${ex.lineNumber}:${ex.columnNumber}]: ${ex.message}" }
+            override fun warning(ex: SAXParseException) {
+                errors +=
+                    "Warning [${ex.lineNumber}:${ex.columnNumber}]: ${ex.message}"
+            }
+            override fun error(ex: SAXParseException) {
+                errors +=
+                    "Error [${ex.lineNumber}:${ex.columnNumber}]: ${ex.message}"
+            }
             override fun fatalError(ex: SAXParseException) {
                 errors += "Fatal [${ex.lineNumber}:${ex.columnNumber}]: ${ex.message}"
                 throw ex
@@ -59,6 +65,5 @@ object QoeSchemaValidator {
         }
 
         if (errors.isNotEmpty()) throw AssertionError("QoE Report XML Validation Failed:\n" + errors.joinToString("\n"))
-
     }
 }

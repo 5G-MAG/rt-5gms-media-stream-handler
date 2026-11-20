@@ -11,5 +11,4 @@ interface IController {
     fun initialize()
 
     fun handleTriggerPlayback(playbackRequest: PlaybackRequest)
-
 }

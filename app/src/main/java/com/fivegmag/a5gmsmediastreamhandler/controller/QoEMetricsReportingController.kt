@@ -14,11 +14,11 @@ import com.fivegmag.a5gmsmediastreamhandler.MediaSessionHandlerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.QoeMetricsReporterExoplayer
 import com.fivegmag.a5gmsmediastreamhandler.service.OutgoingMessageHandler
+import kotlin.reflect.KClass
+import kotlin.reflect.full.primaryConstructor
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import kotlin.reflect.KClass
-import kotlin.reflect.full.primaryConstructor
 
 @UnstableApi
 class QoEMetricsReportingController(
@@ -144,7 +144,9 @@ class QoEMetricsReportingController(
 
         val qoeMetricsReporterForConfigurationId =
             activeQoeMetricsReporterById[qoeMetricsRequest.metricsReportingConfigurationId]
-                ?: throw Exception("No valid QoE Metrics Reporter for configuration ID ${qoeMetricsRequest.metricsReportingConfigurationId}")
+                ?: throw Exception(
+                    "No valid QoE Metrics Reporter for configuration ID ${qoeMetricsRequest.metricsReportingConfigurationId}"
+                )
 
         qoeMetricsReporterForConfigurationId.setLastQoeMetricsRequest(qoeMetricsRequest)
         val qoeMetricsReport =
@@ -158,10 +160,7 @@ class QoEMetricsReportingController(
         return qoeMetricsReport
     }
 
-    private fun sendQoeMetricsReport(
-        qoeMetricsReport: String,
-        metricsReportingConfigurationId: String
-    ) {
+    private fun sendQoeMetricsReport(qoeMetricsReport: String, metricsReportingConfigurationId: String) {
         val bundle = Bundle()
         val playbackMetricsResponse = QoeMetricsResponse(
             qoeMetricsReport,
@@ -203,5 +202,4 @@ class QoEMetricsReportingController(
         activeQoeMetricsReporterById.clear()
         lastQoeMetricsRequestsById.clear()
     }
-
 }

@@ -9,9 +9,7 @@ import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
 
-class MessengerService(
-    private val context: Context
-) {
+class MessengerService(private val context: Context) {
 
     companion object {
         const val TAG = "5GMS-MessengerService"
@@ -37,14 +35,10 @@ class MessengerService(
         }
     }
 
-    fun initialize(
-        incomingMessageHandler: IncomingMessageHandler,
-        outgoingMessageHandler: OutgoingMessageHandler
-    ) {
+    fun initialize(incomingMessageHandler: IncomingMessageHandler, outgoingMessageHandler: OutgoingMessageHandler) {
         this.incomingMessageHandler = incomingMessageHandler
         this.outgoingMessageHandler = outgoingMessageHandler
     }
-
 
     fun bind(onConnectionToMediaSessionHandlerEstablished: () -> (Unit)) {
         try {
@@ -77,10 +71,7 @@ class MessengerService(
         outgoingMessageHandler.setM5Endpoint(m5BaseUrl)
     }
 
-    fun initializePlaybackByServiceListEntry(
-        serviceListEntry: ServiceListEntry,
-        newMediaDeliverySession: Boolean
-    ) {
+    fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry, newMediaDeliverySession: Boolean) {
         outgoingMessageHandler.initializePlaybackByServiceListEntry(serviceListEntry, newMediaDeliverySession)
     }
 
@@ -97,6 +88,4 @@ class MessengerService(
         }
         incomingMessageHandler.reset()
     }
-
-
 }
