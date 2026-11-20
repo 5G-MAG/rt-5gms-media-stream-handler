@@ -4,18 +4,22 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Message
 import android.os.Messenger
+import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.session.PlaybackRequest
 import com.fivegmag.a5gmsmediastreamhandler.controller.IConsumptionReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.IQoEMetricsReportingController
 import com.fivegmag.a5gmsmediastreamhandler.controller.ISessionController
+import java.util.UUID
 
 class IncomingMessageHandler() {
 
     private lateinit var consumptionReportingController: IConsumptionReportingController
     private lateinit var qoeMetricsReportingController: IQoEMetricsReportingController
     private lateinit var sessionController: ISessionController
+    private lateinit var outgoingMessageHandler: OutgoingMessageHandler
+    var onMediaDeliverySessionStarted: ((String) -> Unit)? = null
 
     @UnstableApi
     private val incomingMessenger = Messenger(IncomingHandler())
@@ -45,9 +49,29 @@ class IncomingMessageHandler() {
         bundle.classLoader = PlaybackRequest::class.java.classLoader
         val playbackRequest: PlaybackRequest? = bundle.getParcelable("playbackRequest")
         if (playbackRequest != null) {
+            if (playbackRequest.playbackId == null) {
+                Log.e(
+                    "5GMS-IncomingMsg",
+                    "Playback rejected: response has no playbackId. The Media Session Handler is " +
+                        "incompatible; upgrade it to a version built on Common Android Library 2.0.0 or later"
+                )
+                return
+            }
+            if (playbackRequest.playbackId != outgoingMessageHandler.currentPlaybackId) {
+                Log.d("5GMS-IncomingMsg", "Ignoring an outdated playback response")
+                return
+            }
+            // Validate once at the boundary, before any controller changes session state.
+            try {
+                UUID.fromString(playbackRequest.mediaDeliverySessionId)
+            } catch (_: IllegalArgumentException) {
+                Log.e("5GMS-IncomingMsg", "Playback rejected: missing or invalid media delivery session UUID")
+                return
+            }
             consumptionReportingController.handleTriggerPlayback(playbackRequest)
             qoeMetricsReportingController.handleTriggerPlayback(playbackRequest)
             sessionController.handleTriggerPlayback(playbackRequest)
+            onMediaDeliverySessionStarted?.invoke(playbackRequest.mediaDeliverySessionId)
         }
     }
 
@@ -70,11 +94,13 @@ class IncomingMessageHandler() {
     fun initialize(
         consumptionReportingController: IConsumptionReportingController,
         qoEMetricsReportingController: IQoEMetricsReportingController,
-        sessionController: ISessionController
+        sessionController: ISessionController,
+        outgoingMessageHandler: OutgoingMessageHandler
     ) {
         this.consumptionReportingController = consumptionReportingController
         this.qoeMetricsReportingController = qoEMetricsReportingController
         this.sessionController = sessionController
+        this.outgoingMessageHandler = outgoingMessageHandler
     }
 
     @UnstableApi

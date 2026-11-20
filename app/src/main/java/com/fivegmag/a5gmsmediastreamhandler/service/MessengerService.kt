@@ -77,17 +77,24 @@ class MessengerService(
         outgoingMessageHandler.setM5Endpoint(m5BaseUrl)
     }
 
-    fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
-        outgoingMessageHandler.initializePlaybackByServiceListEntry(serviceListEntry)
+    fun initializePlaybackByServiceListEntry(
+        serviceListEntry: ServiceListEntry,
+        newMediaDeliverySession: Boolean
+    ) {
+        outgoingMessageHandler.initializePlaybackByServiceListEntry(serviceListEntry, newMediaDeliverySession)
+    }
+
+    fun endMediaDeliverySession() {
+        outgoingMessageHandler.endMediaDeliverySession()
     }
 
     @UnstableApi
     fun reset() {
+        outgoingMessageHandler.reset()
         if (boundToMediaSessionHandler) {
             context.unbindService(messengerConnection)
             boundToMediaSessionHandler = false
         }
-        outgoingMessageHandler.reset()
         incomingMessageHandler.reset()
     }
 

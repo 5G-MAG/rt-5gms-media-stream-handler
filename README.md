@@ -63,17 +63,29 @@ declared as a Maven dependency in the `build.gradle` of the `app` module:
 
 ````
 dependencies {
-    implementation 'com.fivegmag:a5gmscommonlibrary:1.3.0'
+    implementation 'com.fivegmag:a5gmscommonlibrary:2.0.0'
 }
 ````
 
-The version number (`1.3.0` in the example above) might differ, depending on the version of the
+The version number (`2.0.0` in the example above) might differ, depending on the version of the
 Media Stream Handler.
 
 Install the library by following the installation guide in its README, and publish it to the local
 Maven repository:
 
 * [Common Android Library](https://github.com/5G-MAG/rt-5gms-common-android-library#publish-to-local-maven-repository)
+
+### Compatibility with the Media Session Handler
+
+From version 2.0.0, the Media Stream Handler tags each playback request with a `playbackId` and
+only starts playback when the Media Session Handler returns the same `playbackId` in its response.
+A Media Session Handler that does not return it is not compatible: its responses are rejected and
+playback does not start.
+
+Upgrade the Media Stream Handler, the
+[Media Session Handler](https://github.com/5G-MAG/rt-5gms-media-session-handler) and the
+[Common Android Library](https://github.com/5G-MAG/rt-5gms-common-android-library) together, so that
+all three use Common Android Library 2.0.0 or later.
 
 ## Downloading
 
@@ -157,15 +169,30 @@ dependencyResolutionManagement {
 
 #### 2. Include the 5GMS Media Stream Handler in your module gradle file
 
-The example uses `1.3.0`, the version this repository publishes (`app/build.gradle`). Replace it
+The example uses `2.0.0`, the version this repository publishes (`app/build.gradle`). Replace it
 with the version you are using.
 
 ````
 dependencies {
     // 5GMAG
-    implementation 'com.fivegmag:a5gmsmediastreamhandler:1.3.0'
+    implementation 'com.fivegmag:a5gmsmediastreamhandler:2.0.0'
 }
 ````
+
+#### 3. Start playback and end media delivery sessions
+
+Start playback with `initializePlaybackByServiceListEntry(serviceListEntry, newMediaDeliverySession)`:
+
+* `true`: the Media Session Handler allocates a new media delivery session identifier (a UUID).
+* `false`: continue the current session, e.g. the next item of a playlist that the application treats
+  as one session. This is rejected if no session is active.
+
+The identifier is sent in the `CMCD-Session:sid` header on every request to the 5GMS AS (M4) and in
+consumption and QoE reports (TS 26.512, clauses 6.2.3.6, 10.1A and 11.4.3). TS 26.512 requires a
+different identifier for every media streaming session; the application decides what counts as one.
+
+The session is kept when a playback ends or the M5 endpoint changes. It ends when the application
+calls `endMediaDeliverySession()` (also called by `reset()`).
 
 ## Development
 

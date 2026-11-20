@@ -8,12 +8,15 @@ import android.os.RemoteException
 import android.util.Log
 import com.fivegmag.a5gmscommonlibrary.helpers.SessionHandlerMessageTypes
 import com.fivegmag.a5gmscommonlibrary.models.ServiceListEntry
+import java.util.UUID
 
 class OutgoingMessageHandler {
 
     private var boundToMediaSessionHandler = false
     private var nativeIncomingHandler: Messenger? = null
     private var outgoingMessengerService: Messenger? = null
+    var currentPlaybackId: String? = null
+        private set
 
     companion object {
         const val TAG = "5GMS-OutgoingMessageHandler"
@@ -32,6 +35,7 @@ class OutgoingMessageHandler {
     }
 
     fun handleServiceDisconnected() {
+        currentPlaybackId = null
         outgoingMessengerService = null
         boundToMediaSessionHandler = false
     }
@@ -53,21 +57,38 @@ class OutgoingMessageHandler {
         sendMessageByTypeAndBundle(SessionHandlerMessageTypes.SET_M5_ENDPOINT, bundle)
     }
 
-    fun initializePlaybackByServiceListEntry(serviceListEntry: ServiceListEntry) {
+    fun initializePlaybackByServiceListEntry(
+        serviceListEntry: ServiceListEntry,
+        newMediaDeliverySession: Boolean
+    ) {
         if (!canSendMessage()) {
             return
         }
         val bundle = Bundle()
+        val playbackId = UUID.randomUUID().toString()
+        currentPlaybackId = playbackId
         bundle.putParcelable("serviceListEntry", serviceListEntry)
+        bundle.putString("playbackId", playbackId)
+        bundle.putBoolean("newMediaDeliverySession", newMediaDeliverySession)
         sendMessageByTypeAndBundle(SessionHandlerMessageTypes.START_PLAYBACK_BY_SERVICE_LIST_ENTRY_MESSAGE, bundle)
     }
 
-    fun updatePlaybackState(state: String) {
+    fun endMediaDeliverySession() {
+        currentPlaybackId = null
+        sendMessageByTypeAndBundle(SessionHandlerMessageTypes.END_MEDIA_DELIVERY_SESSION, Bundle())
+    }
+
+    fun updatePlaybackState(state: String, playbackId: String) {
         if (!canSendMessage()) {
+            return
+        }
+        if (playbackId != currentPlaybackId) {
+            Log.d(TAG, "Ignoring playback state from an outdated playback")
             return
         }
         val bundle = Bundle()
         bundle.putString("playbackState", state)
+        bundle.putString("playbackId", playbackId)
         sendMessageByTypeAndBundle(SessionHandlerMessageTypes.STATUS_MESSAGE, bundle)
     }
 
@@ -103,6 +124,9 @@ class OutgoingMessageHandler {
     }
 
     fun reset() {
+        if (canSendMessage()) {
+            sendMessage(getMessage(SessionHandlerMessageTypes.UNREGISTER_CLIENT))
+        }
         handleServiceDisconnected()
     }
 }
