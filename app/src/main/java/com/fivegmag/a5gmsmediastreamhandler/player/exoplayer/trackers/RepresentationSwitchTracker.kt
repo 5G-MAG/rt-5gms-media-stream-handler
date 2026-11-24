@@ -2,22 +2,19 @@ package com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.trackers
 
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.source.MediaLoadData
 import com.fivegmag.a5gmscommonlibrary.eventbus.DownstreamFormatChangedEvent
 import com.fivegmag.a5gmscommonlibrary.eventbus.LoadStartedEvent
 import com.fivegmag.a5gmscommonlibrary.helpers.Utils
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitch
 import com.fivegmag.a5gmscommonlibrary.qoeMetricsReporting.RepresentationSwitchList
 import com.fivegmag.a5gmsmediastreamhandler.player.exoplayer.IExoPlayerAdapter
-import androidx.media3.exoplayer.source.MediaLoadData
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 
 @UnstableApi
-class RepresentationSwitchTracker(
-    private val exoPlayerAdapter: IExoPlayerAdapter,
-    private val utils: Utils = Utils()
-) {
+class RepresentationSwitchTracker(private val exoPlayerAdapter: IExoPlayerAdapter, private val utils: Utils = Utils()) {
     private val representationSwitchList: RepresentationSwitchList = RepresentationSwitchList(ArrayList())
     private val currentRepresentationIds = mutableMapOf<Int, String>()
     private val pendingSwitches = mutableMapOf<Int, MutableMap<String, RepresentationSwitch>>()
@@ -32,7 +29,7 @@ class RepresentationSwitchTracker(
     fun onLoadStartedEvent(loadStartedEvent: LoadStartedEvent) {
         val formatId = loadStartedEvent.mediaLoadData.trackFormat?.id ?: return
         val trackType = loadStartedEvent.mediaLoadData.trackType
-        
+
         val currentRepresentationId = currentRepresentationIds[trackType]
         val trackPendingSwitches = pendingSwitches.getOrPut(trackType) { mutableMapOf() }
 
@@ -53,7 +50,7 @@ class RepresentationSwitchTracker(
     fun onDownstreamFormatChangedEvent(downstreamFormatChangedEvent: DownstreamFormatChangedEvent) {
         val formatId = downstreamFormatChangedEvent.mediaLoadData.trackFormat?.id ?: return
         val trackType = downstreamFormatChangedEvent.mediaLoadData.trackType
-        
+
         val currentRepresentationId = currentRepresentationIds[trackType]
         val trackPendingSwitches = pendingSwitches.getOrPut(trackType) { mutableMapOf() }
 
@@ -77,9 +74,7 @@ class RepresentationSwitchTracker(
         }
     }
 
-    fun getRepresentationSwitchList(): RepresentationSwitchList {
-        return representationSwitchList
-    }
+    fun getRepresentationSwitchList(): RepresentationSwitchList = representationSwitchList
 
     fun reset() {
         representationSwitchList.entries.clear()

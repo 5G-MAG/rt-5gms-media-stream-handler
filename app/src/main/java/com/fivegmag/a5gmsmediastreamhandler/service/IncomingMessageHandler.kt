@@ -13,7 +13,7 @@ import com.fivegmag.a5gmsmediastreamhandler.controller.IQoEMetricsReportingContr
 import com.fivegmag.a5gmsmediastreamhandler.controller.ISessionController
 import java.util.UUID
 
-class IncomingMessageHandler() {
+class IncomingMessageHandler {
 
     private lateinit var consumptionReportingController: IConsumptionReportingController
     private lateinit var qoeMetricsReportingController: IQoEMetricsReportingController
@@ -25,16 +25,15 @@ class IncomingMessageHandler() {
     private val incomingMessenger = Messenger(IncomingHandler())
 
     @UnstableApi
-    inner class IncomingHandler() : Handler() {
+    inner class IncomingHandler : Handler() {
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 SessionHandlerMessageTypes.TRIGGER_PLAYBACK -> handleTriggerPlayback(msg)
 
                 SessionHandlerMessageTypes.GET_CONSUMPTION_REPORT -> handleGetConsumptionReport(msg)
 
-                SessionHandlerMessageTypes.UPDATE_PLAYBACK_CONSUMPTION_REPORTING_CONFIGURATION -> handleUpdatePlaybackConsumptionReportingConfiguration(
-                    msg
-                )
+                SessionHandlerMessageTypes.UPDATE_PLAYBACK_CONSUMPTION_REPORTING_CONFIGURATION ->
+                    handleUpdatePlaybackConsumptionReportingConfiguration(msg)
 
                 SessionHandlerMessageTypes.GET_QOE_METRICS_REPORT -> handleGetQoeMetricsReport(msg)
 
@@ -104,10 +103,7 @@ class IncomingMessageHandler() {
     }
 
     @UnstableApi
-    fun getIncomingMessenger(): Messenger {
-        return incomingMessenger
-    }
-
+    fun getIncomingMessenger(): Messenger = incomingMessenger
 
     @UnstableApi
     fun reset() {
@@ -115,5 +111,4 @@ class IncomingMessageHandler() {
         sessionController.reset()
         qoeMetricsReportingController.reset()
     }
-
 }

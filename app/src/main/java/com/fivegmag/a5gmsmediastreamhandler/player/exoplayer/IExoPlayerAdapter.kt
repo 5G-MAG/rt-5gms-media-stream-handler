@@ -6,13 +6,10 @@ import androidx.media3.ui.PlayerView
 
 interface IExoPlayerAdapter {
 
-    fun initialize(
-        exoPlayerView: PlayerView,
-        context: Context
-    )
+    fun initialize(exoPlayerView: PlayerView, context: Context)
 
     fun attach(url: String, contentType: String = "", mediaDeliverySessionId: String, playbackId: String)
-    fun hasActiveMediaItem() : Boolean
+    fun hasActiveMediaItem(): Boolean
     fun getCurrentManifestUri(): String
     fun getCurrentManifestUrl(): String
     fun preload()
